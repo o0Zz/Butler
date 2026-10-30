@@ -174,7 +174,7 @@ function draw() {
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === view));
   $('title').textContent = { runs: 'Runs', triggers: 'Triggers', skills: 'Skills' }[view];
   $('hdr').innerHTML = view === 'skills' ? `<button onclick="send('openSkills')">Open folder</button>`
-    : view === 'triggers' ? `<button onclick="send('chat')" title="Claude in a terminal, in the skills folder: ask it to add or change triggers and skills">Talk to Claude</button>` : '';
+    : view === 'triggers' ? `<button onclick="send('chat')" title="${esc(state.cli)} in a terminal, in the skills folder: ask it to add or change triggers and skills">Talk to ${esc(state.cli)}</button>` : '';
   ({ runs: renderRuns, triggers: renderTriggers, skills: renderSkills })[view]();
 }
 
@@ -201,8 +201,8 @@ function renderRuns() {
         <div class="muted">${esc(full(r.started))}${duration(r) ? ' · ' + duration(r) : ''}${r.costUsd != null ? ' · $' + r.costUsd.toFixed(2) : ''}</div>
         <div class="actions">
           <button onclick="send('openLog',{id:'${r.id}'})">Open log</button>
-          <button onclick="send('terminal',{session:'${r.sessionId}'})">Continue in terminal</button>
-          ${r.status === 'Running' ? `<button onclick="if(confirm('Stop this run? Claude is killed where it is.'))send('stop',{id:'${r.id}'})">Stop</button>` : ''}
+          <button onclick="send('terminal',{session:'${r.sessionId}',cli:'${r.cli || ''}'})">Continue in terminal</button>
+          ${r.status === 'Running' ? `<button onclick="if(confirm('Stop this run? The agent is killed where it is.'))send('stop',{id:'${r.id}'})">Stop</button>` : ''}
           ${r.status === 'Waiting' ? `<button onclick="send('stop',{id:'${r.id}'})" title="Drop the question, the run ends as Stopped">Dismiss</button>` : ''}
         </div>
       </div>

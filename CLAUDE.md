@@ -1,6 +1,6 @@
 # Butler
 
-Windows tray app that runs Claude Code headless (`claude -p`) on triggers and shows what ran.
+Windows tray app that runs an agent CLI headless (Claude Code `claude -p` by default, or GitHub Copilot CLI) on triggers and shows what ran.
 Single user, single machine: triggers live in the user's own skills folder and call their skills, mailbox and folders.
 
 ## How it works
@@ -8,7 +8,8 @@ Single user, single machine: triggers live in the user's own skills folder and c
 - Schedule triggers: `TaskSync` reconciles the Task Scheduler folder `\Butler\` with the JSON (create / update / delete; a hash of schedule + exe path in the task description detects changes). Each task runs `Butler.exe run <name>`, which reads the prompt from the JSON at run time, so prompt edits need no sync. Tasks are "run only when user is logged on" (notifications and Chrome need the session) with "start when available" (catch-up).
 - Mail triggers: the tray app polls every mail folder of the default Outlook classic mailbox through COM every 30 s (`OutlookInbox`; not only the Inbox, since rules move mails; Deleted, Outbox, Sent, Drafts and Junk are skipped), from a checkpoint in `state/mail.json` (`MailCheckpoint`), so mails received while Butler was closed are handled at the next start. First start begins at "now".
 - Every run is a separate `Butler.exe` process (`run`, `answer`), never inside the tray process. The tray app only syncs, polls mail and displays files.
-- `Runner` starts `claude -p --output-format stream-json --verbose --permission-mode auto --session-id <guid>` from the user profile folder (not this repo: this CLAUDE.md must not leak into triggered runs). It appends a protocol to the system prompt: end with `BUTLER-ASK: <question>` (run becomes Waiting) or `BUTLER-SUMMARY: <outcome>`. An answer resumes the same session with `--resume`. A run records its process (`Pid`) and claude's (`ClaudePid`): `Stop` kills claude's tree, and a Running run whose process is gone is marked Stopped when listed.
+- The CLI is global: `BUTLER_CLI` = `claude` (default) or `copilot`. `Cli` holds what differs (arguments, reading its JSON lines into text / tool / result events); a run records its `Cli`, and answers and "Continue in terminal" use that one. Copilot has no system prompt option (the protocol goes in the prompt), no final result event (the result is its last message), no cost, and needs `--allow-all-tools` (no classifier like claude's auto mode); claude-in-chrome is claude only.
+- `Runner` starts (for claude) `claude -p --output-format stream-json --verbose --permission-mode auto --session-id <guid>` from the user profile folder (not this repo: this CLAUDE.md must not leak into triggered runs). It appends a protocol to the system prompt: end with `BUTLER-ASK: <question>` (run becomes Waiting) or `BUTLER-SUMMARY: <outcome>`. An answer resumes the same session with `--resume`. A run records its process (`Pid`) and claude's (`ClaudePid`): `Stop` kills claude's tree, and a Running run whose process is gone is marked Stopped when listed.
 - Data in `%LOCALAPPDATA%\Butler`: `runs/<id>.json` (record) + `runs/<id>.log` (raw stream), `state/` (mail checkpoint), `webview/` (WebView2 profile).
 - Dashboard: `dashboard.html` (embedded, plain JS, `marked.min.js` inlined for Markdown) in a WebView2. C# pushes the whole state as JSON; the page posts commands back (`DashboardForm.OnCommand`). Claude output can quote mail content: raw HTML is escaped, only http(s) links are kept, and the WebView never navigates away (links open in the browser).
 - "Talk to Claude" (Triggers tab) opens an interactive `claude` in Windows Terminal in the skills folder, whose own CLAUDE.md explains butler.json: Claude edits the config, the watcher syncs and refreshes. No chat inside Butler.
@@ -18,7 +19,7 @@ Single user, single machine: triggers live in the user's own skills folder and c
 ## Commands
 - `dotnet build`, `dotnet test` (from the repo root).
 - `Butler.exe` (tray), `Butler.exe run <trigger> [var=value ...]`, `Butler.exe answer <runId> <text>`, `Butler.exe sync`.
-- `BUTLER_CONFIG` overrides the triggers file, `BUTLER_DATA` the data folder. Use a scratch `BUTLER_DATA` for manual tests.
+- `BUTLER_CLI` picks the CLI, `BUTLER_CONFIG` overrides the triggers file, `BUTLER_DATA` the data folder. Use a scratch `BUTLER_DATA` for manual tests.
 
 ## Rules
 - Never touch Task Scheduler tasks outside `\Butler\`. Tests use a throwaway `ButlerTest-<guid>` folder and delete it.

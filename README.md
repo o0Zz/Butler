@@ -1,6 +1,6 @@
 # Butler
 
-Tray app that runs Claude Code (`claude -p`) on triggers and shows what ran.
+Tray app that runs Claude Code (`claude -p`) or GitHub Copilot CLI (`BUTLER_CLI=copilot`) on triggers and shows what ran.
 
 - Triggers: `%USERPROFILE%\.claude\skills\butler.json`, versioned with the skills.
 - Schedule triggers run from Windows Task Scheduler (folder `\Butler\`), so they fire even when the app is closed.

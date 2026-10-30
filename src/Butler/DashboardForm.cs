@@ -67,6 +67,7 @@ sealed class DashboardForm : Form
         var state = new
         {
             error = tray.LastError,
+            cli = runner.Cli.Name,
             configFile = Program.TriggersFile,
             triggers = tray.Triggers.Select(t => new
             {
@@ -103,15 +104,18 @@ sealed class DashboardForm : Form
             case "openSkill": Open(Path.Combine(Program.SkillsDir, Arg("folder"), "SKILL.md")); break;
             case "openLog": Open(Path.Combine(runner.RunsDir, Arg("id") + ".log")); break;
             // Edits butler.json and skills; the config watcher then syncs and refreshes this page.
-            case "chat": Process.Start(new ProcessStartInfo("wt.exe") { ArgumentList = { "-d", Program.SkillsDir, "claude" } }); break;
-            case "terminal":
-                Process.Start(new ProcessStartInfo("wt.exe")
-                {
-                    ArgumentList = { "-d", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "claude", "--resume", Arg("session") },
-                });
-                break;
+            case "chat": Terminal(Program.SkillsDir, runner.Cli, null); break;
+            case "terminal": Terminal(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Cli.FromName(Arg("cli")), Arg("session")); break;
         }
         Push();
+    }
+
+    // An interactive CLI in Windows Terminal, resuming that session when given.
+    static void Terminal(string dir, Cli cli, string? session)
+    {
+        var psi = new ProcessStartInfo("wt.exe") { ArgumentList = { "-d", dir, cli.Exe } };
+        foreach (var a in cli.TerminalArguments(session)) psi.ArgumentList.Add(a);
+        Process.Start(psi);
     }
 
     static void Open(string path) => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });

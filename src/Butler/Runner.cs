@@ -12,6 +12,7 @@ public sealed class RunRecord
     public required string Trigger { get; init; }
     public required string SessionId { get; init; }
     public required string Prompt { get; init; }
+    public string? Cli { get; init; }   // the CLI that owns the session (null: runs from before BUTLER_CLI, claude)
     public DateTime Started { get; init; }
     public DateTime? Ended { get; set; }
     public RunStatus Status { get; set; }
@@ -20,15 +21,16 @@ public sealed class RunRecord
     public string? Result { get; set; }
     public decimal? CostUsd { get; set; }
     public int? Pid { get; init; }      // the process that runs it and records the outcome: if it is gone, the run is dead
-    public int? ClaudePid { get; set; } // what Stop kills
+    public int? ClaudePid { get; set; } // the CLI process: what Stop kills
 }
 
-// Runs `claude -p` hidden, records the run in <home>/runs, and reports the outcome.
-public sealed class Runner(string home, string claudeExe = "claude")
+// Runs the CLI (claude or copilot) hidden, records the run in <home>/runs, and reports the outcome.
+public sealed class Runner(string home, Cli? cli = null)
 {
     static readonly JsonSerializerOptions Json = new() { WriteIndented = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
 
     public string RunsDir { get; } = Path.Combine(home, "runs");
+    public Cli Cli { get; } = cli ?? Cli.Configured;
 
     public static string Protocol(string trigger) =>
         $"You are running unattended, launched by Butler (trigger: {trigger}). Nobody can answer you during this run. " +
@@ -45,13 +47,14 @@ public sealed class Runner(string home, string claudeExe = "claude")
             Trigger = trigger,
             SessionId = resumeSession ?? Guid.NewGuid().ToString(),
             Prompt = prompt,
+            Cli = Cli.Name,
             Started = DateTime.Now,
             Status = RunStatus.Running,
             Pid = Environment.ProcessId,
         };
         Save(run);
 
-        var psi = new ProcessStartInfo(claudeExe)
+        var psi = new ProcessStartInfo(Cli.Exe)
         {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -62,13 +65,10 @@ public sealed class Runner(string home, string claudeExe = "claude")
             // Not the Butler repo: its CLAUDE.md is about developing Butler, not about the triggered task.
             WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         };
-        foreach (var a in new[] { "-p", prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "auto", "--chrome",
-                     "--append-system-prompt", Protocol(trigger) })
+        foreach (var a in Cli.RunArguments(prompt, Protocol(trigger), run.SessionId, resumeSession != null))
             psi.ArgumentList.Add(a);
-        psi.ArgumentList.Add(resumeSession == null ? "--session-id" : "--resume");
-        psi.ArgumentList.Add(run.SessionId);
 
-        string? result = null;
+        string? result = null, lastText = null;
         bool isError = false;
         try
         {
@@ -81,17 +81,17 @@ public sealed class Runner(string home, string claudeExe = "claude")
             {
                 await log.WriteLineAsync(line);
                 await log.FlushAsync();
-                if (!line.Contains("\"type\":\"result\"")) continue;
-                using var doc = JsonDocument.Parse(line);
-                var root = doc.RootElement;
-                result = root.TryGetProperty("result", out var r) ? r.GetString() : null;
-                isError = root.TryGetProperty("is_error", out var e) && e.GetBoolean();
-                if (root.TryGetProperty("total_cost_usd", out var c)) run.CostUsd = c.GetDecimal();
+                foreach (var e in Events(Cli, line))
+                {
+                    if (e is CliText t) lastText = t.Text;
+                    else if (e is CliResult r) (result, isError, run.CostUsd) = (r.Result, r.IsError, r.CostUsd);
+                }
             }
             await p.WaitForExitAsync();
             var err = await stderr;
             if (err.Length > 0) await log.WriteLineAsync("[stderr] " + err);
             if (p.ExitCode != 0) isError = true;
+            result ??= lastText; // a CLI without a final result event (copilot) ends with its last message
             if (result == null && err.Length > 0) result = err.Trim();
         }
         catch (Exception ex)
@@ -113,6 +113,8 @@ public sealed class Runner(string home, string claudeExe = "claude")
     {
         var waiting = Load(runId) ?? throw new ArgumentException($"Unknown run {runId}");
         if (waiting.Status != RunStatus.Waiting) throw new InvalidOperationException($"Run {runId} is not waiting for an answer");
+        if ((waiting.Cli ?? "claude") != Cli.Name)
+            throw new InvalidOperationException($"Run {runId} is a {waiting.Cli ?? "claude"} session and BUTLER_CLI is {Cli.Name}: answer it with that CLI");
         waiting.Status = RunStatus.Answered;
         waiting.Summary = $"Answered: {answer}";
         Save(waiting);
@@ -168,7 +170,7 @@ public sealed class Runner(string home, string claudeExe = "claude")
         if (isError)
         {
             run.Status = RunStatus.Failed;
-            run.Summary = lines.FirstOrDefault(l => l.Length > 0) ?? "claude failed";
+            run.Summary = lines.FirstOrDefault(l => l.Length > 0) ?? "the run failed";
         }
         else if (ask != null)
         {
@@ -182,31 +184,31 @@ public sealed class Runner(string home, string claudeExe = "claude")
         }
     }
 
-    // What Claude said and which tools it used, one short line each, read from the raw stream (also while it runs).
+    // What the agent said and which tools it used, one short line each, read from the raw stream (also while it runs).
     public List<string> Activity(string runId)
     {
         var lines = new List<string>();
         var path = Path.Combine(RunsDir, runId + ".log");
         if (!File.Exists(path)) return lines;
+        var cli = Cli.FromName(Load(runId)?.Cli); // the log is in the format of the CLI that wrote it
         using var reader = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
         while (reader.ReadLine() is { } line)
-        {
-            if (!line.StartsWith("{\"type\":\"assistant\"")) continue;
-            try
+            foreach (var e in Events(cli, line))
             {
-                using var doc = JsonDocument.Parse(line);
-                foreach (var c in doc.RootElement.GetProperty("message").GetProperty("content").EnumerateArray())
-                {
-                    var type = c.GetProperty("type").GetString();
-                    if (type == "text" && c.GetProperty("text").GetString() is { Length: > 0 } text)
-                        lines.Add(Short(text.Replace("BUTLER-ASK:", "").Replace("BUTLER-SUMMARY:", "").Trim(), 300));
-                    else if (type == "tool_use")
-                        lines.Add($"▸ {ToolName(c.GetProperty("name").GetString()!)}{ToolDetail(c.GetProperty("input"))}");
-                }
+                if (e is CliText t) lines.Add(Short(t.Text.Replace("BUTLER-ASK:", "").Replace("BUTLER-SUMMARY:", "").Trim(), 300));
+                else if (e is CliTool tool) lines.Add($"▸ {ToolName(tool.Name)}{ToolDetail(tool.Input)}");
             }
-            catch (Exception e) when (e is JsonException or KeyNotFoundException or InvalidOperationException) { } // partial last line
-        }
         return lines;
+    }
+
+    static List<CliEvent> Events(Cli cli, string line)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(line);
+            return [.. cli.Read(doc.RootElement)];
+        }
+        catch (Exception e) when (e is JsonException or KeyNotFoundException or InvalidOperationException) { return []; } // partial last line
     }
 
     // "mcp__claude-in-chrome__navigate" -> "claude-in-chrome navigate"
@@ -214,6 +216,7 @@ public sealed class Runner(string home, string claudeExe = "claude")
 
     static string ToolDetail(JsonElement input)
     {
+        if (input.ValueKind != JsonValueKind.Object) return "";
         foreach (var key in new[] { "description", "command", "file_path", "pattern", "query", "url", "skill", "prompt" })
             if (input.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String)
                 return ": " + Short(v.GetString()!, 160);

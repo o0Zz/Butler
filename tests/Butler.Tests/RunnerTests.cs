@@ -31,7 +31,7 @@ public class RunnerTests : IDisposable
     [Fact]
     public async Task Waiting_run_is_resumed_in_the_same_session_with_the_answer()
     {
-        var runner = new Runner(home, fake);
+        var runner = new Runner(home, new ClaudeCli(fake));
         ClaudeReplies("Here is the split.\n\nBUTLER-ASK: Write it to the timesheet?");
 
         var first = await runner.Run("timesheet", "/timesheet month");
@@ -60,7 +60,7 @@ public class RunnerTests : IDisposable
     [Fact]
     public async Task Nonzero_exit_or_error_result_is_a_failure()
     {
-        var runner = new Runner(home, fake);
+        var runner = new Runner(home, new ClaudeCli(fake));
         ClaudeReplies("API error");
         Environment.SetEnvironmentVariable("FAKE_EXIT", "1");
         var run = await runner.Run("x", "/x");
@@ -77,7 +77,7 @@ public class RunnerTests : IDisposable
     {
         ClaudeReplies("Je n'ai encore rien écrit : « déjà » vérifié.\nBUTLER-SUMMARY: rien à écrire");
         // The ANSI-decoding bug only shows in Butler.exe (no console); here this guards the decoding and the flag.
-        var run = await new Runner(home, fake).Run("timesheet", "/timesheet");
+        var run = await new Runner(home, new ClaudeCli(fake)).Run("timesheet", "/timesheet");
         Assert.Equal("rien à écrire", run.Summary);
         Assert.Contains("« déjà »", run.Result);
         Assert.Contains("--chrome", File.ReadAllText(argsFile));
@@ -96,7 +96,7 @@ public class RunnerTests : IDisposable
             """{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"C:\\x\\SKILL.md"}}]}}""",
             JsonSerializer.Serialize(new { type = "result", is_error = false, result = "BUTLER-SUMMARY: ok" }),
         ]);
-        var runner = new Runner(home, fake);
+        var runner = new Runner(home, new ClaudeCli(fake));
         var run = await runner.Run("timesheet", "/timesheet");
         Assert.Equal(
         [
@@ -112,7 +112,7 @@ public class RunnerTests : IDisposable
     {
         var hanging = Path.Combine(home, "hang.cmd");
         File.WriteAllText(hanging, "@echo off\r\necho {\"type\":\"system\",\"subtype\":\"init\"}\r\nping -n 60 127.0.0.1 > nul\r\n");
-        var runner = new Runner(home, hanging);
+        var runner = new Runner(home, new ClaudeCli(hanging));
         var task = runner.Run("x", "/x");
         var running = await Until(() => runner.Recent(1).FirstOrDefault(r => r.ClaudePid != null));
         Assert.Equal(RunStatus.Running, running.Status);
@@ -128,7 +128,7 @@ public class RunnerTests : IDisposable
     [Fact]
     public async Task Stop_dismisses_a_waiting_run()
     {
-        var runner = new Runner(home, fake);
+        var runner = new Runner(home, new ClaudeCli(fake));
         ClaudeReplies("BUTLER-ASK: Go?");
         var run = await runner.Run("x", "/x");
         Assert.Equal(RunStatus.Stopped, runner.Stop(run.Id).Status);
@@ -140,7 +140,7 @@ public class RunnerTests : IDisposable
     {
         using var gone = Process.Start(new ProcessStartInfo("cmd.exe", "/c exit") { CreateNoWindow = true })!;
         gone.WaitForExit();
-        var runner = new Runner(home, fake);
+        var runner = new Runner(home, new ClaudeCli(fake));
         Directory.CreateDirectory(runner.RunsDir);
         File.WriteAllText(Path.Combine(runner.RunsDir, "20260101-000000-000-x.json"), JsonSerializer.Serialize(new
         {
@@ -164,7 +164,7 @@ public class RunnerTests : IDisposable
     [Fact]
     public async Task Missing_claude_is_a_failure_not_a_crash()
     {
-        var run = await new Runner(home, Path.Combine(home, "nope.exe")).Run("x", "/x");
+        var run = await new Runner(home, new ClaudeCli(Path.Combine(home, "nope.exe"))).Run("x", "/x");
         Assert.Equal(RunStatus.Failed, run.Status);
     }
 
@@ -172,9 +172,72 @@ public class RunnerTests : IDisposable
     public async Task Without_protocol_line_the_first_line_is_the_summary()
     {
         ClaudeReplies("\nAll good, nothing to do.\nDetails...");
-        var run = await new Runner(home, fake).Run("x", "/x");
+        var run = await new Runner(home, new ClaudeCli(fake)).Run("x", "/x");
         Assert.Equal(RunStatus.Done, run.Status);
         Assert.Equal("All good, nothing to do.", run.Summary);
+    }
+
+    static string CopilotMessage(string content, string? tool = null, object? arguments = null) => JsonSerializer.Serialize(new
+    {
+        type = "assistant.message",
+        data = new { content, toolRequests = tool == null ? [] : new[] { new { name = tool, arguments } } },
+    });
+
+    [Fact]
+    public async Task Copilot_run_asks_then_is_resumed_in_the_same_session()
+    {
+        var runner = new Runner(home, new CopilotCli(fake));
+        File.WriteAllLines(outFile,
+        [
+            """{"type":"session.start","data":{}}""",
+            CopilotMessage("", "shell", new { command = "git log", description = "List commits" }),
+            """{"type":"tool.execution_complete","data":{"success":true}}""",
+            CopilotMessage("Here is the split.\n\nBUTLER-ASK: Write it?"),
+            """{"type":"session.shutdown","data":{"totalPremiumRequests":1}}""",
+        ]);
+
+        var first = await runner.Run("timesheet", "/timesheet month");
+
+        Assert.Equal(RunStatus.Waiting, first.Status);
+        Assert.Equal("Write it?", first.Question);
+        Assert.Equal("copilot", first.Cli);
+        Assert.Null(first.CostUsd);
+        Assert.Equal(["▸ shell: List commits", "Here is the split. Write it?"], runner.Activity(first.Id));
+
+        File.WriteAllLines(outFile, [CopilotMessage("Done.\nBUTLER-SUMMARY: written")]);
+        var second = await runner.Answer(first.Id, "yes");
+
+        Assert.Equal(RunStatus.Done, second.Status);
+        Assert.Equal("written", second.Summary);
+        Assert.Equal(first.SessionId, second.SessionId);
+    }
+
+    [Fact]
+    public void Copilot_gets_the_protocol_in_the_prompt_and_resumes_by_session_id()
+    {
+        // Checked here, not through the fake: a .cmd cannot echo an argument with a newline.
+        var cli = new CopilotCli();
+        Assert.Equal(["-p", "/x\n\nPROTOCOL", "--output-format", "json", "--allow-all-tools", "--no-ask-user", "--session-id", "s1"],
+            cli.RunArguments("/x", "PROTOCOL", "s1", resume: false));
+        Assert.Equal(cli.RunArguments("yes", "PROTOCOL", "s1", resume: false), cli.RunArguments("yes", "PROTOCOL", "s1", resume: true));
+        Assert.Equal(["--resume=s1"], cli.TerminalArguments("s1"));
+    }
+
+    [Fact]
+    public async Task Waiting_run_is_answered_only_with_the_cli_that_owns_its_session()
+    {
+        ClaudeReplies("BUTLER-ASK: Go?");
+        var run = await new Runner(home, new ClaudeCli(fake)).Run("x", "/x");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new Runner(home, new CopilotCli(fake)).Answer(run.Id, "yes"));
+        Assert.Equal(RunStatus.Waiting, new Runner(home, new ClaudeCli(fake)).Load(run.Id)!.Status);
+    }
+
+    [Fact]
+    public void Cli_is_chosen_by_name_and_defaults_to_claude()
+    {
+        Assert.IsType<ClaudeCli>(Cli.FromName(null));
+        Assert.IsType<CopilotCli>(Cli.FromName("Copilot"));
+        Assert.Throws<ArgumentException>(() => Cli.FromName("gpt"));
     }
 
     public void Dispose() => Directory.Delete(home, true);
