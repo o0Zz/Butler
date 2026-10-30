@@ -75,12 +75,53 @@ sealed class DashboardForm : Form
         return history;
     }
 
+    // The to-do list, loaded off the UI thread: when the dashboard opens, every minute while it is open, and after each edit.
+    TodoList? todo;
+    string? todoError;
+    DateTime todoRead;
+    bool todoLoading, todoAgain; // todoAgain: an edit ended during a load, which may have missed it
+
+    void LoadTodo()
+    {
+        if (todoLoading) { todoAgain = true; return; }
+        todoLoading = true;
+        var settings = tray.Settings;
+        Task.Run(async () => (TodoBackend.From(settings) is { } b ? await b.Load() : null)).ContinueWith(t => BeginInvoke(() =>
+        {
+            (todo, todoError) = t.IsCompletedSuccessfully ? (t.Result, null) : (todo, Error(t.Exception!));
+            (todoRead, todoLoading) = (DateTime.Now, false);
+            if (todoAgain) { todoAgain = false; LoadTodo(); }
+            Push();
+        }));
+    }
+
+    // Runs an edit of the to-do list, answers the page with its error (null when done) and what it returned, then reloads.
+    void EditTodo(Func<TodoBackend, TodoList, Task<string?>> edit)
+    {
+        var settings = tray.Settings;
+        var list = todo ?? new TodoList([], [], []);
+        Task.Run(async () => TodoBackend.From(settings) is { } b ? await edit(b, list) : null).ContinueWith(t => BeginInvoke(() =>
+        {
+            Call("todoDone", t.IsCompletedSuccessfully ? null : Error(t.Exception!), t.IsCompletedSuccessfully ? t.Result : null);
+            LoadTodo();
+        }));
+    }
+
+    static string Error(AggregateException e) => e.InnerException is TodoException or IOException or UnauthorizedAccessException
+        ? e.InnerException.Message : e.InnerException?.ToString() ?? e.Message;
+
+    static TodoTask Find(TodoList list, string id) =>
+        list.Tasks.FirstOrDefault(t => t.Id == id) ?? throw new TodoException("This task is no longer in the list: reload and try again");
+
     void Push()
     {
         if (!ready || IsDisposed) return;
         var runs = runner.Recent(100);
         var next = TaskSync.NextRuns();
         var settings = tray.Settings;
+        if (settings.Todo != "none" && DateTime.Now - todoRead > TimeSpan.FromMinutes(1)) LoadTodo();
+        TodoBackend? backend = null;
+        try { backend = TodoBackend.From(settings); } catch (TodoException) { } // no token: the load says so
         var skills = Skills.Load(settings.SkillsFolder);
         var history = History();
         var monthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
@@ -104,7 +145,19 @@ sealed class DashboardForm : Form
                 @checked = tray.Sources.GetValueOrDefault(k.Name)?.Checked,
                 error = tray.Sources.GetValueOrDefault(k.Name)?.Error,
             }),
-            settings = new { settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, file = Program.SettingsFile, installed },
+            settings = new
+            {
+                settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, settings.Todo, settings.TodoFile,
+                file = Program.SettingsFile, installed, todoist = Secrets.Read(Secrets.Todoist) != null,
+                todos = TodoBackend.All.Select(b => new { b.Name, b.Label }),
+            },
+            todo = settings.Todo == "none" ? null : new
+            {
+                backend = settings.Todo, label = backend?.Label, notes = backend?.Notes, sections = backend?.Sections,
+                addHint = backend?.AddHint, dateHint = backend?.DateHint,
+                hidden = settings.TodoHidden, loading = todoLoading && todo == null, error = todoError, read = todoRead == DateTime.MinValue ? (DateTime?)null : todoRead,
+                list = todo,
+            },
             triggers = tray.Triggers.Select(t => new
             {
                 t.Name, t.On, t.Prompt, t.Schedule, t.From,
@@ -147,21 +200,56 @@ sealed class DashboardForm : Form
             case "chat": Terminal(tray.Settings.SkillsFolder, runner.Cli, null); break;
             case "terminal": Terminal(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Cli.FromName(Arg("cli")), Arg("session")); break;
             case "saveSettings":
-                var settings = new Settings
+                var settings = tray.Settings with // what the page does not edit (hidden lists) is kept
                 {
                     Cli = Arg("cli"), TriggersFile = Arg("triggersFile").Trim(), SkillsFolder = Arg("skillsFolder").Trim(),
-                    AdoOrganization = Arg("adoOrganization").Trim(),
+                    AdoOrganization = Arg("adoOrganization").Trim(), Todo = Arg("todo"), TodoFile = Arg("todoFile").Trim(),
                 };
                 var problems = settings.Problems();
+                var token = Arg("todoistToken").Trim(); // empty: keep the saved one
+                if (settings.Todo == "todoist")
+                {
+                    if (token == "" && Secrets.Read(Secrets.Todoist) == null) problems["todoistToken"] = "Paste your Todoist API token";
+                    else if (token != "" && Task.Run(() => new Todoist(token).Check()).ContinueWith(t => t.Exception?.InnerException?.Message).Result is { } refused)
+                        problems["todoistToken"] = refused;
+                }
                 if (problems.Count == 0)
                 {
+                    if (token != "") Secrets.Write(Secrets.Todoist, token);
                     settings.Save(Program.SettingsFile);
                     tray.SyncNow(); // also done by the settings watcher, a second later
+                    (todo, todoError, todoRead) = (null, null, DateTime.MinValue);
                 }
                 Call("settingsSaved", problems);
                 break;
+            case "forgetTodoist":
+                Secrets.Delete(Secrets.Todoist);
+                break;
+            case "todoRefresh": todoRead = DateTime.MinValue; LoadTodo(); break;
+            case "todoAdd": EditTodo(async (b, _) => { await b.Add(Arg("text")); return null; }); break;
+            case "todoSave":
+                var edit = new TodoEdit(Arg("content"), Arg("description"), Arg("due"), cmd.GetProperty("priority").GetInt32(), Arg("projectId"),
+                    cmd.GetProperty("sectionId").GetString() is { Length: > 0 } section ? section : null);
+                EditTodo(async (b, list) => { await b.Save(Find(list, Arg("id")), edit); return null; });
+                break;
+            case "todoComplete": EditTodo(async (b, list) => await b.Complete(Find(list, Arg("id")))); break;
+            case "todoReopen": EditTodo(async (b, _) => { await b.Reopen(Arg("id")); return null; }); break;
+            case "todoDelete": EditTodo(async (b, list) => { await b.Delete(Find(list, Arg("id"))); return null; }); break;
+            case "todoPlace":
+                var to = cmd.GetProperty("index").GetInt32();
+                EditTodo(async (b, list) => { await b.Place(list, Find(list, Arg("id")), to); return null; });
+                break;
+            case "todoInsert":
+                var (index, sectionId) = (cmd.GetProperty("index").GetInt32(), cmd.GetProperty("sectionId").GetString() is { Length: > 0 } s ? s : null);
+                EditTodo(async (b, list) => { await b.Insert(list, Arg("text"), Arg("projectId"), sectionId, index); return null; });
+                break;
+            case "todoHide":
+                var hidden = tray.Settings.TodoHidden.Where(id => id != Arg("id"));
+                (tray.Settings with { TodoHidden = [.. cmd.GetProperty("hide").GetBoolean() ? hidden.Append(Arg("id")) : hidden] }).Save(Program.SettingsFile);
+                tray.SyncNow();
+                break;
             case "browse":
-                if (Browse(Arg("pick") == "folder", Arg("title"), Arg("value")) is { } path) Call("picked", Arg("target"), path);
+                if (Browse(Arg("pick") == "folder", Arg("title"), Arg("value"), cmd.TryGetProperty("filter", out var filter) ? filter.GetString()! : "All files|*.*") is { } path) Call("picked", Arg("target"), path);
                 break;
             case "saveTrigger":
                 Call("triggerSaved", EditTriggers(list =>
@@ -197,14 +285,14 @@ sealed class DashboardForm : Form
     }
 
     // A file or folder picked for a path field; null when cancelled.
-    string? Browse(bool folder, string title, string current)
+    string? Browse(bool folder, string title, string current, string filter)
     {
         if (folder)
         {
             using var dialog = new FolderBrowserDialog { SelectedPath = Environment.ExpandEnvironmentVariables(current), UseDescriptionForTitle = true, Description = title };
             return dialog.ShowDialog(this) == DialogResult.OK ? dialog.SelectedPath : null;
         }
-        using var file = new OpenFileDialog { Title = title, Filter = "JSON (*.json)|*.json|All files|*.*", CheckFileExists = true };
+        using var file = new OpenFileDialog { Title = title, Filter = filter, CheckFileExists = false }; // a todo.txt may not exist yet
         if (File.Exists(current)) (file.InitialDirectory, file.FileName) = (Path.GetDirectoryName(current)!, Path.GetFileName(current));
         return file.ShowDialog(this) == DialogResult.OK ? file.FileName : null;
     }

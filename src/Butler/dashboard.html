@@ -160,12 +160,69 @@
   .vars .chip { cursor: pointer; font-family: "Cascadia Mono", Consolas, monospace; }
   .vars .chip:hover { background: var(--sel); }
   .error-box { padding: 8px 12px; border-radius: 6px; background: var(--err-bg); color: var(--err); font-size: 13px; }
+  /* To do */
+  .todo { max-width: 880px; display: flex; flex-direction: column; gap: 14px; }
+  .addbar { display: flex; gap: 8px; }
+  .addbar input { flex: 1; padding: 8px 12px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips button { border-radius: 14px; padding: 3px 12px; font-size: 13px; }
+  .chips button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .chips .n { opacity: .7; font-size: 12px; }
+  .proj { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 6px 0 2px; }
+  .proj h3 { margin: 6px 16px 6px; font-size: 15px; display: flex; gap: 8px; align-items: baseline; }
+  .proj h3 .n, .proj h4 .n { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+  .proj h4 { margin: 12px 16px 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .proj .none { padding: 4px 16px 10px; color: var(--muted); font-size: 13px; }
+  .task { display: flex; gap: 10px; align-items: flex-start; padding: 7px 16px; border-top: 1px solid var(--line); }
+  .task:hover { background: var(--hover); }
+  .task.gone { opacity: .35; }
+.task .grip { visibility: hidden; cursor: grab; color: var(--muted); margin: 1px -6px 0 -14px; display: flex; border-radius: 4px; }
+.task .grip .ic { width: 14px; height: 18px; }
+.task:hover .grip { visibility: visible; }
+.task .grip:hover { color: var(--text); background: var(--line); }
+.task.dragging { opacity: .4; }
+.task.drop-before { box-shadow: inset 0 2px 0 var(--accent); }
+.task.drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
+.todo.drag .slot { pointer-events: none; }
+.task.inserting { background: var(--hover); }
+.task input.inline { flex: 1; width: 100%; border: 0; border-bottom: 1px solid var(--accent); border-radius: 0; background: transparent; padding: 0; font: inherit; outline: none; }
+.task .text { cursor: text; }
+.task .pen { visibility: hidden; padding: 1px 4px; border: 0; background: transparent; color: var(--muted); }
+.task:hover .pen { visibility: visible; }
+.task .pen:hover { color: var(--text); background: var(--line); }
+.slot { position: relative; height: 10px; margin: -5px 0; cursor: pointer; z-index: 1; }
+.slot:hover::before { content: ''; position: absolute; left: 22px; right: 16px; top: 4px; border-top: 2px solid var(--accent); }
+.slot:hover::after { content: '+'; position: absolute; left: 6px; top: -3px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-text); font-size: 14px; line-height: 15px; text-align: center; }
+.proj h3 .hide { margin-left: auto; padding: 1px 4px; border: 0; background: transparent; color: var(--muted); }
+.proj h3 .hide:hover { color: var(--text); background: var(--line); }
+.chips button.hidden { opacity: .6; border-style: dashed; }
+  .task .what { flex: 1; min-width: 0; }
+  .task .tm { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-top: 1px; align-items: center; min-width: 0; }
+  .task .tm span { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task .tm .ic { width: 13px; height: 13px; }
+  .check { width: 18px; height: 18px; border-radius: 50%; padding: 0; border: 2px solid var(--muted); background: transparent; margin-top: 2px; flex-shrink: 0; color: var(--muted); }
+  .check:hover { background: color-mix(in srgb, currentColor 18%, transparent); }
+  .p4 { --p: #d1453b; } .p3 { --p: #eb8909; } .p2 { --p: #246fe0; } .p1 { --p: var(--muted); }
+  .check.p4, .check.p3, .check.p2 { border-color: var(--p); color: var(--p); background: color-mix(in srgb, var(--p) 10%, transparent); }
+  .tm .due.today { color: var(--ok); } .tm .due.over { color: var(--err); }
+  .prio { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .prio button { justify-content: center; color: var(--p); }
+  .prio button.on { border-color: var(--p); font-weight: 600; background: color-mix(in srgb, var(--p) 12%, var(--panel)); }
+  .datechips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .datechips button { padding: 2px 10px; font-size: 12.5px; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 10px 8px 16px;
+    border-radius: 8px; display: flex; gap: 14px; align-items: center; z-index: 20; box-shadow: 0 6px 24px rgb(0 0 0 / .25); max-width: 70%; }
+  .toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toast button { background: transparent; color: inherit; border-color: color-mix(in srgb, currentColor 40%, transparent); }
+  .toast.err { background: var(--err); color: #fff; }
 </style>
 </head>
 <body>
 <nav>
   <h1><span class="dot" id="dot"></span>Butler</h1>
   <a data-view="runs"><i data-ic="runs"></i><span class="label">Runs</span><span class="count" id="c-runs"></span></a>
+  <a data-view="todo"><i data-ic="todo"></i><span class="label">To do</span><span class="count" id="c-todo"></span></a>
   <a data-view="triggers"><i data-ic="triggers"></i><span class="label">Triggers</span><span class="count" id="c-triggers"></span></a>
   <a data-view="skills"><i data-ic="skills"></i><span class="label">Skills</span><span class="count" id="c-skills"></span></a>
   <a data-view="settings"><i data-ic="settings"></i><span class="label">Settings</span></a>
@@ -183,6 +240,7 @@
   <div class="content" id="content"></div>
 </main>
 <div id="modal"></div>
+<div id="toast"></div>
 <!--marked-->
 <script>
 // Claude's output can quote mail content: raw HTML is shown as text and only http(s) links are kept.
@@ -223,6 +281,14 @@ const IC = {
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   alert: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/>',
   open: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  todo: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="m8 12 3 3 5-6"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  repeat: '<path d="m17 2 3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/>',
+  note: '<path d="M5 6h14M5 12h14M5 18h9"/>',
+  flag: '<path d="M5 21V4h12l-2 4 2 4H5"/>',
+  grip: '<g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></g>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  eyeOff: '<path d="m3 3 18 18M10.6 5.1Q11.3 5 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6C3.9 8.3 2 12 2 12s3.5 7 10 7c1.8 0 3.4-.5 4.7-1.3M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 };
 const icon = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24">${IC[name] || ''}</svg>`;
 document.querySelectorAll('[data-ic]').forEach(el => el.outerHTML = icon(el.dataset.ic));
@@ -260,17 +326,22 @@ function draw() {
   $('c-runs').className = 'count' + (st.waiting ? ' badge' : '');
   $('c-triggers').textContent = state.triggers.length;
   $('c-skills').textContent = state.skills.length;
+  const dueNow = (state.todo?.list?.tasks || []).filter(x => x.due && x.due.slice(0, 10) <= day(0) && !state.todo.hidden.includes(x.projectId)).length;
+  $('c-todo').textContent = dueNow || '';
+  $('c-todo').title = dueNow ? `${dueNow} due today or late` : '';
   const sourceError = state.sources.some(s => s.error);
   $('dot').className = 'dot' + (state.error || sourceError ? ' err' : st.waiting ? ' warn' : '');
   $('banner').innerHTML = state.error ? `<div class="banner">${icon('alert')}${esc(state.error)}</div>` : '';
   drawSources();
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === view));
-  $('title').textContent = { runs: 'Runs', triggers: 'Triggers', skills: 'Skills', settings: 'Settings' }[view];
+  $('title').textContent = { runs: 'Runs', todo: 'To do', triggers: 'Triggers', skills: 'Skills', settings: 'Settings' }[view];
   $('hdr').innerHTML = view === 'runs' ? stats()
+    : view === 'todo' ? (state.todo ? `<span class="muted" style="font-size:12.5px">${esc(state.todo.label || '')}${state.todo.read ? ' · updated ' + esc(ago(state.todo.read)) : ''}</span>
+        <button onclick="send('todoRefresh')" title="Read the list again">${icon('sync')}Refresh</button>` : '')
     : view === 'skills' ? `<button onclick="send('openSkills')">${icon('folder')}Open folder</button>`
     : view === 'triggers' ? `<button onclick="send('chat')" title="Opens ${esc(cap(state.cli))} in a terminal, in your skills folder: describe what you want, it edits the triggers and skills">${icon('sparkles')}Ask AI</button>
         <button class="primary" onclick="openEditor()">${icon('plus')}New trigger</button>` : '';
-  ({ runs: renderRuns, triggers: renderTriggers, skills: renderSkills, settings: renderSettings })[view]();
+  ({ runs: renderRuns, todo: renderTodo, triggers: renderTriggers, skills: renderSkills, settings: renderSettings })[view]();
 }
 
 function stats() {
@@ -392,6 +463,343 @@ function renderSkills() {
     </div>`).join('')}</div>`;
 }
 
+// To do: the list of the chosen backend (Todoist or a todo.txt file), all projects, edited by hand.
+let todoShowHidden = false, todoSlots = [], todoInsertAt = null; // todoInsertAt: the slot whose input is open { projectId, sectionId, index }
+let todoProject = 'all', todoIndex = [], todoKey = '', todoPending = new Set(), todoClearAfter, todoForm = null, todoLast = null, toastTimer;
+const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('sv'); }; // yyyy-MM-dd, local
+
+function renderTodo() {
+  const t = state.todo;
+  if (!t) {
+    todoKey = '';
+    $('content').innerHTML = `<div class="empty">${icon('todo')}No to-do list yet. Choose Todoist or a todo.txt file in the settings.
+      <button class="primary" onclick="view='settings';draw()">${icon('settings')}Settings</button></div>`;
+    return;
+  }
+  if (todoClearAfter !== undefined && t.read !== todoClearAfter) { todoPending.clear(); todoClearAfter = undefined; } // the reload after an edit
+  const key = JSON.stringify([t, todoProject, [...todoPending], day(0), todoShowHidden, todoInsertAt, todoEditing]);
+  if (key === todoKey && $('todo-add')) return; // pushed every 2 s: redraw only on change, not under the typing
+  todoKey = key;
+  const input = $('todo-add'), typed = input?.value || '', focused = document.activeElement === input;
+  const inline = $('todo-insert'), inlineTyped = inline?.value || '';
+  const editing = $('todo-edit'), editTyped = editing?.value, editFocused = document.activeElement === editing;
+  const L = t.list;
+  const error = t.error ? `<div class="error-box">${esc(t.error)}</div>` : '';
+  if (!L) {
+    $('content').innerHTML = `<div class="todo">${error || `<div class="empty">${icon('todo')}Loading ${esc(t.label || '')}…</div>`}</div>`;
+    return;
+  }
+  const hidden = new Set(t.hidden);
+  const open = L.tasks;
+  const count = p => open.filter(x => x.projectId === p).length;
+  const shown = L.projects.filter(p => !hidden.has(p.id)), hiddenOnes = L.projects.filter(p => hidden.has(p.id));
+  const projects = todoProject === 'all' ? shown : L.projects.filter(p => p.id === todoProject);
+  if (todoProject !== 'all' && !projects.length) todoProject = 'all';
+  todoIndex = [];
+  todoSlots = [];
+  const byOrder = (a, b) => a.order - b.order;
+  const chip = p => `<button class="${todoProject === p.id ? 'on' : ''} ${hidden.has(p.id) ? 'hidden' : ''}" onclick="todoProject=${esc(JSON.stringify(p.id))};render()">${esc(p.name)} <span class="n">${count(p.id)}</span></button>`;
+  // A task and its sub-tasks, indented; a "+" slot before each top-level task and after the last, to add one there.
+  const tree = (tasks, parent, depth, place) => {
+    const sib = tasks.filter(x => (x.parentId || null) === parent).sort(byOrder);
+    return sib.map((x, k) => (depth ? '' : slot(place, k)) + row(x, depth) + tree(tasks, x.id, depth + 1, place)).join('')
+      + (depth ? '' : slot(place, sib.length, !sib.length));
+  };
+  const block = (tasks, place) => { const ids = new Set(tasks.map(x => x.id)); return tree(tasks.map(x => ids.has(x.parentId) ? x : { ...x, parentId: null }), null, 0, place); };
+  todoRedrawing = true;
+  $('content').innerHTML = `<div class="todo">
+    ${error}
+    <div class="addbar"><input id="todo-add" placeholder="${esc(t.addHint)}" onkeydown="if(event.key==='Enter')todoAdd()">
+      <button class="primary" onclick="todoAdd()">${icon('plus')}Add</button></div>
+    <div class="chips"><button class="${todoProject === 'all' ? 'on' : ''}" onclick="todoProject='all';render()">All <span class="n">${open.filter(x => !hidden.has(x.projectId)).length}</span></button>
+      ${shown.map(chip).join('')}
+      ${hiddenOnes.length ? `<button onclick="todoShowHidden=!todoShowHidden;render()" title="Lists hidden from All">${icon(todoShowHidden ? 'eye' : 'eyeOff')}Hidden <span class="n">${hiddenOnes.length}</span></button>` : ''}
+      ${todoShowHidden ? hiddenOnes.map(chip).join('') : ''}</div>
+    ${projects.filter(p => todoProject !== 'all' || count(p.id)).map(p => {
+      const mine = open.filter(x => x.projectId === p.id);
+      const sections = L.sections.filter(s => s.projectId === p.id);
+      const loose = mine.filter(x => !sections.some(s => s.id === x.sectionId));
+      const isHidden = hidden.has(p.id);
+      return `<div class="proj"><h3>${esc(p.name)} <span class="n">${mine.length}</span>
+          <button class="hide" title="${isHidden ? 'Show this list in All again' : 'Hide this list from All (still under Hidden)'}"
+            onclick="todoHide(${esc(JSON.stringify(p.id))},${!isHidden})">${icon(isHidden ? 'eye' : 'eyeOff')}</button></h3>
+        ${block(loose, { projectId: p.id, sectionId: null })}
+        ${sections.map(s => { const inside = mine.filter(x => x.sectionId === s.id); return inside.length ? `<h4>${esc(s.name)} <span class="n">${inside.length}</span></h4>${block(inside, { projectId: p.id, sectionId: s.id })}` : ''; }).join('')}</div>`;
+    }).join('') || `<div class="empty">${icon('todo')}Nothing to do.</div>`}
+  </div>`;
+  todoRedrawing = false;
+  const again = $('todo-add');
+  again.value = typed;
+  if (focused) again.focus();
+  const inlineAgain = $('todo-insert');
+  if (inlineAgain) { inlineAgain.value = inlineTyped; inlineAgain.focus(); }
+  const editAgain = $('todo-edit');
+  if (editAgain && editTyped !== undefined) { editAgain.value = editTyped; if (editFocused) editAgain.focus(); } // redrawn under the typing
+}
+
+// Where a task can be added: index among the top-level tasks of a list (or section). Its input when open.
+// An empty list shows it as a line to click.
+function slot(place, index, visible) {
+  const at = { ...place, index };
+  if (JSON.stringify(at) === JSON.stringify(todoInsertAt))
+    return `<div class="task inserting"><span class="check"></span><input id="todo-insert" class="inline" placeholder="Task name, Enter to add, Esc to cancel"
+      onkeydown="if(event.key==='Enter')todoInsert();if(event.key==='Escape')closeInsert()" onblur="insertBlur()"></div>`;
+  const i = todoSlots.push(at) - 1;
+  return visible ? `<div class="none" style="cursor:pointer" onclick="openInsert(${i})">${icon('plus')} Add a task</div>`
+    : `<div class="slot" title="Add a task here" onclick="openInsert(${i})"></div>`;
+}
+
+function row(x, depth) {
+  const i = todoIndex.push(x) - 1;
+  if (x.id === todoEditing) todoEditingAt = i;
+  const meta = [dueLabel(x), x.recurring ? `<span title="Repeats: ${esc(x.dueText)}">${icon('repeat')}</span>` : '',
+    x.description ? `<span title="${esc(x.description)}">${icon('note')}${esc(x.description.split('\n')[0])}</span>` : ''].filter(Boolean).join('');
+  return `<div class="task ${todoPending.has(x.id) ? 'gone' : ''}" style="padding-left:${16 + depth * 26}px" data-i="${i}"
+      ondragover="dragOver(event,${i})" ondragleave="this.classList.remove('drop-before','drop-after')" ondrop="dragDrop(event,${i})">
+    <span class="grip" draggable="true" title="Drag to move" ondragstart="dragStart(event,${i})" ondragend="dragEnd()">${icon('grip')}</span>
+    <button class="check p${x.priority}" title="Complete" onclick="todoComplete(${i})"></button>
+    <div class="what">${todoEditing === x.id
+      ? `<input id="todo-edit" class="inline" value="${esc(x.content)}" onkeydown="if(event.key==='Enter')commitEdit();if(event.key==='Escape')cancelEdit()" onblur="commitEdit()">`
+      : `<div class="text" title="Click to edit" onmousedown="event.preventDefault();startEdit(${i})">${esc(x.content)}</div>`}${meta ? `<div class="tm">${meta}</div>` : ''}</div>
+    <button class="pen" title="Edit all: date, priority, list${state.todo.notes ? ', notes' : ''}" onclick="openTask(${i})">${icon('edit')}</button>
+  </div>`;
+}
+
+// The text edited in place: Enter or clicking away saves, Esc cancels. The pen opens the drawer for the rest.
+let todoEditing = null, todoEditingAt, todoRedrawing = false; // the task's id and its index in todoIndex
+
+// On mousedown (its default prevented), so a click on another text while editing goes straight to it.
+function startEdit(i) {
+  commitEdit();
+  todoEditing = todoIndex[i].id;
+  todoEditingAt = i;
+  todoKey = '';
+  render();
+  const input = $('todo-edit');
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+}
+
+function cancelEdit() { closeEdit(todoIndex[todoEditingAt]?.content ?? ''); }
+
+function commitEdit() {
+  const input = $('todo-edit');
+  if (!input || !todoEditing || todoRedrawing) return; // a redraw removing the input is not "clicking away"
+  const x = state.todo.list.tasks.find(t => t.id === todoEditing), text = input.value.trim();
+  if (x && text && text !== x.content) {
+    todoLast = { kind: 'save' };
+    send('todoSave', { id: x.id, content: text, description: x.description || '', due: x.dueText || '', priority: x.priority, projectId: x.projectId, sectionId: x.sectionId || '' });
+    x.content = text; // shown at once; the reload brings what was saved
+  }
+  closeEdit(x?.content ?? text);
+}
+
+// Back to the text, in place: the rest of the page stays, so the click that ended the edit (check, pen, another task) still lands.
+function closeEdit(text) {
+  const input = $('todo-edit'), i = todoEditingAt;
+  todoEditing = null;
+  todoKey = '';
+  if (input) input.outerHTML = `<div class="text" title="Click to edit" onmousedown="event.preventDefault();startEdit(${i})">${esc(text)}</div>`;
+}
+
+function openInsert(i) { todoInsertAt = todoSlots[i]; render(); }
+function closeInsert() { if (todoInsertAt) { todoInsertAt = null; render(); } }
+
+// Adds the typed task at the open slot; the input moves under it, for the next one.
+function todoInsert() {
+  const text = $('todo-insert').value.trim();
+  if (!text) return closeInsert();
+  const at = todoInsertAt;
+  $('todo-insert').value = '';
+  todoInsertAt = { ...at, index: at.index + 1 };
+  todoLast = { kind: 'add' };
+  toast('Adding…');
+  send('todoInsert', { text, projectId: at.projectId, sectionId: at.sectionId || '', index: at.index });
+  render();
+}
+
+// Drag and drop by the grip, among the tasks of the same list, section and parent (siblings); elsewhere nothing happens.
+let dragged = null;
+const siblingsOf = x => state.todo.list.tasks.filter(y => y.projectId === x.projectId && (y.sectionId || null) === (x.sectionId || null)
+  && (y.parentId || null) === (x.parentId || null)).sort((a, b) => a.order - b.order);
+const sameGroup = (a, b) => a.projectId === b.projectId && (a.sectionId || null) === (b.sectionId || null) && (a.parentId || null) === (b.parentId || null);
+
+function dragStart(e, i) {
+  dragged = todoIndex[i];
+  const row = e.target.closest('.task');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', dragged.content);
+  e.dataTransfer.setDragImage(row, 20, 16);
+  setTimeout(() => { row.classList.add('dragging'); document.querySelector('.todo').classList.add('drag'); });
+}
+
+function dragEnd() {
+  dragged = null;
+  document.querySelectorAll('.task.dragging, .task.drop-before, .task.drop-after').forEach(r => r.classList.remove('dragging', 'drop-before', 'drop-after'));
+  document.querySelector('.todo')?.classList.remove('drag');
+}
+
+// Before or after the row under the mouse, by its half.
+function dropSide(e) { const r = e.currentTarget.getBoundingClientRect(); return e.clientY < r.top + r.height / 2 ? 'before' : 'after'; }
+
+function dragOver(e, i) {
+  const x = todoIndex[i];
+  if (!dragged || x.id === dragged.id || !sameGroup(x, dragged)) return;
+  e.preventDefault();
+  const side = dropSide(e);
+  e.currentTarget.classList.toggle('drop-before', side === 'before');
+  e.currentTarget.classList.toggle('drop-after', side === 'after');
+}
+
+// Clicking away adds what was typed, as Enter does, and closes the input. Done in place, keeping the row's height,
+// so the click that took the focus still lands; the next push redraws the list.
+function insertBlur() {
+  const input = $('todo-insert');
+  if (!input || !todoInsertAt || todoRedrawing) return; // a redraw removing the input is not "clicking away"
+  const text = input.value.trim(), at = todoInsertAt;
+  todoInsertAt = null;
+  todoKey = '';
+  if (text) {
+    todoLast = { kind: 'add' };
+    toast('Adding…');
+    send('todoInsert', { text, projectId: at.projectId, sectionId: at.sectionId || '', index: at.index });
+  }
+  input.closest('.task').outerHTML = `<div class="task gone" style="${text ? '' : 'visibility:hidden'}"><span class="check"></span>
+    <div class="what"><div class="text">${esc(text || '-')}</div></div></div>`;
+}
+
+// Shown in its new place at once (orders renumbered here), then saved; the reload brings the real order.
+function dragDrop(e, i) {
+  const x = todoIndex[i], task = dragged;
+  if (!task || x.id === task.id || !sameGroup(x, task)) return;
+  e.preventDefault();
+  const order = siblingsOf(task).filter(y => y.id !== task.id);
+  const index = order.findIndex(y => y.id === x.id) + (dropSide(e) === 'after' ? 1 : 0);
+  order.splice(index, 0, task);
+  order.forEach((y, n) => y.order = n);
+  dragEnd();
+  todoKey = '';
+  render();
+  send('todoPlace', { id: task.id, index });
+}
+
+function todoHide(id, hide) {
+  state.todo.hidden = hide ? [...state.todo.hidden, id] : state.todo.hidden.filter(h => h !== id); // until the settings are pushed back
+  if (hide && todoProject === id) todoProject = 'all';
+  todoKey = '';
+  render();
+  send('todoHide', { id, hide });
+}
+
+function dueLabel(x) {
+  if (!x.due) return '';
+  const d = x.due.slice(0, 10), time = x.due.length > 10 ? ' ' + x.due.slice(11, 16) : '';
+  const date = new Date(d + 'T00:00');
+  const text = d === day(0) ? 'Today' : d === day(1) ? 'Tomorrow' : d < day(0) || d > day(6)
+    ? date.toLocaleDateString([], { day: 'numeric', month: 'short', year: d.slice(0, 4) === day(0).slice(0, 4) ? undefined : 'numeric' })
+    : date.toLocaleDateString([], { weekday: 'long' });
+  return `<span class="due ${d < day(0) ? 'over' : d === day(0) ? 'today' : ''}">${icon('calendar')}${esc(text + time)}</span>`;
+}
+
+function todoAdd() {
+  const text = $('todo-add').value.trim();
+  if (!text) return;
+  todoLast = { kind: 'add' };
+  $('todo-add').value = '';
+  toast('Adding…');
+  send('todoAdd', { text });
+}
+
+function todoComplete(i) {
+  const x = todoIndex[i];
+  todoPending.add(x.id);
+  todoLast = { kind: 'complete', name: x.content };
+  todoKey = '';
+  render();
+  send('todoComplete', { id: x.id });
+}
+
+// Called by C# after an edit: its error (null when done) and its result (for a completion: the id that reopens it).
+function todoDone(error, result) {
+  todoClearAfter = state.todo?.read ?? null;
+  if (error) {
+    todoPending.clear();
+    todoKey = '';
+    if (todoForm) $('k-error').innerHTML = `<div class="error-box">${esc(error)}</div>`;
+    else toast(error, null, 'err');
+    return;
+  }
+  if (todoForm) closeTask();
+  if (todoLast?.kind === 'complete') toast(`Completed “${todoLast.name}”`, result);
+  else if (todoLast?.kind === 'add') toast('Added');
+  else $('toast').innerHTML = '';
+  todoLast = null;
+}
+
+function toast(text, undo, cls = '') {
+  clearTimeout(toastTimer);
+  $('toast').innerHTML = `<div class="toast ${cls}"><span>${esc(text)}</span>
+    ${undo ? `<button onclick='todoLast=null;$("toast").innerHTML="";send("todoReopen",{id:${esc(JSON.stringify(undo))}})'>Undo</button>` : ''}</div>`;
+  toastTimer = setTimeout(() => $('toast').innerHTML = '', cls === 'err' ? 10000 : 6000);
+}
+
+function openTask(i) {
+  const x = todoIndex[i];
+  todoForm = { task: x, content: x.content, description: x.description, due: x.dueText || '', priority: x.priority, projectId: x.projectId, sectionId: x.sectionId || '' };
+  drawTask();
+}
+
+function closeTask() { todoForm = null; $('modal').innerHTML = ''; }
+
+function drawTask() {
+  const t = state.todo, L = t.list, f = todoForm;
+  const sections = L.sections.filter(s => s.projectId === f.projectId);
+  const prio = [[4, 'P1'], [3, 'P2'], [2, 'P3'], [1, 'P4']];
+  $('modal').innerHTML = `<div class="overlay" onmousedown="if(event.target===this)closeTask()">
+    <div class="drawer">
+      <div class="dh"><span class="badge-kind" style="color:var(--accent)">${icon('todo')}</span><h3>Edit task</h3>
+        <button class="icon" onclick="closeTask()" title="Close">${icon('close')}</button></div>
+      <div class="db">
+        <div class="field"><label for="k-content">Task</label>
+          <input id="k-content" value="${esc(f.content)}" oninput="todoForm.content=this.value" onkeydown="if(event.key==='Enter')saveTask()"></div>
+        ${t.notes ? `<div class="field"><label for="k-description">Notes</label>
+          <textarea id="k-description" rows="4" oninput="todoForm.description=this.value">${esc(f.description)}</textarea></div>` : ''}
+        <div class="field"><label for="k-due">Date</label>
+          <div class="hint">${esc(t.dateHint)}</div>
+          <div class="bar"><input id="k-due" value="${esc(f.due)}" oninput="todoForm.due=this.value"></div>
+          <div class="datechips">${[['today', 'Today'], ['tomorrow', 'Tomorrow'], ['next week', 'Next week'], ['', 'No date']].map(([v, l]) =>
+            `<button onclick="todoForm.due='${v}';$('k-due').value='${v}'">${l}</button>`).join('')}</div></div>
+        <div class="field"><label>Priority</label>
+          <div class="prio">${prio.map(([v, l]) => `<button class="p${v} ${v === f.priority ? 'on' : ''}" onclick="todoForm.priority=${v};drawTask()">${icon('flag')}${l}</button>`).join('')}</div></div>
+        <div class="field"><label for="k-project">Project</label>
+          <div class="bar"><select id="k-project" onchange="todoForm.projectId=this.value;todoForm.sectionId='';drawTask()">${L.projects.map(p =>
+            `<option value="${esc(p.id)}" ${p.id === f.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+          ${t.sections && sections.length ? `<select id="k-section" onchange="todoForm.sectionId=this.value"><option value="">No section</option>${sections.map(s =>
+            `<option value="${esc(s.id)}" ${s.id === f.sectionId ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : ''}</div></div>
+        <div id="k-error"></div>
+      </div>
+      <div class="df">
+        <button class="danger" onclick="deleteTask()">${icon('trash')}Delete</button>
+        <span class="grow"></span>
+        <button onclick="closeTask()">Cancel</button>
+        <button class="primary" onclick="saveTask()">Save</button>
+      </div>
+    </div></div>`;
+}
+
+function saveTask() {
+  const f = todoForm;
+  if (!f.content.trim()) { $('k-error').innerHTML = '<div class="error-box">The task is empty.</div>'; return; }
+  todoLast = { kind: 'save' };
+  send('todoSave', { id: f.task.id, content: f.content.trim(), description: f.description || '', due: f.due, priority: f.priority, projectId: f.projectId, sectionId: f.sectionId || '' });
+}
+
+function deleteTask() {
+  if (!confirm(`Delete the task “${todoForm.task.content}”? It cannot be undone.`)) return;
+  todoLast = { kind: 'delete' };
+  send('todoDelete', { id: todoForm.task.id });
+}
+
 // Trigger editor: a drawer over the page, outside #content, so the pushes every few seconds do not reset it.
 let form = null; // { original, name, on, prompt, values: { field: text } }
 
@@ -496,7 +904,7 @@ function triggerSaved(error) {
   else closeEditor();
 }
 
-addEventListener('keydown', e => { if (e.key === 'Escape' && form) closeEditor(); });
+addEventListener('keydown', e => { if (e.key === 'Escape') { if (form) closeEditor(); if (todoForm) closeTask(); } });
 
 // Drawn once per visit: the state is pushed every few seconds while a run is live, and must not reset what is being typed.
 function renderSettings() {
@@ -528,6 +936,25 @@ function renderSettings() {
         <div class="err" id="e-adoOrganization"></div>
       </div>
     </div>
+    <div class="card">
+      <h3>To do</h3>
+      <div class="field">
+        <label for="s-todo">List shown on the To do page</label>
+        <div class="hint">Butler shows it and lets you edit it by hand. Agents reach the same list with their own tools (the Todoist connector, or the file).</div>
+        <div class="bar"><select id="s-todo" onchange="checkSettings()">${s.todos.map(b =>
+          `<option value="${b.name}" ${b.name === s.todo ? 'selected' : ''}>${esc(b.label)}</option>`).join('')}</select></div>
+        <div class="err" id="e-todo"></div>
+      </div>
+      <div id="s-todo-txt">${pathField('todoFile', 'todo.txt file', 'One task per line, in the todo.txt format (todotxt.org): (A) Call Lena +Work due:2026-11-03. Created with the first task.', s.todoFile, 'file', 'Text (*.txt)|*.txt|All files|*.*')}</div>
+      <div class="field" id="s-todo-todoist">
+        <label for="s-todoistToken">Todoist API token</label>
+        <div class="hint">In Todoist: Settings → Integrations → Developer. Kept in the Windows Credential Manager, not in the settings file.</div>
+        <div class="bar"><input id="s-todoistToken" type="password" class="mono" autocomplete="off" oninput="checkSettings()"
+            placeholder="${s.todoist ? 'Saved. Paste a new one to replace it' : 'Paste your token'}">
+          ${s.todoist ? `<button id="s-forget" onclick="forgetTodoist()">Forget</button>` : ''}</div>
+        <div class="err" id="e-todoistToken"></div>
+      </div>
+    </div>
     <div class="savebar">
       <button class="primary" id="s-save" onclick="saveSettings()">Save</button>
       <button id="s-revert" onclick="$('content').innerHTML='';renderSettings()">Revert</button>
@@ -539,21 +966,30 @@ function renderSettings() {
 }
 
 const cliNames = { claude: 'Claude Code', copilot: 'GitHub Copilot CLI' };
-const pathField = (id, label, hint, value) => `<div class="field">
+const pathField = (id, label, hint, value, pick = 'file', filter = 'JSON (*.json)|*.json|All files|*.*') => `<div class="field">
   <label for="s-${id}">${label}</label>
   <div class="hint">${hint}</div>
   <div class="bar"><input id="s-${id}" class="mono" value="${esc(value)}" oninput="checkSettings()">
-    <button onclick="send('browse',{pick:'${id === 'skillsFolder' ? 'folder' : 'file'}',title:'${label}',target:'s-${id}',value:$('s-${id}').value})">${icon('folder')}Browse…</button></div>
+    <button onclick="send('browse',{pick:'${pick}',filter:'${filter}',title:'${label}',target:'s-${id}',value:$('s-${id}').value})">${icon('folder')}Browse…</button></div>
   <div class="err" id="e-${id}"></div></div>`;
 const settingsDraft = () => ({ cli: $('s-cli').value, triggersFile: $('s-triggersFile').value.trim(), skillsFolder: $('s-skillsFolder').value.trim(),
-  adoOrganization: $('s-adoOrganization').value.trim() });
+  adoOrganization: $('s-adoOrganization').value.trim(), todo: $('s-todo').value, todoFile: $('s-todoFile').value.trim(), todoistToken: $('s-todoistToken').value.trim() });
+
+function forgetTodoist() {
+  if (!confirm('Forget the Todoist token? The To do page cannot read Todoist until a new one is saved.')) return;
+  send('forgetTodoist');
+  $('s-forget').remove();
+  $('s-todoistToken').placeholder = 'Paste your token';
+}
 
 // Whether the chosen CLI is installed; Save only when something changed.
 function checkSettings() {
   const s = state.settings, d = settingsDraft(), path = s.installed[d.cli];
   $('s-cli-status').innerHTML = (path ? `<span class="ok">✓ Installed: <span class="mono">${esc(path)}</span></span>` : '<span class="err">✗ Not installed: not found on the PATH</span>')
     + (d.cli === 'copilot' ? '<div class="note" style="margin-top:6px">Copilot runs with --allow-all-tools: nothing reviews what it does, even when a mail is in the prompt. No Chrome, no cost per run.</div>' : '');
-  const dirty = Object.keys(d).some(k => d[k] !== s[k]);
+  $('s-todo-txt').hidden = d.todo !== 'txt';
+  $('s-todo-todoist').hidden = d.todo !== 'todoist';
+  const dirty = d.todoistToken !== '' || Object.keys(d).some(k => k !== 'todoistToken' && d[k] !== s[k]);
   $('s-save').disabled = !dirty;
   $('s-revert').hidden = !dirty;
 }
@@ -568,6 +1004,10 @@ function settingsSaved(problems) {
   if (!$('s-cli')) return;
   for (const k of Object.keys(settingsDraft())) $('e-' + k).textContent = problems[k] || '';
   $('s-msg').textContent = Object.keys(problems).length ? 'Not saved.' : 'Saved.';
+  if (!Object.keys(problems).length && $('s-todoistToken').value) {
+    $('s-todoistToken').value = '';
+    $('s-todoistToken').placeholder = 'Saved. Paste a new one to replace it';
+  }
 }
 
 // Called by C# with the file or folder chosen in a Browse dialog, for the input with that id.

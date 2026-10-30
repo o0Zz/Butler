@@ -19,10 +19,19 @@ public class SettingsTests : IDisposable
     {
         new Settings { Cli = "copilot", TriggersFile = @"C:\t\triggers.json", SkillsFolder = @"C:\t" }.Save(File_);
         Assert.Contains("\"triggersFile\"", File.ReadAllText(File_));
-        Assert.Equal(new Settings { Cli = "copilot", TriggersFile = @"C:\t\triggers.json", SkillsFolder = @"C:\t" }, Settings.Load(File_));
+        Assert.Equivalent(new Settings { Cli = "copilot", TriggersFile = @"C:\t\triggers.json", SkillsFolder = @"C:\t" }, Settings.Load(File_), strict: true);
 
         File.WriteAllText(File_, """{ "cli": "copilot" }"""); // edited by hand: what is missing keeps its default
-        Assert.Equal(new Settings { Cli = "copilot" }, Settings.Load(File_));
+        Assert.Equivalent(new Settings { Cli = "copilot" }, Settings.Load(File_), strict: true);
+    }
+
+    [Fact]
+    public void Hidden_todo_lists_are_saved_and_kept_by_other_changes()
+    {
+        new Settings { TodoHidden = ["2203306141", "Home"] }.Save(File_);
+        var changed = Settings.Load(File_) with { Cli = "copilot" }; // as the Settings page saves
+        changed.Save(File_);
+        Assert.Equal(["2203306141", "Home"], Settings.Load(File_).TodoHidden);
     }
 
     [Fact]
@@ -44,6 +53,23 @@ public class SettingsTests : IDisposable
         var good = new Settings { Cli = "claude", TriggersFile = triggers, SkillsFolder = dir }.Problems();
         Assert.DoesNotContain("triggersFile", good.Keys);
         Assert.DoesNotContain("skillsFolder", good.Keys);
+    }
+
+    [Fact]
+    public void The_todo_list_is_none_by_default_and_an_unknown_one_is_refused()
+    {
+        Assert.Equal("none", Settings.Load(File_).Todo);
+        File.WriteAllText(File_, """{ "todo": "trello" }""");
+        Assert.Throws<ArgumentException>(() => Settings.Load(File_));
+        Assert.Equal("Unknown to-do list 'trello'", new Settings { Todo = "trello" }.Problems()["todo"]);
+    }
+
+    [Fact]
+    public void A_todo_txt_file_may_not_exist_yet_but_its_folder_must()
+    {
+        Assert.DoesNotContain("todoFile", new Settings { Todo = "txt", TodoFile = Path.Combine(dir, "todo.txt") }.Problems().Keys);
+        Assert.Contains("todoFile", new Settings { Todo = "txt", TodoFile = Path.Combine(dir, "nope", "todo.txt") }.Problems().Keys);
+        Assert.DoesNotContain("todoFile", new Settings { Todo = "none", TodoFile = Path.Combine(dir, "nope", "todo.txt") }.Problems().Keys);
     }
 
     [Fact]

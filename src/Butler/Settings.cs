@@ -13,12 +13,16 @@ public sealed record Settings
     public string TriggersFile { get; init; } = Path.Combine(DefaultSkills, "butler.json"); // with the skills it calls, in their git repo
     public string SkillsFolder { get; init; } = DefaultSkills;
     public string AdoOrganization { get; init; } = ""; // for "ado" triggers, e.g. https://dev.azure.com/<org>
+    public string Todo { get; init; } = "none"; // the To do page's list: TodoBackend.All (the Todoist token is in Secrets)
+    public string TodoFile { get; init; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "todo.txt"); // for "txt"
+    public string[] TodoHidden { get; init; } = []; // ids of the lists (projects) hidden on the To do page
 
-    // Defaults when the file does not exist. Throws on an unknown CLI (the file can be edited by hand).
+    // Defaults when the file does not exist. Throws on an unknown CLI or to-do list (the file can be edited by hand).
     public static Settings Load(string path)
     {
         var settings = File.Exists(path) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(path), Json)! : new Settings();
         Butler.Cli.FromName(settings.Cli);
+        if (!TodoBackend.All.Any(b => b.Name == settings.Todo)) throw new ArgumentException($"Unknown to-do list '{settings.Todo}'");
         return settings;
     }
 
@@ -42,6 +46,9 @@ public sealed record Settings
         if (!Directory.Exists(SkillsFolder)) problems["skillsFolder"] = "Folder not found";
         if (AdoOrganization != "" && !AdoOrganization.StartsWith("https://"))
             problems["adoOrganization"] = "The organization URL, like https://dev.azure.com/<org>";
+        if (!TodoBackend.All.Any(b => b.Name == Todo)) problems["todo"] = $"Unknown to-do list '{Todo}'";
+        if (Todo == "txt" && !Directory.Exists(Path.GetDirectoryName(Environment.ExpandEnvironmentVariables(TodoFile))))
+            problems["todoFile"] = "Folder not found (the file itself is created with the first task)";
         return problems;
     }
 }

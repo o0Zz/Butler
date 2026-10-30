@@ -4,9 +4,14 @@ Windows tray app that runs an agent CLI headless (Claude Code `claude -p` by def
 Single user, single machine: triggers live in the user's own skills folder and call their skills, mailbox and folders.
 
 ## Configuration
-- Butler's own settings are local to the machine: `%LOCALAPPDATA%\Butler\settings.json` (`Settings`), edited on the dashboard's Settings page (also by hand; an unknown `cli` is refused). Today: `cli` (`claude` or `copilot`), `triggersFile`, `skillsFolder`, `adoOrganization`; defaults when the file is missing: claude and `~/.claude/skills`. New options go there, with a field on the Settings page.
+- Butler's own settings are local to the machine: `%LOCALAPPDATA%\Butler\settings.json` (`Settings`), edited on the dashboard's Settings page (also by hand; an unknown `cli` is refused). Today: `cli` (`claude` or `copilot`), `triggersFile`, `skillsFolder`, `adoOrganization`, `todo` (`none`, `todoist`, `txt`), `todoFile`; defaults when the file is missing: claude and `~/.claude/skills`. New options go there, with a field on the Settings page.
 - Every Butler process reads the settings when it starts (runs are separate processes, so a change applies to the next run). The tray watches `settings.json` and the triggers file it points to, and reloads + syncs on change.
 - Saving from the Settings page refuses invalid values (`Settings.Problems`: CLI not installed, missing file or folder) and shows them next to the fields.
+- Secrets (the Todoist token) go in the Windows Credential Manager (`Secrets`, `Butler/Todoist`), never in `settings.json`. A new token is checked against Todoist before it is saved.
+
+## To do page
+- The to-do list the `todo` setting points to: `src/Butler/Todo/`, one `TodoBackend` per value (`Todoist`: API v1 with the user's token; `TodoTxt`: a todo.txt file, project = first `+tag`, a task's id is its line). Quick add, add at a place (the "+" between tasks: `Insert`), drag and drop by the grip among siblings (`Place` → `Reorder`; Todoist: Sync API `item_reorder`), edit (drawer), complete with undo, delete. Lists can be hidden from "All" (`todoHidden` in the settings, project ids). Agents reach the same list through their own tools (Todoist connector, or the file).
+- Loaded off the UI thread when the dashboard opens, every minute while open and after each edit. An edit never overwrites a change made meanwhile: todo.txt refuses when the task's line is no longer in the file; Todoist sends a date only when it changed (sending a recurring one back would reset it).
 
 ## How it works
 - The triggers file (`triggersFile`, by default `~/.claude/skills/butler.json`) is the source of truth for triggers. It lives in the skills git repo, next to the skills it calls (not in this repo). `on` is the kind: `schedule` (`schedule`: `daily HH:mm`, `weekly:mon HH:mm`, `monthly:28 HH:mm`), `mail` (`from`: sender addresses), `ado` (`where`: a WIQL condition), `file` (`folder`, optional `filter`). Event prompts can use their kind's `${variables}` (filled by `Trigger.PromptWith`; without variables the event is appended; run by hand they stay unfilled with a note).
