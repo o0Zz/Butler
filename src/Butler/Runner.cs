@@ -139,6 +139,16 @@ public sealed class Runner(string home, Cli cli)
         return run;
     }
 
+    // Deletes every run (record and log) but those still running or waiting for an answer.
+    public void Clear()
+    {
+        foreach (var run in Recent(int.MaxValue).Where(r => r.Status is not (RunStatus.Running or RunStatus.Waiting)))
+        {
+            File.Delete(Path.Combine(RunsDir, run.Id + ".json"));
+            File.Delete(Path.Combine(RunsDir, run.Id + ".log"));
+        }
+    }
+
     // The process with that id, if it is still running and passes the check (ids get reused).
     static Process? Live(int? pid, Func<Process, bool> isOurs)
     {

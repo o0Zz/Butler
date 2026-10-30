@@ -192,6 +192,7 @@ sealed class DashboardForm : Form
             case "run": Program.Start("run", Arg("name")); break;
             case "answer": Program.Start("answer", Arg("id"), Arg("text")); break;
             case "stop": runner.Stop(Arg("id")); Push(); break;
+            case "clearRuns": runner.Clear(); historyRead = DateTime.MinValue; Push(); break;
             case "sync": tray.SyncNow(); break;
             case "editConfig": Open(tray.Settings.TriggersFile); break;
             case "openSkills": Process.Start("explorer.exe", tray.Settings.SkillsFolder); break;

@@ -335,7 +335,7 @@ function draw() {
   drawSources();
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === view));
   $('title').textContent = { runs: 'Runs', todo: 'To do', triggers: 'Triggers', skills: 'Skills', settings: 'Settings' }[view];
-  $('hdr').innerHTML = view === 'runs' ? stats()
+  $('hdr').innerHTML = view === 'runs' ? stats() + (state.runs.length ? `<button class="danger" onclick="if(confirm('Delete every run? Runs still running or waiting for an answer are kept. Their history and costs are lost.'))send('clearRuns')">${icon('trash')}Clear</button>` : '')
     : view === 'todo' ? (state.todo ? `<span class="muted" style="font-size:12.5px">${esc(state.todo.label || '')}${state.todo.read ? ' · updated ' + esc(ago(state.todo.read)) : ''}</span>
         <button onclick="send('todoRefresh')" title="Read the list again (F5)">${icon('sync')}Refresh</button>
         <button onclick="send('todoOpen')" title="${state.todo.backend === 'todoist' ? 'Open Todoist in the browser' : 'Show the todo.txt file in its folder'}">${icon('open')}${state.todo.backend === 'todoist' ? 'Todoist' : 'Folder'}</button>` : '')

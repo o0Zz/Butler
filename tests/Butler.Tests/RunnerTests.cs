@@ -29,6 +29,22 @@ public class RunnerTests : IDisposable
     ]);
 
     [Fact]
+    public async Task Clear_deletes_finished_runs_and_keeps_the_waiting_ones()
+    {
+        var runner = new Runner(home, new ClaudeCli(fake));
+        ClaudeReplies("BUTLER-SUMMARY: done");
+        var done = await runner.Run("brief", "/brief");
+        ClaudeReplies("BUTLER-ASK: Send it?");
+        var waiting = await runner.Run("reply", "/reply");
+
+        runner.Clear();
+
+        Assert.Equal([waiting.Id], runner.Recent(10).Select(r => r.Id));
+        Assert.False(File.Exists(Path.Combine(runner.RunsDir, done.Id + ".log")));
+        Assert.True(File.Exists(Path.Combine(runner.RunsDir, waiting.Id + ".log")));
+    }
+
+    [Fact]
     public async Task Waiting_run_is_resumed_in_the_same_session_with_the_answer()
     {
         var runner = new Runner(home, new ClaudeCli(fake));
