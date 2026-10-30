@@ -12,7 +12,7 @@ public sealed class RunRecord
     public required string Trigger { get; init; }
     public required string SessionId { get; init; }
     public required string Prompt { get; init; }
-    public string? Cli { get; init; }   // the CLI that owns the session (null: runs from before BUTLER_CLI, claude)
+    public string? Cli { get; init; }   // the CLI that owns the session (null: runs from before the CLI setting, claude)
     public DateTime Started { get; init; }
     public DateTime? Ended { get; set; }
     public RunStatus Status { get; set; }
@@ -25,12 +25,12 @@ public sealed class RunRecord
 }
 
 // Runs the CLI (claude or copilot) hidden, records the run in <home>/runs, and reports the outcome.
-public sealed class Runner(string home, Cli? cli = null)
+public sealed class Runner(string home, Cli cli)
 {
     static readonly JsonSerializerOptions Json = new() { WriteIndented = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
 
     public string RunsDir { get; } = Path.Combine(home, "runs");
-    public Cli Cli { get; } = cli ?? Cli.Configured;
+    public Cli Cli { get; } = cli;
 
     public static string Protocol(string trigger) =>
         $"You are running unattended, launched by Butler (trigger: {trigger}). Nobody can answer you during this run. " +
@@ -114,7 +114,7 @@ public sealed class Runner(string home, Cli? cli = null)
         var waiting = Load(runId) ?? throw new ArgumentException($"Unknown run {runId}");
         if (waiting.Status != RunStatus.Waiting) throw new InvalidOperationException($"Run {runId} is not waiting for an answer");
         if ((waiting.Cli ?? "claude") != Cli.Name)
-            throw new InvalidOperationException($"Run {runId} is a {waiting.Cli ?? "claude"} session and BUTLER_CLI is {Cli.Name}: answer it with that CLI");
+            throw new InvalidOperationException($"Run {runId} is a {waiting.Cli ?? "claude"} session and the CLI setting is {Cli.Name}: switch back to answer it");
         waiting.Status = RunStatus.Answered;
         waiting.Summary = $"Answered: {answer}";
         Save(waiting);

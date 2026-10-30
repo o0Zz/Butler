@@ -1,48 +1,43 @@
 using System.Diagnostics;
-using System.Text.Json;
 
 namespace Butler;
 
 public sealed record Mail(string EntryId, DateTime Received, string From, string Subject);
 
-// Remembers the last mail handled, so a poll (or a start after downtime) only sees mails not handled yet.
-// Persisted in <home>/state/mail.json. On first use it starts from "now": the existing inbox is not replayed.
-public sealed class MailCheckpoint
+// "mail": a mail from one of the From addresses arrived, in any mail folder of Outlook classic.
+// Checkpoint: <state>/mail.json, so mails received while Butler was closed are handled at the next start.
+public sealed class MailTrigger : TriggerKind
 {
-    public DateTime Last { get; set; }
-    public List<string> IdsAtLast { get; set; } = [];
+    public override string Name => "mail";
+    public override string Label => "Mail";
+    public override FormField[] Form => [new("from", "From", "list", "Sender addresses, one per line (exact match, any case)")];
+    public override string[] Variables => ["from", "subject", "received"];
+    public override string? Context => "Triggered by this mail: from ${from}, subject \"${subject}\", received ${received}.";
 
-    public static MailCheckpoint Load(string path) =>
-        File.Exists(path) ? JsonSerializer.Deserialize<MailCheckpoint>(File.ReadAllText(path))! : new() { Last = DateTime.Now };
-
-    public void Save(string path)
+    public override void Validate(Trigger t)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, JsonSerializer.Serialize(this));
+        if (t.From is not { Length: > 0 }) throw new FormatException($"Trigger '{t.Name}': from is empty");
     }
 
-    // Takes mails received at or after Last, returns the new ones oldest first and moves the checkpoint.
-    public List<Mail> TakeNew(IEnumerable<Mail> candidates)
-    {
-        var fresh = candidates
-            .Where(m => m.Received > Last || (m.Received == Last && !IdsAtLast.Contains(m.EntryId)))
-            .OrderBy(m => m.Received)
-            .ToList();
-        if (fresh.Count == 0) return fresh;
+    public override string Describe(Trigger t) => "When a mail arrives";
 
-        var newest = fresh[^1].Received;
-        IdsAtLast = newest == Last ? [.. IdsAtLast, .. fresh.Where(m => m.Received == newest).Select(m => m.EntryId)]
-                                   : [.. fresh.Where(m => m.Received == newest).Select(m => m.EntryId)];
-        Last = newest;
-        return fresh;
+    public override List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir)
+    {
+        if (!OutlookInbox.IsRunning) throw new InvalidOperationException("Outlook classic is not running: mail triggers wait for it");
+        var path = Path.Combine(stateDir, "mail.json");
+        var checkpoint = Checkpoint.Load<Checkpoint>(path);
+        var runs = checkpoint.TakeNew(OutlookInbox.ReadSince(checkpoint.Last), m => m.EntryId, m => m.Received)
+            .SelectMany(mail => Matching(triggers, mail).Select(t => (t, Values(mail))))
+            .ToList();
+        Checkpoint.Save(path, checkpoint);
+        return runs;
     }
 
     public static IEnumerable<Trigger> Matching(IEnumerable<Trigger> triggers, Mail mail) =>
         triggers.Where(t => t.On == "mail" && t.From!.Any(f => f.Equals(mail.From, StringComparison.OrdinalIgnoreCase)));
 
-    // The values of the mail variables, as `Butler.exe run` arguments.
-    public static string[] VariablesFor(Mail mail) =>
-        ["from=" + mail.From, "subject=" + mail.Subject, $"received={mail.Received:yyyy-MM-dd HH:mm}"];
+    static Dictionary<string, string> Values(Mail mail) =>
+        new() { ["from"] = mail.From, ["subject"] = mail.Subject, ["received"] = $"{mail.Received:yyyy-MM-dd HH:mm}" };
 }
 
 // Reads the mail folders of the default Outlook classic mailbox through COM. Only call from an STA thread.

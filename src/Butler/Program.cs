@@ -11,12 +11,10 @@ static class Program
 {
     public const string ShowDashboardEvent = "Butler.ShowDashboard";
 
-    // The triggers live with the skills they call (a git repo); runs and state are local data.
-    public static string TriggersFile { get; } = Environment.GetEnvironmentVariable("BUTLER_CONFIG") is { Length: > 0 } c ? c
-        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "skills", "butler.json");
-    public static string SkillsDir => Path.GetDirectoryName(TriggersFile)!;
+    // Local data: settings, runs, state. The triggers file is wherever the settings say (by default with the skills).
     public static string Home { get; } = Environment.GetEnvironmentVariable("BUTLER_DATA") is { Length: > 0 } d ? d
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Butler");
+    public static string SettingsFile => Path.Combine(Home, "settings.json");
     public static string Exe => Environment.ProcessPath!;
 
     [STAThread]
@@ -35,7 +33,7 @@ static class Program
             {
                 case null: return RunTray();
                 case "run" when args.Length >= 2: return RunTrigger(args[1], args[2..]).GetAwaiter().GetResult();
-                case "answer" when args.Length >= 3: return Report(new Runner(Home).Answer(args[1], args[2]).GetAwaiter().GetResult());
+                case "answer" when args.Length >= 3: return Report(NewRunner(Settings.Load(SettingsFile)).Answer(args[1], args[2]).GetAwaiter().GetResult());
                 case "sync": Sync(); return 0;
                 default:
                     Notifier.Error("Butler", "Usage: Butler.exe [run <trigger> [var=value ...] | answer <runId> <text> | sync]");
@@ -64,11 +62,14 @@ static class Program
 
     static async Task<int> RunTrigger(string name, string[] variables)
     {
-        var trigger = Trigger.Load(TriggersFile).FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        var settings = Settings.Load(SettingsFile);
+        var trigger = Trigger.Load(settings.TriggersFile).FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         if (trigger == null) return 0; // removed from butler.json but its task not synced yet: do nothing
         var values = variables.Select(v => v.Split('=', 2)).Where(kv => kv.Length == 2).ToDictionary(kv => kv[0], kv => kv[1]);
-        return Report(await new Runner(Home).Run(trigger.Name, trigger.PromptWith(values)));
+        return Report(await NewRunner(settings).Run(trigger.Name, trigger.PromptWith(values)));
     }
+
+    public static Runner NewRunner(Settings settings) => new(Home, Cli.FromName(settings.Cli));
 
     static int Report(RunRecord run)
     {
@@ -76,7 +77,7 @@ static class Program
         return run.Status == RunStatus.Failed ? 1 : 0;
     }
 
-    public static TaskSync.Result Sync() => TaskSync.Sync(Trigger.Load(TriggersFile), Exe);
+    public static TaskSync.Result Sync() => TaskSync.Sync(Trigger.Load(Settings.Load(SettingsFile).TriggersFile), Exe);
 
     // Starts another Butler process (runs never live inside the tray process, so closing it kills nothing).
     public static void Start(params string[] args)

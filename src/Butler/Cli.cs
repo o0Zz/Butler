@@ -8,21 +8,30 @@ public sealed record CliText(string Text) : CliEvent;
 public sealed record CliTool(string Name, JsonElement Input) : CliEvent;
 public sealed record CliResult(string? Result, bool IsError, decimal? CostUsd) : CliEvent;
 
-// The agent CLI that runs the triggers: claude (default) or copilot, set with BUTLER_CLI.
+// The agent CLI that runs the triggers: claude or copilot, chosen in the settings.
 // Both print one JSON event per line and can start a session with a given id, then resume it.
 public abstract class Cli(string name, string exe)
 {
     public string Name { get; } = name;
     public string Exe { get; } = exe;
 
+    public static readonly string[] Names = ["claude", "copilot"];
+
     public static Cli FromName(string? name) => (name ?? "").ToLowerInvariant() switch
     {
         "" or "claude" => new ClaudeCli(),
         "copilot" => new CopilotCli(),
-        _ => throw new ArgumentException($"Unknown CLI \"{name}\" (BUTLER_CLI): use claude or copilot"),
+        _ => throw new ArgumentException($"Unknown CLI \"{name}\": use claude or copilot"),
     };
 
-    public static Cli Configured => FromName(Environment.GetEnvironmentVariable("BUTLER_CLI"));
+    // Where the executable is on the PATH, or null. Only .exe: that is all Process.Start finds without a shell.
+    public string? Find(string? path = null)
+    {
+        var file = Path.HasExtension(Exe) ? Exe : Exe + ".exe";
+        foreach (var dir in (path ?? Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries))
+            if (Path.Combine(dir.Trim(), file) is var f && File.Exists(f)) return f;
+        return null;
+    }
 
     // A headless run in a new session with that id, or resuming it. `protocol` is Butler's instructions to the agent.
     public abstract IEnumerable<string> RunArguments(string prompt, string protocol, string sessionId, bool resume);

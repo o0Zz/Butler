@@ -52,7 +52,7 @@ public class TriggerTests
     {
         var t = new Trigger("x", "mail", "/triage-mail mail from ${from}", From: ["a"]);
         var prompt = t.PromptWith(new Dictionary<string, string>());
-        Assert.StartsWith("/triage-mail mail from ${from}\n\n(Started by hand, not by a mail", prompt);
+        Assert.StartsWith("/triage-mail mail from ${from}\n\n(Started by hand, not by an event", prompt);
         Assert.Equal("/triage-mail", new Trigger("x", "mail", "/triage-mail", From: ["a"]).PromptWith(new Dictionary<string, string>()));
     }
 
@@ -72,5 +72,70 @@ public class TriggerTests
         Assert.Throws<FormatException>(() => Schedule.Parse("monthly:32 09:00"));
         Assert.Throws<FormatException>(() => Schedule.Parse("weekly:xyz 09:00"));
         Assert.Throws<FormatException>(() => Schedule.Parse("daily 25:00"));
+    }
+
+    // What the dashboard's trigger editor does: build from the form values, then write the whole file.
+    [Fact]
+    public void Edited_triggers_are_written_in_the_file_layout_and_read_back()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(path, "[\r\n]\r\n"); // CRLF, kept
+            List<Trigger> triggers =
+            [
+                Trigger.FromForm("brief", "schedule", "/morning-brief", new Dictionary<string, string> { ["schedule"] = "daily 08:30" }),
+                Trigger.FromForm("vuln", "mail", "/triage-mail \"${subject}\" é", new Dictionary<string, string> { ["from"] = " a@example.com \n\nb@example.com" }),
+                Trigger.FromForm("specs", "file", "/fmea ${path}", new Dictionary<string, string> { ["folder"] = @"C:\in", ["filter"] = "" }),
+            ];
+            Trigger.Save(path, triggers);
+
+            Assert.Equal(string.Join("\r\n",
+                "[",
+                "  {",
+                "    \"name\": \"brief\",",
+                "    \"on\": \"schedule\",",
+                "    \"schedule\": \"daily 08:30\",",
+                "    \"prompt\": \"/morning-brief\"",
+                "  },",
+                "  {",
+                "    \"name\": \"vuln\",",
+                "    \"on\": \"mail\",",
+                "    \"from\": [\"a@example.com\", \"b@example.com\"],",
+                "    \"prompt\": \"/triage-mail \\\"${subject}\\\" é\"",
+                "  },",
+                "  {",
+                "    \"name\": \"specs\",",
+                "    \"on\": \"file\",",
+                "    \"folder\": \"C:\\\\in\",",
+                "    \"prompt\": \"/fmea ${path}\"",
+                "  }",
+                "]",
+                ""), File.ReadAllText(path));
+
+            var back = Trigger.Load(path);
+            Assert.Equal(["brief", "vuln", "specs"], back.Select(t => t.Name));
+            Assert.Equal(["a@example.com", "b@example.com"], back[1].From!);
+            Assert.Equal(@"C:\in", back[2].Field("folder"));
+            Assert.Null(back[2].Field("filter"));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void An_invalid_edit_writes_nothing()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            const string before = """[{ "name": "a", "on": "schedule", "schedule": "daily 09:00", "prompt": "/a" }]""";
+            File.WriteAllText(path, before);
+            var list = Trigger.Load(path);
+            list.Add(Trigger.FromForm("A", "schedule", "/b", new Dictionary<string, string> { ["schedule"] = "daily 10:00" }));
+            Assert.Contains("declared twice", Assert.Throws<FormatException>(() => Trigger.Save(path, list)).Message);
+            Assert.Throws<FormatException>(() => Trigger.Save(path, [Trigger.FromForm("x", "mail", "/x", new Dictionary<string, string>())]));
+            Assert.Equal(before, File.ReadAllText(path));
+        }
+        finally { File.Delete(path); }
     }
 }

@@ -8,6 +8,8 @@
     --hover: #f1f3f6; --sel: #e8effd; --accent: #2f6fe4; --accent-text: #fff;
     --ok: #1f9d55; --ok-bg: #e5f6ec; --warn: #b7791f; --warn-bg: #fdf3dc; --err: #d64545; --err-bg: #fde8e8;
     --run: #2f6fe4; --run-bg: #e8effd; --idle: #6b7280; --idle-bg: #eef0f3;
+    --k-schedule: #2f6fe4; --k-mail: #7c4ddb; --k-ado: #0f8a7e; --k-file: #c46a12;
+    --shadow: 0 1px 2px rgb(0 0 0 / .05), 0 4px 14px rgb(0 0 0 / .04);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -15,59 +17,84 @@
       --hover: #252932; --sel: #23324f; --accent: #5b8def;
       --ok: #4cc38a; --ok-bg: #1d3328; --warn: #e3b341; --warn-bg: #3a3020; --err: #f07171; --err-bg: #3b2224;
       --run: #7aa5f5; --run-bg: #23324f; --idle: #9097a3; --idle-bg: #2a2e37;
+      --k-schedule: #7aa5f5; --k-mail: #a98bf0; --k-ado: #4cc3b5; --k-file: #e8a25a;
+      --shadow: none;
     }
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
   body { font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); display: flex; overflow: hidden; }
-  button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 6px; padding: 5px 12px; }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 6px; padding: 5px 12px;
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
   button:hover { background: var(--hover); }
   button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
   button.primary:hover { filter: brightness(1.08); }
+  button.danger { color: var(--err); }
+  button.icon { padding: 5px 7px; }
+  button:disabled { opacity: .5; cursor: default; filter: none; }
+  .ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
   .muted { color: var(--muted); }
   .mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px; }
-
-  nav { width: 210px; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 10px; gap: 2px; flex-shrink: 0; }
+  .ok { color: var(--ok); } .err { color: var(--err); }
+  /* Sidebar */
+  nav { width: 220px; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 10px; gap: 2px; flex-shrink: 0; }
   nav h1 { font-size: 18px; margin: 0 10px 18px; display: flex; align-items: center; gap: 8px; }
   nav .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
   nav .dot.warn { background: var(--warn); } nav .dot.err { background: var(--err); }
-  nav a { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-radius: 6px; cursor: pointer; user-select: none; }
+  nav a { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; cursor: pointer; user-select: none; }
+  nav a .label { flex: 1; }
   nav a:hover { background: var(--hover); }
-  nav a.active { background: var(--panel); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .06); }
+  nav a.active { background: var(--panel); font-weight: 600; box-shadow: var(--shadow); }
+  nav a.active .ic { color: var(--accent); }
   nav .count { font-size: 12px; color: var(--muted); }
   nav .count.badge { background: var(--warn); color: #fff; border-radius: 10px; padding: 0 7px; font-weight: 600; }
-  nav .bottom { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding: 0 6px; }
-  nav .bottom .mono { font-size: 11px; word-break: break-all; }
-
+  nav .bottom { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding: 0 4px; }
+  nav .bottom .row2 { display: flex; gap: 6px; }
+  nav .bottom .row2 button { flex: 1; justify-content: center; }
+  .sources h4 { margin: 0 6px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .source { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; font-size: 12.5px; }
+  .source .what { flex: 1; min-width: 0; }
+  .source .state { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .source .state.err { color: var(--err); }
+  .led { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+  .led.err { background: var(--err); } .led.wait { background: var(--idle); }
+  /* Main */
   main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   header { padding: 18px 24px 12px; display: flex; align-items: center; gap: 10px; }
   header h2 { margin: 0; font-size: 20px; flex: 1; }
-  .banner { margin: 0 24px 12px; padding: 10px 14px; border-radius: 8px; background: var(--err-bg); color: var(--err); }
+  #hdr { display: flex; gap: 8px; align-items: center; }
+  .banner { margin: 0 24px 12px; padding: 10px 14px; border-radius: 8px; background: var(--err-bg); color: var(--err); display: flex; gap: 8px; align-items: center; }
   .content { flex: 1; min-height: 0; padding: 0 24px 24px; overflow: auto; }
-
-  .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 10px; white-space: nowrap; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 10px; white-space: nowrap; }
   .Done { color: var(--ok); background: var(--ok-bg); } .Failed { color: var(--err); background: var(--err-bg); }
   .Waiting { color: var(--warn); background: var(--warn-bg); } .Running { color: var(--run); background: var(--run-bg); }
   .Answered, .Stopped, .none { color: var(--idle); background: var(--idle-bg); }
-
+  /* Stats (runs header) */
+  .stat { display: flex; flex-direction: column; align-items: flex-end; padding: 2px 12px; border-left: 1px solid var(--line); }
+  .stat:first-child { border-left: none; }
+  .stat b { font-size: 16px; line-height: 1.1; }
+  .stat span { font-size: 11px; color: var(--muted); }
+  .stat.hot b { color: var(--warn); } .stat.bad b { color: var(--err); }
   /* Runs: list + detail */
   .split { display: flex; gap: 16px; height: 100%; }
-  .list { width: 42%; min-width: 320px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: auto; }
+  .list { width: 42%; min-width: 320px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: auto; box-shadow: var(--shadow); }
   .row { padding: 10px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
   .row:hover { background: var(--hover); } .row.sel { background: var(--sel); }
   .row .top { display: flex; align-items: center; gap: 8px; }
   .row .top b { flex: 1; }
-  .row .sum { margin-top: 3px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .detail { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; }
+  .row .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .row .sum { margin-top: 2px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .detail { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; box-shadow: var(--shadow); }
   .detail .head { padding: 16px 18px 12px; border-bottom: 1px solid var(--line); }
   .detail .head h3 { margin: 0 0 4px; font-size: 17px; display: flex; gap: 10px; align-items: center; }
-  .detail .actions { display: flex; gap: 8px; margin-top: 10px; }
+  .detail .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
   .ask { margin: 14px 18px 0; padding: 12px 14px; border-radius: 8px; background: var(--warn-bg); }
   .ask .q { font-weight: 600; margin-bottom: 10px; }
   .ask .bar { display: flex; gap: 8px; }
-  .ask input { flex: 1; font: inherit; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); }
+  input, select, textarea { font: inherit; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .ask input { flex: 1; }
   .result { flex: 1; overflow: auto; padding: 4px 18px 14px; word-wrap: break-word; }
-  .result.plain { white-space: pre-wrap; padding-top: 14px; }
   .result h1, .result h2, .result h3 { font-size: 15px; margin: 16px 0 6px; }
   .result p, .result ul, .result ol { margin: 8px 0; }
   .result table { border-collapse: collapse; margin: 10px 0; font-size: 13px; }
@@ -82,33 +109,72 @@
   .activity .step { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .acts { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 10px; }
   .acts summary { cursor: pointer; color: var(--muted); font-size: 13px; }
-  .empty { padding: 40px; text-align: center; color: var(--muted); }
-
+  .empty { padding: 40px; text-align: center; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 12px; }
   /* Cards: triggers, skills */
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
-  .card .title { display: flex; align-items: center; gap: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); }
+  .card .title { display: flex; align-items: center; gap: 10px; }
   .card .title b { font-size: 15px; flex: 1; }
-  .kv { display: grid; grid-template-columns: 70px 1fr; gap: 3px 10px; font-size: 13px; }
-  .kv span:nth-child(odd) { color: var(--muted); }
+  .badge-kind { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex-shrink: 0; background: color-mix(in srgb, currentColor 13%, transparent); }
+  .k-schedule { color: var(--k-schedule); } .k-mail { color: var(--k-mail); } .k-ado { color: var(--k-ado); } .k-file { color: var(--k-file); }
+  .kv { display: grid; grid-template-columns: 74px 1fr; gap: 4px 10px; font-size: 13px; }
+  .kv > span:nth-child(odd) { color: var(--muted); }
   .chip { display: inline-block; font-size: 12px; padding: 1px 8px; margin: 0 4px 2px 0; border-radius: 10px; background: var(--idle-bg); }
   .chip.bad { background: var(--err-bg); color: var(--err); }
   .prompt { background: var(--bg); border-radius: 6px; padding: 6px 9px; max-height: 64px; overflow: auto; white-space: pre-wrap; }
   .desc { color: var(--muted); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-  .card .foot { display: flex; align-items: center; gap: 8px; margin-top: auto; }
-  .card .foot .muted { flex: 1; font-size: 12px; }
+  .card .foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 4px; border-top: 1px solid var(--line); }
+  .card .foot .info { flex: 1; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .dots { display: inline-flex; gap: 3px; }
+  .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--idle-bg); }
+  .dots i.Done { background: var(--ok); } .dots i.Failed { background: var(--err); } .dots i.Waiting { background: var(--warn); }
+  .dots i.Running { background: var(--run); } .dots i.Answered, .dots i.Stopped { background: var(--idle); }
+  /* Forms: settings, trigger editor */
+  .settings { max-width: 780px; display: flex; flex-direction: column; gap: 14px; }
+  .settings .card { gap: 14px; }
+  .settings h3 { margin: 0; font-size: 15px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-weight: 600; }
+  .field .hint { color: var(--muted); font-size: 12.5px; }
+  .field .bar { display: flex; gap: 8px; align-items: center; }
+  .field .bar input, .field .bar select { flex: 1; min-width: 0; }
+  .field input.mono, .field textarea.mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px; }
+  .field textarea { resize: vertical; }
+  .field .ok, .field .err { font-size: 12.5px; }
+  .note { padding: 8px 12px; border-radius: 6px; background: var(--warn-bg); color: var(--warn); font-size: 13px; }
+  .savebar { display: flex; gap: 8px; align-items: center; }
+  .savebar .file { margin-left: auto; font-size: 11px; }
+  /* Trigger editor */
+  .overlay { position: fixed; inset: 0; background: rgb(0 0 0 / .35); display: flex; justify-content: flex-end; z-index: 10; }
+  .drawer { width: min(620px, 100%); height: 100%; background: var(--panel); display: flex; flex-direction: column; box-shadow: -8px 0 30px rgb(0 0 0 / .2); }
+  .drawer .dh { padding: 18px 22px 12px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  .drawer .dh h3 { margin: 0; flex: 1; font-size: 17px; }
+  .drawer .db { flex: 1; overflow: auto; padding: 16px 22px; display: flex; flex-direction: column; gap: 16px; }
+  .drawer .df { padding: 12px 22px; border-top: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+  .drawer .df .grow { flex: 1; }
+  .kinds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .kinds button { flex-direction: column; gap: 4px; padding: 10px 6px; justify-content: center; }
+  .kinds button.on { border-color: currentColor; background: color-mix(in srgb, currentColor 10%, var(--panel)); font-weight: 600; }
+  .kinds button .ic { width: 20px; height: 20px; }
+  .vars { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12.5px; }
+  .vars .chip { cursor: pointer; font-family: "Cascadia Mono", Consolas, monospace; }
+  .vars .chip:hover { background: var(--sel); }
+  .error-box { padding: 8px 12px; border-radius: 6px; background: var(--err-bg); color: var(--err); font-size: 13px; }
 </style>
 </head>
 <body>
 <nav>
   <h1><span class="dot" id="dot"></span>Butler</h1>
-  <a data-view="runs">Runs <span class="count" id="c-runs"></span></a>
-  <a data-view="triggers">Triggers <span class="count" id="c-triggers"></span></a>
-  <a data-view="skills">Skills <span class="count" id="c-skills"></span></a>
+  <a data-view="runs"><i data-ic="runs"></i><span class="label">Runs</span><span class="count" id="c-runs"></span></a>
+  <a data-view="triggers"><i data-ic="triggers"></i><span class="label">Triggers</span><span class="count" id="c-triggers"></span></a>
+  <a data-view="skills"><i data-ic="skills"></i><span class="label">Skills</span><span class="count" id="c-skills"></span></a>
+  <a data-view="settings"><i data-ic="settings"></i><span class="label">Settings</span></a>
   <div class="bottom">
-    <button onclick="send('sync')">Sync now</button>
-    <button onclick="send('editConfig')">Edit butler.json</button>
-    <span class="mono muted" id="config"></span>
+    <div class="sources" id="sources"></div>
+    <div class="row2">
+      <button onclick="send('sync')" title="Apply the triggers file to the Task Scheduler now"><i data-ic="sync"></i>Sync</button>
+      <button onclick="send('editConfig')" title="Open the triggers file in your editor"><i data-ic="code"></i>File</button>
+    </div>
   </div>
 </nav>
 <main>
@@ -116,6 +182,7 @@
   <div id="banner"></div>
   <div class="content" id="content"></div>
 </main>
+<div id="modal"></div>
 <!--marked-->
 <script>
 // Claude's output can quote mail content: raw HTML is shown as text and only http(s) links are kept.
@@ -125,11 +192,40 @@ const md = new marked.Marked({ gfm: true, breaks: true, renderer: {
   image: (href, title, text) => esc(text),
 } });
 const markdown = s => md.parse(s.replace(/^`?BUTLER-(ASK|SUMMARY):.*$/gm, '').trim());
-let state = { triggers: [], runs: [], skills: [] }, view = 'runs', selected = null, draft = '';
+let state = { triggers: [], runs: [], skills: [], kinds: [], sources: [] }, view = 'runs', selected = null, draft = '';
 let watched = null, drawnRun = null, resultScroll = 0, actsOpen = false;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const send = (cmd, args = {}) => chrome.webview.postMessage({ cmd, ...args });
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : '';
+
+// Icons: 24x24 strokes, drawn with currentColor.
+const IC = {
+  runs: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  triggers: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  skills: '<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>',
+  settings: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  schedule: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  ado: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9a7 7 0 0 1-7 7H8"/>',
+  file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  sync: '<path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4"/>',
+  code: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  play: '<path d="M7 5v14l11-7z"/>',
+  terminal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/>',
+  sparkles: '<path d="M11 3l1.9 5.1L18 10l-5.1 1.9L11 17l-1.9-5.1L4 10l5.1-1.9z"/><path d="M18 14l.9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9z"/>',
+  log: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  alert: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/>',
+  open: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+};
+const icon = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24">${IC[name] || ''}</svg>`;
+document.querySelectorAll('[data-ic]').forEach(el => el.outerHTML = icon(el.dataset.ic));
 
 function ago(d) {
   if (!d) return '';
@@ -146,13 +242,9 @@ function duration(r) {
   const s = Math.round((new Date(r.ended) - new Date(r.started)) / 1000);
   return s < 60 ? s + ' s' : Math.floor(s / 60) + ' min ' + (s % 60) + ' s';
 }
-const days = { sun: 'Sunday', mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday' };
-function when(t) {
-  if (t.on === 'mail') return 'When a mail arrives';
-  const [kind, at] = t.schedule.split(' ');
-  const [k, v] = kind.split(':');
-  return k === 'daily' ? `Every day at ${at}` : k === 'weekly' ? `Every ${days[v]} at ${at}` : `Monthly on day ${v} at ${at}`;
-}
+const money = n => '$' + (n || 0).toFixed(2);
+const kindOf = name => state.triggers.find(t => t.name.toLowerCase() === String(name).toLowerCase())?.on;
+const kindBadge = (on, size = '') => `<span class="badge-kind k-${esc(on)}" style="${size}">${icon(on)}</span>`;
 
 // Redraws everything but keeps the scroll positions (the list must not jump when a row is clicked).
 function render() {
@@ -163,24 +255,45 @@ function render() {
 }
 
 function draw() {
-  const waiting = state.runs.filter(r => r.status === 'Waiting').length;
-  $('c-runs').textContent = waiting || state.runs.length;
-  $('c-runs').className = 'count' + (waiting ? ' badge' : '');
+  const st = state.stats || {};
+  $('c-runs').textContent = st.waiting || state.runs.length;
+  $('c-runs').className = 'count' + (st.waiting ? ' badge' : '');
   $('c-triggers').textContent = state.triggers.length;
   $('c-skills').textContent = state.skills.length;
-  $('dot').className = 'dot' + (state.error ? ' err' : waiting ? ' warn' : '');
-  $('config').textContent = state.configFile || '';
-  $('banner').innerHTML = state.error ? `<div class="banner">${esc(state.error)}</div>` : '';
+  const sourceError = state.sources.some(s => s.error);
+  $('dot').className = 'dot' + (state.error || sourceError ? ' err' : st.waiting ? ' warn' : '');
+  $('banner').innerHTML = state.error ? `<div class="banner">${icon('alert')}${esc(state.error)}</div>` : '';
+  drawSources();
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === view));
-  $('title').textContent = { runs: 'Runs', triggers: 'Triggers', skills: 'Skills' }[view];
-  $('hdr').innerHTML = view === 'skills' ? `<button onclick="send('openSkills')">Open folder</button>`
-    : view === 'triggers' ? `<button onclick="send('chat')" title="${esc(state.cli)} in a terminal, in the skills folder: ask it to add or change triggers and skills">Talk to ${esc(state.cli)}</button>` : '';
-  ({ runs: renderRuns, triggers: renderTriggers, skills: renderSkills })[view]();
+  $('title').textContent = { runs: 'Runs', triggers: 'Triggers', skills: 'Skills', settings: 'Settings' }[view];
+  $('hdr').innerHTML = view === 'runs' ? stats()
+    : view === 'skills' ? `<button onclick="send('openSkills')">${icon('folder')}Open folder</button>`
+    : view === 'triggers' ? `<button onclick="send('chat')" title="Opens ${esc(cap(state.cli))} in a terminal, in your skills folder: describe what you want, it edits the triggers and skills">${icon('sparkles')}Ask AI</button>
+        <button class="primary" onclick="openEditor()">${icon('plus')}New trigger</button>` : '';
+  ({ runs: renderRuns, triggers: renderTriggers, skills: renderSkills, settings: renderSettings })[view]();
+}
+
+function stats() {
+  const st = state.stats || {};
+  const tile = (value, label, cls = '') => `<div class="stat ${cls}"><b>${value}</b><span>${label}</span></div>`;
+  return `<div style="display:flex">${tile(st.waiting || 0, 'waiting', st.waiting ? 'hot' : '')}${tile(st.running || 0, 'running')}
+    ${tile(st.today || 0, 'runs today')}${tile(st.failedWeek || 0, 'failed, 7 days', st.failedWeek ? 'bad' : '')}${tile(money(st.costMonth), 'this month')}</div>`;
+}
+
+// Event sources (mail, Azure DevOps, files): when they were last checked, and their error.
+function drawSources() {
+  $('sources').innerHTML = state.sources.length ? `<h4>Watching</h4>${state.sources.map(s => `
+    <div class="source" title="${esc(s.error || (s.checked ? 'Checked ' + full(s.checked) : 'Not checked yet'))}">
+      <span class="k-${esc(s.name)}">${icon(s.name)}</span>
+      <div class="what">${esc(s.label)} <span class="muted">· ${s.count}</span>
+        <div class="state ${s.error ? 'err' : ''}">${s.error ? esc(s.error) : s.checked ? 'checked ' + esc(ago(s.checked)) : 'starting…'}</div></div>
+      <span class="led ${s.error ? 'err' : s.checked ? '' : 'wait'}"></span>
+    </div>`).join('')}` : '';
 }
 
 function renderRuns() {
   const runs = state.runs;
-  if (!runs.length) { $('content').innerHTML = '<div class="empty">No runs yet.</div>'; return; }
+  if (!runs.length) { $('content').innerHTML = `<div class="empty">${icon('runs')}No runs yet. Start one from the Triggers page.</div>`; return; }
   if (!runs.some(r => r.id === selected)) selected = runs[0].id;
   if (selected !== watched) { watched = selected; send('select', { id: selected }); } // C# then pushes its activity
   const r = runs.find(r => r.id === selected);
@@ -189,21 +302,24 @@ function renderRuns() {
   const input = $('answer');
   if (input) draft = input.value;
   const focused = document.activeElement?.id === 'answer';
+  const meta = x => [esc(ago(x.started)), duration(x), x.costUsd != null ? money(x.costUsd) : ''].filter(Boolean).join(' · ');
   $('content').innerHTML = `<div class="split">
     <div class="list">${runs.map(x => `
-      <div class="row ${x.id === selected ? 'sel' : ''}" onclick="selected='${x.id}';draft='';render()">
-        <div class="top"><b>${esc(x.trigger)}</b><span class="pill ${x.status}">${x.status}</span></div>
-        <div class="sum" title="${esc(full(x.started))}">${esc(ago(x.started))} · ${esc(x.question || x.summary || (x.status === 'Running' ? 'working…' : ''))}</div>
+      <div class="row ${x.id === selected ? 'sel' : ''}" onclick="selected='${x.id}';draft='';render()" title="${esc(full(x.started))}">
+        <div class="top"><span class="k-${esc(kindOf(x.trigger) || 'none')}">${icon(kindOf(x.trigger) || 'runs')}</span><b>${esc(x.trigger)}</b><span class="pill ${x.status}">${x.status}</span></div>
+        <div class="meta">${meta(x)}</div>
+        <div class="sum">${esc(x.question || x.summary || (x.status === 'Running' ? 'working…' : ''))}</div>
       </div>`).join('')}</div>
     <div class="detail">
       <div class="head">
-        <h3>${esc(r.trigger)} <span class="pill ${r.status}">${r.status}</span></h3>
-        <div class="muted">${esc(full(r.started))}${duration(r) ? ' · ' + duration(r) : ''}${r.costUsd != null ? ' · $' + r.costUsd.toFixed(2) : ''}</div>
+        <h3>${kindOf(r.trigger) ? kindBadge(kindOf(r.trigger)) : ''}${esc(r.trigger)} <span class="pill ${r.status}">${r.status}</span></h3>
+        <div class="muted">${esc(full(r.started))}${duration(r) ? ' · ' + duration(r) : ''}${r.costUsd != null ? ' · ' + money(r.costUsd) : ''}${r.cli ? ' · ' + esc(cap(r.cli)) : ''}</div>
         <div class="actions">
-          <button onclick="send('openLog',{id:'${r.id}'})">Open log</button>
-          <button onclick="send('terminal',{session:'${r.sessionId}',cli:'${r.cli || ''}'})">Continue in terminal</button>
-          ${r.status === 'Running' ? `<button onclick="if(confirm('Stop this run? The agent is killed where it is.'))send('stop',{id:'${r.id}'})">Stop</button>` : ''}
-          ${r.status === 'Waiting' ? `<button onclick="send('stop',{id:'${r.id}'})" title="Drop the question, the run ends as Stopped">Dismiss</button>` : ''}
+          <button onclick="send('openLog',{id:'${r.id}'})">${icon('log')}Open log</button>
+          <button onclick="send('terminal',{session:'${r.sessionId}',cli:'${r.cli || ''}'})">${icon('terminal')}Continue in terminal</button>
+          ${kindOf(r.trigger) ? `<button onclick="send('run',{name:'${esc(r.trigger)}'})">${icon('play')}Run again</button>` : ''}
+          ${r.status === 'Running' ? `<button class="danger" onclick="if(confirm('Stop this run? The agent is killed where it is.'))send('stop',{id:'${r.id}'})">${icon('stop')}Stop</button>` : ''}
+          ${r.status === 'Waiting' ? `<button onclick="send('stop',{id:'${r.id}'})" title="Drop the question, the run ends as Stopped">${icon('close')}Dismiss</button>` : ''}
         </div>
       </div>
       ${r.status === 'Waiting' ? `<div class="ask">
@@ -226,7 +342,7 @@ function renderRuns() {
   drawnRun = r.id;
 }
 
-// Claude's sentences, and "▸ Tool: detail" for each tool call.
+// The agent's sentences, and "▸ Tool: detail" for each tool call.
 const activity = lines => `<div class="activity">${lines.map(l => `<div class="${l.startsWith('▸') ? 'step' : 'say'}">${esc(l)}</div>`).join('')}</div>`;
 
 function answer(text) {
@@ -237,35 +353,229 @@ function answer(text) {
 }
 
 function renderTriggers() {
-  if (!state.triggers.length) { $('content').innerHTML = '<div class="empty">No triggers. Add some in butler.json.</div>'; return; }
+  if (!state.triggers.length) {
+    $('content').innerHTML = `<div class="empty">${icon('triggers')}No triggers yet.<button class="primary" onclick="openEditor()">${icon('plus')}New trigger</button></div>`;
+    return;
+  }
+  const kind = on => state.kinds.find(k => k.name === on) || { label: on, form: [] };
+  const fieldRows = t => kind(t.on).form.filter(f => f.type !== 'schedule' && t.values[f.name]).map(f => `<span>${esc(f.label)}</span><span>${f.type === 'list'
+    ? t.values[f.name].split('\n').map(v => `<span class="chip">${esc(v)}</span>`).join('') : `<span class="mono">${esc(t.values[f.name])}</span>`}</span>`).join('');
   $('content').innerHTML = `<div class="grid">${state.triggers.map(t => `
     <div class="card">
-      <div class="title"><b>${esc(t.name)}</b><span class="pill none">${t.on === 'mail' ? '✉ mail' : '⏱ schedule'}</span></div>
+      <div class="title">${kindBadge(t.on)}<b>${esc(t.name)}</b><span class="pill none">${esc(kind(t.on).label)}</span>
+        <button class="icon" title="Edit" onclick="openEditor('${esc(t.name)}')">${icon('edit')}</button></div>
       <div class="kv">
-        <span>When</span><span>${esc(when(t))}</span>
-        ${t.on === 'mail' ? `<span>From</span><span>${t.from.map(f => `<span class="chip">${esc(f)}</span>`).join('')}</span>` : ''}
+        <span>When</span><span>${esc(t.when)}</span>
+        ${fieldRows(t)}
         ${t.on === 'schedule' ? `<span>Next</span><span title="${esc(full(t.next))}">${t.next ? esc(full(t.next)) + ' <span class="muted">(' + esc(ago(t.next)) + ')</span>' : '<span class="muted">not scheduled</span>'}</span>` : ''}
         <span>Skill</span><span>${t.skill ? `<span class="chip ${t.skillKnown ? '' : 'bad'}" title="${t.skillKnown ? '' : 'No such skill in your skills folder'}">/${esc(t.skill)}</span>` : '<span class="muted">none</span>'}</span>
       </div>
       <div class="prompt mono">${esc(t.prompt)}</div>
       <div class="foot">
-        <span class="muted">${t.last ? `Last run ${esc(ago(t.last.started))} <span class="pill ${t.last.status}">${t.last.status}</span>` : 'Never run'}</span>
-        <button class="primary" onclick="send('run',{name:'${t.name}'})">Run now</button>
+        <span class="info">${t.recent.length ? `<span class="dots" title="Last ${t.recent.length} runs, newest on the right">${[...t.recent].reverse().map(s => `<i class="${s}" title="${s}"></i>`).join('')}</span>` : ''}
+          ${t.last ? `Last ${esc(ago(t.last.started))}` : 'Never run'}${t.costMonth ? ` · ${money(t.costMonth)} / 30 d` : ''}</span>
+        <button class="primary" onclick="send('run',{name:'${esc(t.name)}'})">${icon('play')}Run now</button>
       </div>
     </div>`).join('')}</div>`;
 }
 
 function renderSkills() {
-  if (!state.skills.length) { $('content').innerHTML = '<div class="empty">No skills found.</div>'; return; }
+  if (!state.skills.length) { $('content').innerHTML = `<div class="empty">${icon('skills')}No skills found.</div>`; return; }
   $('content').innerHTML = `<div class="grid">${state.skills.map(s => `
     <div class="card">
-      <div class="title"><b>/${esc(s.name)}</b></div>
+      <div class="title"><span class="badge-kind" style="color:var(--accent)">${icon('skills')}</span><b>/${esc(s.name)}</b></div>
       <div class="desc" title="${esc(s.description)}">${esc(s.description)}</div>
       <div class="foot">
-        <span class="muted">${s.triggers.length ? 'Triggered by ' + s.triggers.map(n => `<span class="chip">${esc(n)}</span>`).join('') : 'No trigger'}</span>
-        <button onclick="send('openSkill',{folder:'${esc(s.folder)}'})">Open</button>
+        <span class="info">${s.triggers.length ? 'Triggered by ' + s.triggers.map(n => `<span class="chip">${esc(n)}</span>`).join('') : 'No trigger'}</span>
+        <button onclick="send('openSkill',{folder:'${esc(s.folder)}'})">${icon('open')}Open</button>
       </div>
     </div>`).join('')}</div>`;
+}
+
+// Trigger editor: a drawer over the page, outside #content, so the pushes every few seconds do not reset it.
+let form = null; // { original, name, on, prompt, values: { field: text } }
+
+function openEditor(name) {
+  const t = name && state.triggers.find(x => x.name === name);
+  form = t ? { original: t.name, name: t.name, on: t.on, prompt: t.prompt, values: { ...t.values } }
+           : { original: null, name: '', on: 'schedule', prompt: '', values: { schedule: 'daily 08:30' } };
+  drawEditor();
+}
+
+function closeEditor() { form = null; $('modal').innerHTML = ''; }
+
+function drawEditor() {
+  const kind = state.kinds.find(k => k.name === form.on);
+  const skill = (form.prompt.match(/^\/([\w:-]+)/) || [])[1] || '';
+  $('modal').innerHTML = `<div class="overlay" onmousedown="if(event.target===this)closeEditor()">
+    <div class="drawer">
+      <div class="dh">${kindBadge(form.on)}<h3>${form.original ? 'Edit ' + esc(form.original) : 'New trigger'}</h3>
+        <button class="icon" onclick="closeEditor()" title="Close">${icon('close')}</button></div>
+      <div class="db">
+        <div class="field"><label for="t-name">Name</label>
+          <div class="hint">Letters, digits, - and _. Also the name of its scheduled task.</div>
+          <input id="t-name" value="${esc(form.name)}" oninput="form.name=this.value" placeholder="morning-brief"></div>
+        <div class="field"><label>Runs on</label>
+          <div class="kinds">${state.kinds.map(k => `<button class="k-${k.name} ${k.name === form.on ? 'on' : ''}" onclick="form.on='${k.name}';drawEditor()">${icon(k.name)}${esc(k.label)}</button>`).join('')}</div></div>
+        ${kind.form.map(fieldInput).join('')}
+        <div class="field"><label for="t-prompt">Prompt</label>
+          <div class="hint">What the agent gets. Start with /skill to call one of your skills.</div>
+          <div class="bar"><select onchange="setSkill(this.value)"><option value="">No skill</option>${state.skills.map(s =>
+            `<option value="${esc(s.name)}" ${s.name === skill || s.folder === skill ? 'selected' : ''}>/${esc(s.name)}</option>`).join('')}</select></div>
+          <textarea id="t-prompt" class="mono" rows="7" oninput="form.prompt=this.value">${esc(form.prompt)}</textarea>
+          ${kind.variables.length ? `<div class="vars"><span class="muted">Insert:</span>${kind.variables.map(v => `<span class="chip" onclick="insertVar('${v}')">\${${v}}</span>`).join('')}
+            <span class="muted">· filled from the event; without any, the event is appended.</span></div>` : ''}
+        </div>
+        <div id="t-error"></div>
+      </div>
+      <div class="df">
+        ${form.original ? `<button class="danger" onclick="deleteTrigger()">${icon('trash')}Delete</button>` : ''}
+        <span class="grow"></span>
+        <button onclick="closeEditor()">Cancel</button>
+        <button class="primary" onclick="saveTrigger()">Save</button>
+      </div>
+    </div></div>`;
+}
+
+const days = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']];
+
+function fieldInput(f) {
+  const v = form.values[f.name] || '';
+  const head = `<label for="f-${f.name}">${esc(f.label)}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>${f.hint ? `<div class="hint">${esc(f.hint)}</div>` : ''}`;
+  const set = `oninput="form.values['${f.name}']=this.value"`;
+  if (f.type === 'schedule') {
+    const m = v.match(/^(daily|weekly:(\w+)|monthly:(\d+)) (\d{1,2}:\d{2})$/) || [, 'daily', , , '08:30'];
+    const freq = m[1].split(':')[0];
+    return `<div class="field">${head}<div class="bar">
+      <select id="s-freq" onchange="scheduleChanged()">${[['daily', 'Every day'], ['weekly', 'Every week'], ['monthly', 'Every month']].map(([k, l]) => `<option value="${k}" ${k === freq ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      ${freq === 'weekly' ? `<select id="s-day" onchange="scheduleChanged()">${days.map(([k, l]) => `<option value="${k}" ${k === m[2] ? 'selected' : ''}>on ${l}</option>`).join('')}</select>` : ''}
+      ${freq === 'monthly' ? `<select id="s-day" onchange="scheduleChanged()">${Array.from({ length: 31 }, (_, i) => i + 1).map(d => `<option value="${d}" ${String(d) === m[3] ? 'selected' : ''}>on day ${d}</option>`).join('')}</select>` : ''}
+      <input id="s-time" type="time" value="${m[4].padStart(5, '0')}" onchange="scheduleChanged()" style="flex:0 0 120px"></div></div>`;
+  }
+  if (f.type === 'list') return `<div class="field">${head}<textarea id="f-${f.name}" class="mono" rows="3" ${set}>${esc(v)}</textarea></div>`;
+  const browse = f.type === 'folder' ? `<button onclick="send('browse',{pick:'folder',title:'${esc(f.label)}',target:'f-${f.name}',value:$('f-${f.name}').value})">${icon('folder')}Browse…</button>` : '';
+  return `<div class="field">${head}<div class="bar"><input id="f-${f.name}" class="mono" value="${esc(v)}" ${set}>${browse}</div></div>`;
+}
+
+function scheduleChanged() {
+  const freq = $('s-freq').value, day = $('s-day')?.value, time = $('s-time').value || '08:30';
+  const fallback = freq === 'weekly' ? 'mon' : '1';
+  const okDay = freq === 'weekly' ? days.some(d => d[0] === day) : freq === 'monthly' ? /^\d+$/.test(day || '') : true;
+  form.values.schedule = freq === 'daily' ? `daily ${time}` : `${freq}:${okDay ? day : fallback} ${time}`;
+  drawEditor();
+}
+
+function setSkill(name) {
+  const rest = form.prompt.replace(/^\/[\w:-]+\s*/, '');
+  form.prompt = name ? `/${name}${rest ? ' ' + rest : ''}` : rest;
+  $('t-prompt').value = form.prompt;
+}
+
+function insertVar(v) {
+  const ta = $('t-prompt'), at = ta.selectionStart ?? ta.value.length, text = '${' + v + '}';
+  ta.value = ta.value.slice(0, at) + text + ta.value.slice(ta.selectionEnd ?? at);
+  form.prompt = ta.value;
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = at + text.length;
+}
+
+function saveTrigger() {
+  const kind = state.kinds.find(k => k.name === form.on);
+  const values = Object.fromEntries(kind.form.map(f => [f.name, form.values[f.name] || '']));
+  send('saveTrigger', { original: form.original || '', name: form.name, on: form.on, prompt: form.prompt, values });
+}
+
+function deleteTrigger() {
+  if (confirm(`Delete the trigger "${form.original}"? Its scheduled task is removed too.`)) send('deleteTrigger', { name: form.original });
+}
+
+// Called by C# after a save or a delete: the error, or null when the triggers file was written.
+function triggerSaved(error) {
+  if (!form) return;
+  if (error) $('t-error').innerHTML = `<div class="error-box">${esc(error)}</div>`;
+  else closeEditor();
+}
+
+addEventListener('keydown', e => { if (e.key === 'Escape' && form) closeEditor(); });
+
+// Drawn once per visit: the state is pushed every few seconds while a run is live, and must not reset what is being typed.
+function renderSettings() {
+  if ($('s-cli')) return checkSettings();
+  const s = state.settings;
+  $('content').innerHTML = `<div class="settings">
+    <div class="card">
+      <h3>Agent</h3>
+      <div class="field">
+        <label for="s-cli">CLI that runs the triggers</label>
+        <div class="hint">Applies to the next run. A waiting run is answered with the CLI that started it.</div>
+        <div class="bar"><select id="s-cli" onchange="checkSettings()">${Object.keys(s.installed).map(n =>
+          `<option value="${n}" ${n === s.cli ? 'selected' : ''}>${esc(cliNames[n] || n)}</option>`).join('')}</select></div>
+        <div id="s-cli-status"></div>
+        <div class="err" id="e-cli"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Triggers and skills</h3>
+      ${pathField('triggersFile', 'Triggers file', 'The list of triggers (JSON). Keep it next to the skills it calls, in their git repo.', s.triggersFile)}
+      ${pathField('skillsFolder', 'Skills folder', 'Listed on the Skills page; “Ask AI” opens there.', s.skillsFolder)}
+    </div>
+    <div class="card">
+      <h3>Azure DevOps</h3>
+      <div class="field">
+        <label for="s-adoOrganization">Organization</label>
+        <div class="hint">For “Azure DevOps” triggers, read with the az CLI (logged in, azure-devops extension). Empty: no such trigger can run.</div>
+        <div class="bar"><input id="s-adoOrganization" class="mono" value="${esc(s.adoOrganization)}" placeholder="https://dev.azure.com/your-org" oninput="checkSettings()"></div>
+        <div class="err" id="e-adoOrganization"></div>
+      </div>
+    </div>
+    <div class="savebar">
+      <button class="primary" id="s-save" onclick="saveSettings()">Save</button>
+      <button id="s-revert" onclick="$('content').innerHTML='';renderSettings()">Revert</button>
+      <span class="muted" id="s-msg"></span>
+      <span class="muted mono file" title="Butler's settings, local to this PC">${esc(s.file)}</span>
+    </div>
+  </div>`;
+  checkSettings();
+}
+
+const cliNames = { claude: 'Claude Code', copilot: 'GitHub Copilot CLI' };
+const pathField = (id, label, hint, value) => `<div class="field">
+  <label for="s-${id}">${label}</label>
+  <div class="hint">${hint}</div>
+  <div class="bar"><input id="s-${id}" class="mono" value="${esc(value)}" oninput="checkSettings()">
+    <button onclick="send('browse',{pick:'${id === 'skillsFolder' ? 'folder' : 'file'}',title:'${label}',target:'s-${id}',value:$('s-${id}').value})">${icon('folder')}Browse…</button></div>
+  <div class="err" id="e-${id}"></div></div>`;
+const settingsDraft = () => ({ cli: $('s-cli').value, triggersFile: $('s-triggersFile').value.trim(), skillsFolder: $('s-skillsFolder').value.trim(),
+  adoOrganization: $('s-adoOrganization').value.trim() });
+
+// Whether the chosen CLI is installed; Save only when something changed.
+function checkSettings() {
+  const s = state.settings, d = settingsDraft(), path = s.installed[d.cli];
+  $('s-cli-status').innerHTML = (path ? `<span class="ok">✓ Installed: <span class="mono">${esc(path)}</span></span>` : '<span class="err">✗ Not installed: not found on the PATH</span>')
+    + (d.cli === 'copilot' ? '<div class="note" style="margin-top:6px">Copilot runs with --allow-all-tools: nothing reviews what it does, even when a mail is in the prompt. No Chrome, no cost per run.</div>' : '');
+  const dirty = Object.keys(d).some(k => d[k] !== s[k]);
+  $('s-save').disabled = !dirty;
+  $('s-revert').hidden = !dirty;
+}
+
+function saveSettings() {
+  $('s-msg').textContent = 'Saving…';
+  send('saveSettings', settingsDraft());
+}
+
+// Called by C# after a save: the problems by field, none when saved.
+function settingsSaved(problems) {
+  if (!$('s-cli')) return;
+  for (const k of Object.keys(settingsDraft())) $('e-' + k).textContent = problems[k] || '';
+  $('s-msg').textContent = Object.keys(problems).length ? 'Not saved.' : 'Saved.';
+}
+
+// Called by C# with the file or folder chosen in a Browse dialog, for the input with that id.
+function picked(target, path) {
+  const el = $(target);
+  if (!el) return;
+  el.value = path;
+  el.dispatchEvent(new Event('input'));
 }
 
 document.querySelectorAll('nav a').forEach(a => a.onclick = () => { view = a.dataset.view; draw(); $('content').scrollTop = 0; });
