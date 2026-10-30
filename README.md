@@ -114,13 +114,13 @@ mail itself (your skills can prepare drafts).
 ## Get started
 
 1. **Download** `Butler-x.y.z.exe` from the latest [release](https://github.com/o0Zz/butler/releases), put it
-   where you like (e.g. `%LOCALAPPDATA%\Programs\Butler`) and run it. One file, nothing to install.
+   where you like (e.g. `%LOCALAPPDATA%\Programs\Butler`) and run it. One file.
 2. Open the dashboard from the tray icon and go to **Settings**: choose your agent CLI, your triggers file and your
    skills folder (and your to-do list if you want one).
 3. Add your first trigger, and press **Run now** to see it work.
 
 Requirements:
-- Windows 10 or 11 (x64) with the WebView2 runtime (built into Windows 11). .NET is inside the exe.
+- Windows 10 or 11 (x64) with the WebView2 runtime (built into Windows 11) and the [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0).
 - An agent CLI, logged in: [Claude Code](https://docs.claude.com/en/docs/claude-code) (`claude`) or
   [GitHub Copilot CLI](https://github.com/features/copilot/cli) (`copilot`).
 - For mail triggers: Outlook classic, running. For Azure DevOps triggers: the
@@ -155,7 +155,7 @@ Task Scheduler, folders, Credential Manager, and Outlook or Azure DevOps when th
 
 Versions are `X.Y.Z.N`, N being the number of commits: `0.0.0.N` for any build, `1.0.0.N` for the tag `v1.0.0`.
 [CI](.github/workflows/ci.yml) builds and tests every push and pull request; pushing a tag also publishes the
-self-contained exe as a GitHub release:
+exe as a GitHub release:
 
 ```sh
 git tag v1.0.0

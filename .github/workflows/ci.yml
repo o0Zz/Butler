@@ -1,4 +1,4 @@
-# Builds and tests every push and pull request. A tag vX.Y.Z also publishes Butler-X.Y.Z.<commits>.exe (one self-contained file) to a GitHub release.
+# Builds and tests every push and pull request. A tag vX.Y.Z also publishes Butler-X.Y.Z.<commits>.exe (one file, needing the .NET 9 Desktop Runtime) to a GitHub release.
 name: CI
 
 on:
@@ -36,12 +36,12 @@ jobs:
       - name: Test
         run: dotnet test -c Release --no-build
 
-      # One Butler.exe with .NET and every library inside (native ones extracted at start): nothing to install.
+      # One Butler.exe with every library inside (native ones extracted at start), without .NET: it needs the .NET 9 Desktop Runtime.
       - name: Publish
         shell: pwsh
         run: |
-          dotnet publish src/Butler -c Release -r win-x64 --self-contained true -o publish ${{ env.VERSION_ARG }} `
-            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none
+          dotnet publish src/Butler -c Release -r win-x64 --self-contained false -o publish ${{ env.VERSION_ARG }} `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
           Get-ChildItem publish
           Copy-Item publish/Butler.exe "Butler-$env:VERSION.exe"
 
