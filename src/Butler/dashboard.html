@@ -172,7 +172,8 @@
   .proj h3 { margin: 6px 16px 6px; font-size: 15px; display: flex; gap: 8px; align-items: baseline; }
   .proj h3 .n, .proj h4 .n { font-weight: 400; color: var(--muted); font-size: 12.5px; }
   .proj h4 { margin: 12px 16px 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-  .proj .none { padding: 4px 16px 10px; color: var(--muted); font-size: 13px; }
+  .proj .addhere { display: flex; gap: 6px; align-items: center; padding: 6px 16px 10px; color: var(--muted); font-size: 13px; cursor: pointer; }
+  .proj .addhere:hover { color: var(--accent); }
   .task { display: flex; gap: 10px; align-items: flex-start; padding: 7px 16px; border-top: 1px solid var(--line); }
   .task:hover { background: var(--hover); }
   .task.gone { opacity: .35; }
@@ -522,7 +523,7 @@ function renderTodo() {
       return `<div class="proj"><h3>${esc(p.name)} <span class="n">${mine.length}</span>
           <button class="hide" title="${isHidden ? 'Show this list in All again' : 'Hide this list from All (still under Hidden)'}"
             onclick="todoHide(${esc(JSON.stringify(p.id))},${!isHidden})">${icon(isHidden ? 'eye' : 'eyeOff')}</button></h3>
-        ${block(loose, { projectId: p.id, sectionId: null })}
+        ${loose.length || !mine.length ? block(loose, { projectId: p.id, sectionId: null }) : ''}
         ${sections.map(s => { const inside = mine.filter(x => x.sectionId === s.id); return inside.length ? `<h4>${esc(s.name)} <span class="n">${inside.length}</span></h4>${block(inside, { projectId: p.id, sectionId: s.id })}` : ''; }).join('')}</div>`;
     }).join('') || `<div class="empty">${icon('todo')}Nothing to do.</div>`}
   </div>`;
@@ -544,7 +545,7 @@ function slot(place, index, visible) {
     return `<div class="task inserting"><span class="check"></span><input id="todo-insert" class="inline" placeholder="Task name, Enter to add, Esc to cancel"
       onkeydown="if(event.key==='Enter')todoInsert();if(event.key==='Escape')closeInsert()" onblur="insertBlur()"></div>`;
   const i = todoSlots.push(at) - 1;
-  return visible ? `<div class="none" style="cursor:pointer" onclick="openInsert(${i})">${icon('plus')} Add a task</div>`
+  return visible ? `<div class="addhere" onclick="openInsert(${i})">${icon('plus')}Add a task</div>`
     : `<div class="slot" title="Add a task here" onclick="openInsert(${i})"></div>`;
 }
 
@@ -830,8 +831,8 @@ function drawEditor() {
           <div class="bar"><select onchange="setSkill(this.value)"><option value="">No skill</option>${state.skills.map(s =>
             `<option value="${esc(s.name)}" ${s.name === skill || s.folder === skill ? 'selected' : ''}>/${esc(s.name)}</option>`).join('')}</select></div>
           <textarea id="t-prompt" class="mono" rows="7" oninput="form.prompt=this.value">${esc(form.prompt)}</textarea>
-          ${kind.variables.length ? `<div class="vars"><span class="muted">Insert:</span>${kind.variables.map(v => `<span class="chip" onclick="insertVar('${v}')">\${${v}}</span>`).join('')}
-            <span class="muted">· filled from the event; without any, the event is appended.</span></div>` : ''}
+          ${kind.variables.length ? `<div class="vars"><span class="muted">Insert:</span>${kind.variables.map(v => `<span class="chip" onclick="insertVar('${v}')">\${${v}}</span>`).join('')}</div>
+            <div class="hint">Filled from the event. Without any, the event is appended.</div>` : ''}
         </div>
         <div id="t-error"></div>
       </div>
