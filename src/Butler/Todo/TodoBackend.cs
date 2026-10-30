@@ -50,13 +50,24 @@ public abstract class TodoBackend
     public static List<TodoTask> Siblings(TodoList list, string projectId, string? sectionId, string? parentId) =>
         list.Tasks.Where(t => t.ProjectId == projectId && t.SectionId == sectionId && t.ParentId == parentId).OrderBy(t => t.Order).ToList();
 
-    // Moves a task to a place among its siblings (index in the list without it: where it was dropped); nothing when it is already there.
-    public Task Place(TodoList list, TodoTask task, int index)
+    // Moves a task to another list or section, as a top-level task; returns it as it is now (todo.txt: its new line).
+    public abstract Task<TodoTask> MoveTo(TodoTask task, string projectId, string? sectionId);
+
+    // Puts a task where it was dropped: in a list and section, at an index among its siblings there (without it).
+    // In its own list and section it keeps its parent, and nothing is written when it is already there.
+    public async Task Place(TodoList list, TodoTask task, string projectId, string? sectionId, int index)
     {
-        var siblings = Siblings(list, task.ProjectId, task.SectionId, task.ParentId);
+        var moving = task.ProjectId != projectId || task.SectionId != sectionId;
+        if (moving)
+        {
+            var moved = await MoveTo(task, projectId, sectionId);
+            list = list with { Tasks = [.. list.Tasks.Where(t => t.Id != task.Id), moved] };
+            task = moved;
+        }
+        var siblings = Siblings(list, projectId, sectionId, task.ParentId);
         var before = siblings.Select(t => t.Id).ToList();
         siblings.RemoveAll(t => t.Id == task.Id);
         siblings.Insert(Math.Clamp(index, 0, siblings.Count), task);
-        return siblings.Select(t => t.Id).SequenceEqual(before) ? Task.CompletedTask : Reorder(siblings);
+        if (moving || !siblings.Select(t => t.Id).SequenceEqual(before)) await Reorder(siblings);
     }
 }

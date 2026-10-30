@@ -114,14 +114,27 @@ public class TodoistTests : IDisposable
     {
         answer = line => line.StartsWith("POST sync") ? SyncAnswer(line, "\"ok\"") : (404, "");
         var list = Work();
-        await Client().Place(list, list.Tasks[3], 1); // c between a and b (the task in a section is not a sibling)
-        await Client().Place(list, list.Tasks[0], 0); // already first: nothing sent
+        await Client().Place(list, list.Tasks[3], "w", null, 1); // c between a and b (the task in a section is not a sibling)
+        await Client().Place(list, list.Tasks[0], "w", null, 0); // already first: nothing sent
         var sent = Assert.Single(requests);
         Assert.StartsWith("""POST sync commands=[{"type":"item_reorder",""", sent);
         Assert.Contains("""{"items":[{"id":"a","child_order":1},{"id":"c","child_order":2},{"id":"b","child_order":3}]}""", sent);
 
         answer = line => SyncAnswer(line, """{ "error": "Item not found" }""");
-        Assert.Contains("Item not found", (await Assert.ThrowsAsync<TodoException>(() => Client().Place(list, list.Tasks[1], 2))).Message);
+        Assert.Contains("Item not found", (await Assert.ThrowsAsync<TodoException>(() => Client().Place(list, list.Tasks[1], "w", null, 2))).Message);
+    }
+
+    [Fact]
+    public async Task A_task_dropped_in_another_section_or_project_is_moved_then_placed()
+    {
+        answer = line => line.StartsWith("POST sync") ? SyncAnswer(line, "\"ok\"") : (200, "{}");
+        var list = Work();
+        await Client().Place(list, list.Tasks[0], "w", "s", 1); // a, into the section, after "In a section"
+        await Client().Place(list, list.Tasks[1], "other", null, 0); // b, to another project, empty
+        Assert.Equal("""POST tasks/a/move {"section_id":"s"}""", requests[0]);
+        Assert.Contains("""{"items":[{"id":"x","child_order":1},{"id":"a","child_order":2}]}""", requests[1]);
+        Assert.Equal("""POST tasks/b/move {"project_id":"other"}""", requests[2]);
+        Assert.Contains("""{"items":[{"id":"b","child_order":1}]}""", requests[3]);
     }
 
     [Fact]

@@ -74,6 +74,15 @@ public sealed class TodoTxt(string path, Func<DateTime>? today = null) : TodoBac
 
     public override Task Delete(TodoTask task) => Change(lines => lines.RemoveAt(Find(lines, task.Id)));
 
+    // Its first +tag is its list: replaced, added, or removed for the Inbox. The rest of the line is kept.
+    public override async Task<TodoTask> MoveTo(TodoTask task, string projectId, string? sectionId)
+    {
+        var line = projectId == Inbox ? Regex.Replace(Project.Replace(task.Id, "", 1), @"\s{2,}", " ").Trim()
+            : Project.IsMatch(task.Id) ? Project.Replace(task.Id, "+" + projectId, 1) : task.Id.TrimEnd() + " +" + projectId;
+        await Change(lines => lines[Find(lines, task.Id)] = line);
+        return Parse(line, task.Order);
+    }
+
     // The order is the lines' order: the tasks swap the lines they hold.
     public override Task Reorder(IReadOnlyList<TodoTask> siblings) => Change(lines =>
     {

@@ -185,6 +185,7 @@
 .task.drop-before { box-shadow: inset 0 2px 0 var(--accent); }
 .task.drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
 .todo.drag .slot { pointer-events: none; }
+.drop-on { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: 6px; }
 .task.inserting { background: var(--hover); }
 .task input.inline { flex: 1; width: 100%; border: 0; border-bottom: 1px solid var(--accent); border-radius: 0; background: transparent; padding: 0; font: inherit; outline: none; }
 .task .text { cursor: text; }
@@ -498,7 +499,8 @@ function renderTodo() {
   todoIndex = [];
   todoSlots = [];
   const byOrder = (a, b) => a.order - b.order;
-  const chip = p => `<button class="${todoProject === p.id ? 'on' : ''} ${hidden.has(p.id) ? 'hidden' : ''}" onclick="todoProject=${esc(JSON.stringify(p.id))};render()">${esc(p.name)} <span class="n">${count(p.id)}</span></button>`;
+  const drop = (projectId, sectionId) => `ondragover="dropZone(event)" ondragleave="this.classList.remove('drop-on')" ondrop='dropFirst(event,${esc(JSON.stringify(projectId))},${esc(JSON.stringify(sectionId))})'`;
+  const chip = p => `<button ${drop(p.id, null)} class="${todoProject === p.id ? 'on' : ''} ${hidden.has(p.id) ? 'hidden' : ''}" onclick="todoProject=${esc(JSON.stringify(p.id))};render()">${esc(p.name)} <span class="n">${count(p.id)}</span></button>`;
   // A task and its sub-tasks, indented; a "+" slot before each top-level task and after the last, to add one there.
   const tree = (tasks, parent, depth, place) => {
     const sib = tasks.filter(x => (x.parentId || null) === parent).sort(byOrder);
@@ -520,11 +522,11 @@ function renderTodo() {
       const sections = L.sections.filter(s => s.projectId === p.id);
       const loose = mine.filter(x => !sections.some(s => s.id === x.sectionId));
       const isHidden = hidden.has(p.id);
-      return `<div class="proj"><h3>${esc(p.name)} <span class="n">${mine.length}</span>
+      return `<div class="proj"><h3 ${drop(p.id, null)}>${esc(p.name)} <span class="n">${mine.length}</span>
           <button class="hide" title="${isHidden ? 'Show this list in All again' : 'Hide this list from All (still under Hidden)'}"
             onclick="todoHide(${esc(JSON.stringify(p.id))},${!isHidden})">${icon(isHidden ? 'eye' : 'eyeOff')}</button></h3>
         ${loose.length || !mine.length ? block(loose, { projectId: p.id, sectionId: null }) : ''}
-        ${sections.map(s => { const inside = mine.filter(x => x.sectionId === s.id); return inside.length ? `<h4>${esc(s.name)} <span class="n">${inside.length}</span></h4>${block(inside, { projectId: p.id, sectionId: s.id })}` : ''; }).join('')}</div>`;
+        ${sections.map(s => { const inside = mine.filter(x => x.sectionId === s.id); return `<h4 ${drop(p.id, s.id)}>${esc(s.name)} <span class="n">${inside.length}</span></h4>${block(inside, { projectId: p.id, sectionId: s.id })}`; }).join('')}</div>`;
     }).join('') || `<div class="empty">${icon('todo')}Nothing to do.</div>`}
   </div>`;
   todoRedrawing = false;
@@ -635,16 +637,19 @@ function dragStart(e, i) {
 
 function dragEnd() {
   dragged = null;
-  document.querySelectorAll('.task.dragging, .task.drop-before, .task.drop-after').forEach(r => r.classList.remove('dragging', 'drop-before', 'drop-after'));
+  document.querySelectorAll('.dragging, .drop-before, .drop-after, .drop-on').forEach(r => r.classList.remove('dragging', 'drop-before', 'drop-after', 'drop-on'));
   document.querySelector('.todo')?.classList.remove('drag');
 }
 
 // Before or after the row under the mouse, by its half.
 function dropSide(e) { const r = e.currentTarget.getBoundingClientRect(); return e.clientY < r.top + r.height / 2 ? 'before' : 'after'; }
 
+// A task can land next to a task of its own group (keeping its parent), or next to a top-level task of another list
+// or section (it becomes top-level there).
+const canLand = x => dragged && x.id !== dragged.id && (sameGroup(x, dragged) || !x.parentId);
+
 function dragOver(e, i) {
-  const x = todoIndex[i];
-  if (!dragged || x.id === dragged.id || !sameGroup(x, dragged)) return;
+  if (!canLand(todoIndex[i])) return;
   e.preventDefault();
   const side = dropSide(e);
   e.currentTarget.classList.toggle('drop-before', side === 'before');
@@ -668,19 +673,40 @@ function insertBlur() {
     <div class="what"><div class="text">${esc(text || '-')}</div></div></div>`;
 }
 
-// Shown in its new place at once (orders renumbered here), then saved; the reload brings the real order.
 function dragDrop(e, i) {
-  const x = todoIndex[i], task = dragged;
-  if (!task || x.id === task.id || !sameGroup(x, task)) return;
+  const x = todoIndex[i];
+  if (!canLand(x)) return;
   e.preventDefault();
-  const order = siblingsOf(task).filter(y => y.id !== task.id);
-  const index = order.findIndex(y => y.id === x.id) + (dropSide(e) === 'after' ? 1 : 0);
-  order.splice(index, 0, task);
+  const group = siblingsOf(sameGroup(x, dragged) ? dragged : x).filter(y => y.id !== dragged.id);
+  place(x.projectId, x.sectionId || null, group.findIndex(y => y.id === x.id) + (dropSide(e) === 'after' ? 1 : 0));
+}
+
+// Headers (list, section) and the lists' chips take a task first in them.
+function dropZone(e) {
+  if (!dragged) return;
+  e.preventDefault();
+  e.currentTarget.classList.add('drop-on');
+}
+
+function dropFirst(e, projectId, sectionId) {
+  e.currentTarget.classList.remove('drop-on');
+  if (!dragged) return;
+  e.preventDefault();
+  place(projectId, sectionId, 0);
+}
+
+// Shown in its new place at once (moved and orders renumbered here), then saved; the reload brings the real order.
+function place(projectId, sectionId, index) {
+  const real = state.todo.list.tasks.find(y => y.id === dragged.id); // todoIndex can hold a copy
+  const moving = real.projectId !== projectId || (real.sectionId || null) !== sectionId;
+  if (moving) Object.assign(real, { projectId, sectionId, parentId: null });
+  const order = siblingsOf(real).filter(y => y.id !== real.id);
+  order.splice(index, 0, real);
   order.forEach((y, n) => y.order = n);
   dragEnd();
   todoKey = '';
   render();
-  send('todoPlace', { id: task.id, index });
+  send('todoPlace', { id: real.id, projectId, sectionId: sectionId || '', index });
 }
 
 function todoHide(id, hide) {

@@ -66,18 +66,36 @@ public class TodoTxtTests : IDisposable
         File.WriteAllText(File_, "A +Work\nB +Home\nC +Work\nD +Work\n");
         var todo = List();
         var list = await todo.Load();
-        await todo.Place(list, list.Tasks.Single(t => t.Content == "D"), 0);
+        await todo.Place(list, list.Tasks.Single(t => t.Content == "D"), "Work", null, 0);
         Assert.Equal("D +Work\nB +Home\nA +Work\nC +Work\n", File.ReadAllText(File_)); // Home's line stays where it is
 
         list = await todo.Load();
-        await todo.Place(list, list.Tasks.Single(t => t.Content == "D"), 2); // to the end (index in the list without it)
+        await todo.Place(list, list.Tasks.Single(t => t.Content == "D"), "Work", null, 2); // to the end (index in the list without it)
         Assert.Equal("A +Work\nB +Home\nC +Work\nD +Work\n", File.ReadAllText(File_));
 
         File.SetLastWriteTime(File_, new DateTime(2020, 1, 1));
         list = await todo.Load();
-        await todo.Place(list, list.Tasks.Single(t => t.Content == "A"), 0); // already there
-        await todo.Place(list, list.Tasks.Single(t => t.Content == "B"), 5); // alone in its list
+        await todo.Place(list, list.Tasks.Single(t => t.Content == "A"), "Work", null, 0); // already there
+        await todo.Place(list, list.Tasks.Single(t => t.Content == "B"), "Home", null, 5); // alone in its list
         Assert.Equal(new DateTime(2020, 1, 1), File.GetLastWriteTime(File_)); // not even rewritten
+    }
+
+    [Fact]
+    public async Task A_task_dropped_in_another_list_changes_its_tag_and_takes_its_place()
+    {
+        File.WriteAllText(File_, "(A) Call Lena due:2026-11-03\nB +Home\nC +Work @phone\nD +Work\n");
+        var todo = List();
+        var list = await todo.Load();
+        await todo.Place(list, list.Tasks.Single(t => t.Content == "Call Lena"), "Work", null, 1); // from the Inbox, between C and D
+        Assert.Equal("C +Work @phone\nB +Home\n(A) Call Lena due:2026-11-03 +Work\nD +Work\n", File.ReadAllText(File_)); // Work's lines take the new order
+
+        list = await todo.Load();
+        await todo.Place(list, list.Tasks.Single(t => t.Content == "C @phone"), "Home", null, 0); // the first +tag is replaced
+        Assert.Equal("C +Home @phone\nB +Home\n(A) Call Lena due:2026-11-03 +Work\nD +Work\n", File.ReadAllText(File_));
+
+        list = await todo.Load();
+        await todo.Place(list, list.Tasks.Single(t => t.Content == "D"), TodoTxt.Inbox, null, 0); // to the Inbox: no tag
+        Assert.Equal("C +Home @phone\nB +Home\n(A) Call Lena due:2026-11-03 +Work\nD\n", File.ReadAllText(File_));
     }
 
     [Fact]

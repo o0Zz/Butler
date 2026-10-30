@@ -11,8 +11,10 @@ public class VersionTests
     [Fact]
     public void The_build_carries_its_commit_count_and_commit()
     {
-        var count = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("git", "rev-list --count HEAD") { RedirectStandardOutput = true })!
-            .StandardOutput.ReadToEnd().Trim();
+        var count = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("git", "rev-list --count HEAD")
+            { RedirectStandardOutput = true, WorkingDirectory = SourceFolder() })!.StandardOutput.ReadToEnd().Trim(); // in the repo, wherever the build is
         Assert.Matches($@"^\d+\.\d+\.\d+\.{count} \([0-9a-f]{{7}}\)$", Program.Version);
     }
+
+    static string SourceFolder([System.Runtime.CompilerServices.CallerFilePath] string file = "") => Path.GetDirectoryName(file)!;
 }

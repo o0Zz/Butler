@@ -72,6 +72,12 @@ public sealed class Todoist(string token, string api = "https://api.todoist.com/
     public override Task Reopen(string id) => Send(HttpMethod.Post, $"tasks/{id}/reopen");
     public override Task Delete(TodoTask task) => Send(HttpMethod.Delete, $"tasks/{task.Id}");
 
+    public override async Task<TodoTask> MoveTo(TodoTask task, string projectId, string? sectionId)
+    {
+        await Send(HttpMethod.Post, $"tasks/{task.Id}/move", sectionId != null ? new { section_id = sectionId } : new { project_id = projectId });
+        return task with { ProjectId = projectId, SectionId = sectionId, ParentId = null };
+    }
+
     // Through the Sync API's item_reorder: child_order 1..n.
     public override async Task Reorder(IReadOnlyList<TodoTask> siblings)
     {

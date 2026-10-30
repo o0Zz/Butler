@@ -242,8 +242,8 @@ sealed class DashboardForm : Form
             case "todoReopen": EditTodo(async (b, _) => { await b.Reopen(Arg("id")); return null; }); break;
             case "todoDelete": EditTodo(async (b, list) => { await b.Delete(Find(list, Arg("id"))); return null; }); break;
             case "todoPlace":
-                var to = cmd.GetProperty("index").GetInt32();
-                EditTodo(async (b, list) => { await b.Place(list, Find(list, Arg("id")), to); return null; });
+                var (to, toSection) = (cmd.GetProperty("index").GetInt32(), cmd.GetProperty("sectionId").GetString() is { Length: > 0 } ts ? ts : null);
+                EditTodo(async (b, list) => { await b.Place(list, Find(list, Arg("id")), Arg("projectId"), toSection, to); return null; });
                 break;
             case "todoInsert":
                 var (index, sectionId) = (cmd.GetProperty("index").GetInt32(), cmd.GetProperty("sectionId").GetString() is { Length: > 0 } s ? s : null);
