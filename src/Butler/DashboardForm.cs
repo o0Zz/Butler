@@ -148,7 +148,7 @@ sealed class DashboardForm : Form
             }),
             settings = new
             {
-                settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, settings.Todo, settings.TodoFile,
+                settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, settings.Todo, settings.TodoFile, settings.StartPage,
                 file = Program.SettingsFile, installed, todoist = Secrets.Read(Secrets.Todoist) != null,
                 todos = TodoBackend.All.Select(b => new { b.Name, b.Label }),
             },
@@ -204,7 +204,7 @@ sealed class DashboardForm : Form
                 var settings = tray.Settings with // what the page does not edit (hidden lists) is kept
                 {
                     Cli = Arg("cli"), TriggersFile = Arg("triggersFile").Trim(), SkillsFolder = Arg("skillsFolder").Trim(),
-                    AdoOrganization = Arg("adoOrganization").Trim(), Todo = Arg("todo"), TodoFile = Arg("todoFile").Trim(),
+                    AdoOrganization = Arg("adoOrganization").Trim(), Todo = Arg("todo"), TodoFile = Arg("todoFile").Trim(), StartPage = Arg("startPage"),
                 };
                 var problems = settings.Problems();
                 var token = Arg("todoistToken").Trim(); // empty: keep the saved one

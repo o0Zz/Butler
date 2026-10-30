@@ -16,6 +16,8 @@ public sealed record Settings
     public string Todo { get; init; } = "none"; // the To do page's list: TodoBackend.All (the Todoist token is in Secrets)
     public string TodoFile { get; init; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "todo.txt"); // for "txt"
     public string[] TodoHidden { get; init; } = []; // ids of the lists (projects) hidden on the To do page
+    public string StartPage { get; init; } = "runs"; // the dashboard's page when it opens: one of Pages
+    public static readonly string[] Pages = ["runs", "todo", "triggers", "skills", "settings"];
 
     // Defaults when the file does not exist. Throws on an unknown CLI or to-do list (the file can be edited by hand).
     public static Settings Load(string path)
@@ -46,6 +48,7 @@ public sealed record Settings
         if (!Directory.Exists(SkillsFolder)) problems["skillsFolder"] = "Folder not found";
         if (AdoOrganization != "" && !AdoOrganization.StartsWith("https://"))
             problems["adoOrganization"] = "The organization URL, like https://dev.azure.com/<org>";
+        if (!Pages.Contains(StartPage)) problems["startPage"] = $"Unknown page '{StartPage}'";
         if (!TodoBackend.All.Any(b => b.Name == Todo)) problems["todo"] = $"Unknown to-do list '{Todo}'";
         if (Todo == "txt" && !Directory.Exists(Path.GetDirectoryName(Environment.ExpandEnvironmentVariables(TodoFile))))
             problems["todoFile"] = "Folder not found (the file itself is created with the first task)";

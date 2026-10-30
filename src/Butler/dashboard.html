@@ -337,7 +337,7 @@ function draw() {
   $('title').textContent = { runs: 'Runs', todo: 'To do', triggers: 'Triggers', skills: 'Skills', settings: 'Settings' }[view];
   $('hdr').innerHTML = view === 'runs' ? stats()
     : view === 'todo' ? (state.todo ? `<span class="muted" style="font-size:12.5px">${esc(state.todo.label || '')}${state.todo.read ? ' · updated ' + esc(ago(state.todo.read)) : ''}</span>
-        <button onclick="send('todoRefresh')" title="Read the list again">${icon('sync')}Refresh</button>
+        <button onclick="send('todoRefresh')" title="Read the list again (F5)">${icon('sync')}Refresh</button>
         <button onclick="send('todoOpen')" title="${state.todo.backend === 'todoist' ? 'Open Todoist in the browser' : 'Show the todo.txt file in its folder'}">${icon('open')}${state.todo.backend === 'todoist' ? 'Todoist' : 'Folder'}</button>` : '')
     : view === 'skills' ? `<button onclick="send('openSkills')">${icon('folder')}Open folder</button>`
     : view === 'triggers' ? `<button onclick="send('chat')" title="Opens ${esc(cap(state.cli))} in a terminal, in your skills folder: describe what you want, it edits the triggers and skills">${icon('sparkles')}Ask AI</button>
@@ -930,7 +930,10 @@ function triggerSaved(error) {
   else closeEditor();
 }
 
-addEventListener('keydown', e => { if (e.key === 'Escape') { if (form) closeEditor(); if (todoForm) closeTask(); } });
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (form) closeEditor(); if (todoForm) closeTask(); }
+  if (e.key === 'F5' && view === 'todo' && state.todo) { e.preventDefault(); send('todoRefresh'); } // as the Refresh button, not a page reload
+});
 
 // Drawn once per visit: the state is pushed every few seconds while a run is live, and must not reset what is being typed.
 function renderSettings() {
@@ -981,6 +984,16 @@ function renderSettings() {
         <div class="err" id="e-todoistToken"></div>
       </div>
     </div>
+    <div class="card">
+      <h3>Dashboard</h3>
+      <div class="field">
+        <label for="s-startPage">Start page</label>
+        <div class="hint">The page shown when the dashboard opens.</div>
+        <div class="bar"><select id="s-startPage" onchange="checkSettings()">${[...document.querySelectorAll('nav a')].map(a =>
+          `<option value="${a.dataset.view}" ${a.dataset.view === s.startPage ? 'selected' : ''}>${esc(a.querySelector('.label').textContent)}</option>`).join('')}</select></div>
+        <div class="err" id="e-startPage"></div>
+      </div>
+    </div>
     <div class="savebar">
       <button class="primary" id="s-save" onclick="saveSettings()">Save</button>
       <button id="s-revert" onclick="$('content').innerHTML='';renderSettings()">Revert</button>
@@ -999,7 +1012,8 @@ const pathField = (id, label, hint, value, pick = 'file', filter = 'JSON (*.json
     <button onclick="send('browse',{pick:'${pick}',filter:'${filter}',title:'${label}',target:'s-${id}',value:$('s-${id}').value})">${icon('folder')}Browse…</button></div>
   <div class="err" id="e-${id}"></div></div>`;
 const settingsDraft = () => ({ cli: $('s-cli').value, triggersFile: $('s-triggersFile').value.trim(), skillsFolder: $('s-skillsFolder').value.trim(),
-  adoOrganization: $('s-adoOrganization').value.trim(), todo: $('s-todo').value, todoFile: $('s-todoFile').value.trim(), todoistToken: $('s-todoistToken').value.trim() });
+  adoOrganization: $('s-adoOrganization').value.trim(), todo: $('s-todo').value, todoFile: $('s-todoFile').value.trim(), todoistToken: $('s-todoistToken').value.trim(),
+  startPage: $('s-startPage').value });
 
 function forgetTodoist() {
   if (!confirm('Forget the Todoist token? The To do page cannot read Todoist until a new one is saved.')) return;
@@ -1049,6 +1063,7 @@ let last = '';
 chrome.webview.addEventListener('message', e => {
   const json = JSON.stringify(e.data);
   if (json === last) return; // pushed every few seconds; only redraw on change
+  if (!last && document.querySelector(`nav a[data-view="${e.data.settings.startPage}"]`)) view = e.data.settings.startPage; // the first push
   last = json;
   state = e.data;
   render();

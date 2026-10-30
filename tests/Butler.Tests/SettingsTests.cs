@@ -35,6 +35,16 @@ public class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void The_dashboard_starts_on_runs_by_default_and_an_unknown_page_is_refused()
+    {
+        Assert.Equal("runs", Settings.Load(File_).StartPage);
+        File.WriteAllText(File_, """{ "startPage": "todo" }""");
+        Assert.Equal("todo", Settings.Load(File_).StartPage);
+        Assert.DoesNotContain("startPage", Settings.Load(File_).Problems().Keys);
+        Assert.Equal("Unknown page 'inbox'", new Settings { StartPage = "inbox" }.Problems()["startPage"]);
+    }
+
+    [Fact]
     public void Unknown_cli_in_the_file_is_refused()
     {
         File.WriteAllText(File_, """{ "cli": "gpt" }""");

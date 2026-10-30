@@ -4,7 +4,7 @@ Windows tray app that runs an agent CLI headless (Claude Code `claude -p` by def
 Single user, single machine: triggers live in the user's own skills folder and call their skills, mailbox and folders.
 
 ## Configuration
-- Butler's own settings are local to the machine: `%LOCALAPPDATA%\Butler\settings.json` (`Settings`), edited on the dashboard's Settings page (also by hand; an unknown `cli` is refused). Today: `cli` (`claude` or `copilot`), `triggersFile`, `skillsFolder`, `adoOrganization`, `todo` (`none`, `todoist`, `txt`), `todoFile`; defaults when the file is missing: claude and `~/.claude/skills`. New options go there, with a field on the Settings page.
+- Butler's own settings are local to the machine: `%LOCALAPPDATA%\Butler\settings.json` (`Settings`), edited on the dashboard's Settings page (also by hand; an unknown `cli` is refused). Today: `cli` (`claude` or `copilot`), `triggersFile`, `skillsFolder`, `adoOrganization`, `todo` (`none`, `todoist`, `txt`), `todoFile`, `startPage` (the dashboard page shown when it opens, `runs` by default); defaults when the file is missing: claude and `~/.claude/skills`. New options go there, with a field on the Settings page.
 - Every Butler process reads the settings when it starts (runs are separate processes, so a change applies to the next run). The tray watches `settings.json` and the triggers file it points to, and reloads + syncs on change.
 - Saving from the Settings page refuses invalid values (`Settings.Problems`: CLI not installed, missing file or folder) and shows them next to the fields.
 - Secrets (the Todoist token) go in the Windows Credential Manager (`Secrets`, `Butler/Todoist`), never in `settings.json`. A new token is checked against Todoist before it is saved.
