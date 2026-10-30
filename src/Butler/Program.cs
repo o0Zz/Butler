@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using Microsoft.Toolkit.Uwp.Notifications;
 
 namespace Butler;
@@ -16,6 +17,11 @@ static class Program
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Butler");
     public static string SettingsFile => Path.Combine(Home, "settings.json");
     public static string Exe => Environment.ProcessPath!;
+    public static string Version { get; } = ShortVersion(typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion);
+
+    // "1.2.0+<commit sha>" (the SDK adds the commit) as "1.2.0 (abc1234)".
+    public static string ShortVersion(string informational) => informational.Split('+') is [var version, var sha, ..]
+        ? $"{version} ({sha[..Math.Min(7, sha.Length)]})" : informational;
 
     [STAThread]
     static int Main(string[] args)

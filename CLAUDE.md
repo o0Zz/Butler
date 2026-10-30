@@ -34,6 +34,8 @@ Single user, single machine: triggers live in the user's own skills folder and c
 
 ## Commands
 - `dotnet build`, `dotnet test` (from the repo root).
+- Version: `X.Y.Z.<commit count>`, set by the csproj's `GitVersion` target (`VersionBase` 0.0.0; CI passes the tag's, so `v1.0.0` → 1.0.0.N). Shown under the dashboard's title with its commit (`Program.Version`).
+- CI: `.github/workflows/ci.yml` builds and tests every push and PR on windows-latest; a `v*` tag also publishes the framework-dependent win-x64 zip to a GitHub release.
 - `Butler.exe` (tray), `Butler.exe run <trigger> [var=value ...]`, `Butler.exe answer <runId> <text>`, `Butler.exe sync`.
 - `BUTLER_DATA` overrides the data folder (and so the settings). Use a scratch `BUTLER_DATA` for manual tests, with a `settings.json` pointing at a scratch triggers file.
 

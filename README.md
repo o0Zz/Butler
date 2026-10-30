@@ -8,6 +8,8 @@
 Butler runs Claude Code (or GitHub Copilot CLI) on its own: every morning, when a mail arrives, when a work item
 changes, when a file lands in a folder. Then it tells you what it did, and asks when it needs you.
 
+[![CI](https://github.com/o0Zz/butler/actions/workflows/ci.yml/badge.svg)](https://github.com/o0Zz/butler/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/o0Zz/butler)](https://github.com/o0Zz/butler/releases)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-informational)
 ![.NET](https://img.shields.io/badge/.NET-9-512BD4)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
@@ -96,9 +98,12 @@ A prompt starting with `/skill` calls that skill. Every trigger also has a **Run
 
 ## Get started
 
+Download the zip of the latest [release](https://github.com/o0Zz/butler/releases), extract it anywhere and run
+`Butler.exe`, or build it yourself (below).
+
 Requirements:
-- Windows 10 or 11, the [.NET 9 SDK](https://dotnet.microsoft.com/download) and the WebView2 runtime (built into
-  Windows 11).
+- Windows 10 or 11, the [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0) (the SDK to build)
+  and the WebView2 runtime (built into Windows 11).
 - An agent CLI, logged in: [Claude Code](https://docs.claude.com/en/docs/claude-code) (`claude`) or
   [GitHub Copilot CLI](https://github.com/features/copilot/cli) (`copilot`).
 - For mail triggers: Outlook classic, running. For Azure DevOps triggers: the
@@ -114,6 +119,15 @@ src/Butler/bin/Debug/net9.0-windows10.0.17763.0/Butler.exe
 
 Butler starts in the tray. Open the dashboard, set your CLI, triggers file and skills folder on the **Settings**
 page, then add your first trigger.
+
+Versions are `X.Y.Z.N`, N being the number of commits: `0.0.0.N` for any build, `1.0.0.N` for the tag `v1.0.0`.
+CI ([GitHub Actions](.github/workflows/ci.yml)) builds and tests every push and pull request; pushing a tag `vX.Y.Z`
+also publishes the zip as a GitHub release:
+
+```sh
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ## How it works
 

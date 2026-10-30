@@ -1,0 +1,55 @@
+# Builds and tests every push and pull request. A tag vX.Y.Z also publishes Butler-X.Y.Z.<commits>-win-x64.zip to a GitHub release.
+name: CI
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write # the release, on a tag
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the whole history: the version counts the commits
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      # X.Y.Z.<commit count> (counted again by the csproj): 1.0.0 for a tag v1.0.0, 0.0.0 for any other build.
+      - name: Version
+        shell: pwsh
+        run: |
+          $base = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') } else { '0.0.0' }
+          "VERSION=$base.$(git rev-list --count HEAD)" >> $env:GITHUB_ENV
+          "VERSION_ARG=-p:VersionBase=$base" >> $env:GITHUB_ENV
+
+      - name: Build
+        run: dotnet build -c Release ${{ env.VERSION_ARG }}
+
+      # Outlook and Azure DevOps tests skip themselves here (no Outlook running, no BUTLER_TEST_ADO_ORG).
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish src/Butler -c Release -r win-x64 --self-contained false -o publish ${{ env.VERSION_ARG }}
+          Compress-Archive publish/* "Butler-$env:VERSION-win-x64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Butler-${{ env.VERSION }}-win-x64
+          path: publish/
+
+      - name: Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Butler-${{ env.VERSION }}-win-x64.zip
+          generate_release_notes: true

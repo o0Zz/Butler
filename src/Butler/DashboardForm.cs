@@ -41,7 +41,8 @@ sealed class DashboardForm : Form
         // Links in Claude's output open in the browser; the dashboard itself never navigates away.
         web.CoreWebView2.NavigationStarting += (_, e) => { if (ready) { e.Cancel = true; OpenLink(e.Uri); } };
         web.CoreWebView2.NewWindowRequested += (_, e) => { e.Handled = true; OpenLink(e.Uri); };
-        var html = Resource("dashboard.html").Replace("<!--marked-->", $"<script>{Resource("marked.min.js")}</script>");
+        var html = Resource("dashboard.html").Replace("<!--marked-->", $"<script>{Resource("marked.min.js")}</script>")
+            .Replace("<!--logo-->", Resource("butler.svg")).Replace("<!--version-->", Program.Version);
         web.NavigateToString(html);
     }
 
@@ -224,6 +225,11 @@ sealed class DashboardForm : Form
                 break;
             case "forgetTodoist":
                 Secrets.Delete(Secrets.Todoist);
+                break;
+            case "todoOpen":
+                if (tray.Settings.Todo == "todoist") Open("https://app.todoist.com/");
+                else if (Environment.ExpandEnvironmentVariables(tray.Settings.TodoFile) is var file && File.Exists(file)) Process.Start("explorer.exe", $"/select,\"{file}\"");
+                else Process.Start("explorer.exe", Path.GetDirectoryName(file)!); // not created yet
                 break;
             case "todoRefresh": todoRead = DateTime.MinValue; LoadTodo(); break;
             case "todoAdd": EditTodo(async (b, _) => { await b.Add(Arg("text")); return null; }); break;

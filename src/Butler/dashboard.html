@@ -38,9 +38,9 @@
   .ok { color: var(--ok); } .err { color: var(--err); }
   /* Sidebar */
   nav { width: 220px; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 10px; gap: 2px; flex-shrink: 0; }
-  nav h1 { font-size: 18px; margin: 0 10px 18px; display: flex; align-items: center; gap: 8px; }
-  nav .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
-  nav .dot.warn { background: var(--warn); } nav .dot.err { background: var(--err); }
+  nav h1 { font-size: 18px; margin: 0 6px 18px; display: flex; align-items: center; gap: 10px; line-height: 1.1; }
+  nav h1 .logo svg { width: 34px; height: 34px; display: block; }
+  nav h1 small { display: block; font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 2px; }
   nav a { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; cursor: pointer; user-select: none; }
   nav a .label { flex: 1; }
   nav a:hover { background: var(--hover); }
@@ -220,7 +220,7 @@
 </head>
 <body>
 <nav>
-  <h1><span class="dot" id="dot"></span>Butler</h1>
+  <h1><span class="logo"><!--logo--></span><span>Butler<small title="Butler's version (and its commit)"><!--version--></small></span></h1>
   <a data-view="runs"><i data-ic="runs"></i><span class="label">Runs</span><span class="count" id="c-runs"></span></a>
   <a data-view="todo"><i data-ic="todo"></i><span class="label">To do</span><span class="count" id="c-todo"></span></a>
   <a data-view="triggers"><i data-ic="triggers"></i><span class="label">Triggers</span><span class="count" id="c-triggers"></span></a>
@@ -329,15 +329,14 @@ function draw() {
   const dueNow = (state.todo?.list?.tasks || []).filter(x => x.due && x.due.slice(0, 10) <= day(0) && !state.todo.hidden.includes(x.projectId)).length;
   $('c-todo').textContent = dueNow || '';
   $('c-todo').title = dueNow ? `${dueNow} due today or late` : '';
-  const sourceError = state.sources.some(s => s.error);
-  $('dot').className = 'dot' + (state.error || sourceError ? ' err' : st.waiting ? ' warn' : '');
   $('banner').innerHTML = state.error ? `<div class="banner">${icon('alert')}${esc(state.error)}</div>` : '';
   drawSources();
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === view));
   $('title').textContent = { runs: 'Runs', todo: 'To do', triggers: 'Triggers', skills: 'Skills', settings: 'Settings' }[view];
   $('hdr').innerHTML = view === 'runs' ? stats()
     : view === 'todo' ? (state.todo ? `<span class="muted" style="font-size:12.5px">${esc(state.todo.label || '')}${state.todo.read ? ' · updated ' + esc(ago(state.todo.read)) : ''}</span>
-        <button onclick="send('todoRefresh')" title="Read the list again">${icon('sync')}Refresh</button>` : '')
+        <button onclick="send('todoRefresh')" title="Read the list again">${icon('sync')}Refresh</button>
+        <button onclick="send('todoOpen')" title="${state.todo.backend === 'todoist' ? 'Open Todoist in the browser' : 'Show the todo.txt file in its folder'}">${icon('open')}${state.todo.backend === 'todoist' ? 'Todoist' : 'Folder'}</button>` : '')
     : view === 'skills' ? `<button onclick="send('openSkills')">${icon('folder')}Open folder</button>`
     : view === 'triggers' ? `<button onclick="send('chat')" title="Opens ${esc(cap(state.cli))} in a terminal, in your skills folder: describe what you want, it edits the triggers and skills">${icon('sparkles')}Ask AI</button>
         <button class="primary" onclick="openEditor()">${icon('plus')}New trigger</button>` : '';

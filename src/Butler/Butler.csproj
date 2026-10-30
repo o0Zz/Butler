@@ -7,6 +7,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>butler.ico</ApplicationIcon>
+    <!-- Version X.Y.Z.<commits since the beginning>: 0.0.0 for development builds; CI passes 1.0.0 for a tag v1.0.0 -->
+    <VersionBase Condition="'$(VersionBase)' == ''">0.0.0</VersionBase>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <!-- WebView2 hit-testing breaks when a SystemAware window moves to a monitor with another scale -->
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
@@ -21,10 +24,23 @@
     <EmbeddedResource Include="dashboard.html" LogicalName="Butler.dashboard.html" />
     <EmbeddedResource Include="marked.min.js" LogicalName="Butler.marked.min.js" />
     <EmbeddedResource Include="butler.ico" LogicalName="Butler.butler.ico" />
+    <EmbeddedResource Include="..\..\docs\butler.svg" LogicalName="Butler.butler.svg" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Butler.Tests" />
   </ItemGroup>
+
+  <!-- The commit count, before the SDK turns Version into the assembly versions (0 without git) -->
+  <Target Name="GitVersion" BeforeTargets="GetAssemblyVersion">
+    <Exec Command="git rev-list --count HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="CommitCount" />
+      <Output TaskParameter="ExitCode" PropertyName="GitExit" />
+    </Exec>
+    <PropertyGroup>
+      <CommitCount Condition="'$(GitExit)' != '0'">0</CommitCount>
+      <Version>$(VersionBase).$(CommitCount)</Version>
+    </PropertyGroup>
+  </Target>
 
 </Project>
