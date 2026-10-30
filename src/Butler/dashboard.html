@@ -1,0 +1,282 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --side: #eef0f3; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb;
+    --hover: #f1f3f6; --sel: #e8effd; --accent: #2f6fe4; --accent-text: #fff;
+    --ok: #1f9d55; --ok-bg: #e5f6ec; --warn: #b7791f; --warn-bg: #fdf3dc; --err: #d64545; --err-bg: #fde8e8;
+    --run: #2f6fe4; --run-bg: #e8effd; --idle: #6b7280; --idle-bg: #eef0f3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181d; --panel: #1e2128; --side: #1a1c22; --text: #e6e8ec; --muted: #9097a3; --line: #2c3039;
+      --hover: #252932; --sel: #23324f; --accent: #5b8def;
+      --ok: #4cc38a; --ok-bg: #1d3328; --warn: #e3b341; --warn-bg: #3a3020; --err: #f07171; --err-bg: #3b2224;
+      --run: #7aa5f5; --run-bg: #23324f; --idle: #9097a3; --idle-bg: #2a2e37;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); display: flex; overflow: hidden; }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 6px; padding: 5px 12px; }
+  button:hover { background: var(--hover); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button.primary:hover { filter: brightness(1.08); }
+  .muted { color: var(--muted); }
+  .mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px; }
+
+  nav { width: 210px; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 10px; gap: 2px; flex-shrink: 0; }
+  nav h1 { font-size: 18px; margin: 0 10px 18px; display: flex; align-items: center; gap: 8px; }
+  nav .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
+  nav .dot.warn { background: var(--warn); } nav .dot.err { background: var(--err); }
+  nav a { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-radius: 6px; cursor: pointer; user-select: none; }
+  nav a:hover { background: var(--hover); }
+  nav a.active { background: var(--panel); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .06); }
+  nav .count { font-size: 12px; color: var(--muted); }
+  nav .count.badge { background: var(--warn); color: #fff; border-radius: 10px; padding: 0 7px; font-weight: 600; }
+  nav .bottom { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding: 0 6px; }
+  nav .bottom .mono { font-size: 11px; word-break: break-all; }
+
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  header { padding: 18px 24px 12px; display: flex; align-items: center; gap: 10px; }
+  header h2 { margin: 0; font-size: 20px; flex: 1; }
+  .banner { margin: 0 24px 12px; padding: 10px 14px; border-radius: 8px; background: var(--err-bg); color: var(--err); }
+  .content { flex: 1; min-height: 0; padding: 0 24px 24px; overflow: auto; }
+
+  .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 10px; white-space: nowrap; }
+  .Done { color: var(--ok); background: var(--ok-bg); } .Failed { color: var(--err); background: var(--err-bg); }
+  .Waiting { color: var(--warn); background: var(--warn-bg); } .Running { color: var(--run); background: var(--run-bg); }
+  .Answered, .Stopped, .none { color: var(--idle); background: var(--idle-bg); }
+
+  /* Runs: list + detail */
+  .split { display: flex; gap: 16px; height: 100%; }
+  .list { width: 42%; min-width: 320px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: auto; }
+  .row { padding: 10px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .row:hover { background: var(--hover); } .row.sel { background: var(--sel); }
+  .row .top { display: flex; align-items: center; gap: 8px; }
+  .row .top b { flex: 1; }
+  .row .sum { margin-top: 3px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .detail { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; }
+  .detail .head { padding: 16px 18px 12px; border-bottom: 1px solid var(--line); }
+  .detail .head h3 { margin: 0 0 4px; font-size: 17px; display: flex; gap: 10px; align-items: center; }
+  .detail .actions { display: flex; gap: 8px; margin-top: 10px; }
+  .ask { margin: 14px 18px 0; padding: 12px 14px; border-radius: 8px; background: var(--warn-bg); }
+  .ask .q { font-weight: 600; margin-bottom: 10px; }
+  .ask .bar { display: flex; gap: 8px; }
+  .ask input { flex: 1; font: inherit; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); }
+  .result { flex: 1; overflow: auto; padding: 4px 18px 14px; word-wrap: break-word; }
+  .result.plain { white-space: pre-wrap; padding-top: 14px; }
+  .result h1, .result h2, .result h3 { font-size: 15px; margin: 16px 0 6px; }
+  .result p, .result ul, .result ol { margin: 8px 0; }
+  .result table { border-collapse: collapse; margin: 10px 0; font-size: 13px; }
+  .result th, .result td { border: 1px solid var(--line); padding: 4px 10px; text-align: left; }
+  .result th { background: var(--bg); }
+  .result code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px; background: var(--bg); padding: 1px 4px; border-radius: 4px; }
+  .result pre { background: var(--bg); padding: 10px 12px; border-radius: 6px; overflow: auto; }
+  .result pre code { padding: 0; }
+  .result a { color: var(--accent); }
+  .activity { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; }
+  .activity .say { margin-top: 6px; }
+  .activity .step { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .acts { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .acts summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+
+  /* Cards: triggers, skills */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .card .title { display: flex; align-items: center; gap: 8px; }
+  .card .title b { font-size: 15px; flex: 1; }
+  .kv { display: grid; grid-template-columns: 70px 1fr; gap: 3px 10px; font-size: 13px; }
+  .kv span:nth-child(odd) { color: var(--muted); }
+  .chip { display: inline-block; font-size: 12px; padding: 1px 8px; margin: 0 4px 2px 0; border-radius: 10px; background: var(--idle-bg); }
+  .chip.bad { background: var(--err-bg); color: var(--err); }
+  .prompt { background: var(--bg); border-radius: 6px; padding: 6px 9px; max-height: 64px; overflow: auto; white-space: pre-wrap; }
+  .desc { color: var(--muted); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .foot { display: flex; align-items: center; gap: 8px; margin-top: auto; }
+  .card .foot .muted { flex: 1; font-size: 12px; }
+</style>
+</head>
+<body>
+<nav>
+  <h1><span class="dot" id="dot"></span>Butler</h1>
+  <a data-view="runs">Runs <span class="count" id="c-runs"></span></a>
+  <a data-view="triggers">Triggers <span class="count" id="c-triggers"></span></a>
+  <a data-view="skills">Skills <span class="count" id="c-skills"></span></a>
+  <div class="bottom">
+    <button onclick="send('sync')">Sync now</button>
+    <button onclick="send('editConfig')">Edit butler.json</button>
+    <span class="mono muted" id="config"></span>
+  </div>
+</nav>
+<main>
+  <header><h2 id="title"></h2><span id="hdr"></span></header>
+  <div id="banner"></div>
+  <div class="content" id="content"></div>
+</main>
+<!--marked-->
+<script>
+// Claude's output can quote mail content: raw HTML is shown as text and only http(s) links are kept.
+const md = new marked.Marked({ gfm: true, breaks: true, renderer: {
+  html: h => esc(h),
+  link: (href, title, text) => /^https?:\/\//i.test(href) ? `<a href="${esc(href)}" title="${esc(title || '')}">${text}</a>` : text,
+  image: (href, title, text) => esc(text),
+} });
+const markdown = s => md.parse(s.replace(/^`?BUTLER-(ASK|SUMMARY):.*$/gm, '').trim());
+let state = { triggers: [], runs: [], skills: [] }, view = 'runs', selected = null, draft = '';
+let watched = null, drawnRun = null, resultScroll = 0, actsOpen = false;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const send = (cmd, args = {}) => chrome.webview.postMessage({ cmd, ...args });
+
+function ago(d) {
+  if (!d) return '';
+  const s = (Date.now() - new Date(d)) / 1000;
+  if (s < 0) return 'in ' + span(-s);
+  return s < 60 ? 'just now' : span(s) + ' ago';
+}
+function span(s) {
+  return s < 3600 ? Math.round(s / 60) + ' min' : s < 86400 ? Math.round(s / 3600) + ' h' : Math.round(s / 86400) + ' d';
+}
+const full = d => d ? new Date(d).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+function duration(r) {
+  if (!r.ended) return '';
+  const s = Math.round((new Date(r.ended) - new Date(r.started)) / 1000);
+  return s < 60 ? s + ' s' : Math.floor(s / 60) + ' min ' + (s % 60) + ' s';
+}
+const days = { sun: 'Sunday', mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday' };
+function when(t) {
+  if (t.on === 'mail') return 'When a mail arrives';
+  const [kind, at] = t.schedule.split(' ');
+  const [k, v] = kind.split(':');
+  return k === 'daily' ? `Every day at ${at}` : k === 'weekly' ? `Every ${days[v]} at ${at}` : `Monthly on day ${v} at ${at}`;
+}
+
+// Redraws everything but keeps the scroll positions (the list must not jump when a row is clicked).
+function render() {
+  const panes = () => document.querySelectorAll('.content, .list');
+  const scroll = [...panes()].map(el => el.scrollTop);
+  draw();
+  panes().forEach((el, i) => el.scrollTop = scroll[i] ?? 0);
+}
+
+function draw() {
+  const waiting = state.runs.filter(r => r.status === 'Waiting').length;
+  $('c-runs').textContent = waiting || state.runs.length;
+  $('c-runs').className = 'count' + (waiting ? ' badge' : '');
+  $('c-triggers').textContent = state.triggers.length;
+  $('c-skills').textContent = state.skills.length;
+  $('dot').className = 'dot' + (state.error ? ' err' : waiting ? ' warn' : '');
+  $('config').textContent = state.configFile || '';
+  $('banner').innerHTML = state.error ? `<div class="banner">${esc(state.error)}</div>` : '';
+  document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === view));
+  $('title').textContent = { runs: 'Runs', triggers: 'Triggers', skills: 'Skills' }[view];
+  $('hdr').innerHTML = view === 'skills' ? `<button onclick="send('openSkills')">Open folder</button>`
+    : view === 'triggers' ? `<button onclick="send('chat')" title="Claude in a terminal, in the skills folder: ask it to add or change triggers and skills">Talk to Claude</button>` : '';
+  ({ runs: renderRuns, triggers: renderTriggers, skills: renderSkills })[view]();
+}
+
+function renderRuns() {
+  const runs = state.runs;
+  if (!runs.length) { $('content').innerHTML = '<div class="empty">No runs yet.</div>'; return; }
+  if (!runs.some(r => r.id === selected)) selected = runs[0].id;
+  if (selected !== watched) { watched = selected; send('select', { id: selected }); } // C# then pushes its activity
+  const r = runs.find(r => r.id === selected);
+  const act = state.activity?.id === r.id ? state.activity.lines : null;
+  resultScroll = document.querySelector('.result')?.scrollTop ?? 0;
+  const input = $('answer');
+  if (input) draft = input.value;
+  const focused = document.activeElement?.id === 'answer';
+  $('content').innerHTML = `<div class="split">
+    <div class="list">${runs.map(x => `
+      <div class="row ${x.id === selected ? 'sel' : ''}" onclick="selected='${x.id}';draft='';render()">
+        <div class="top"><b>${esc(x.trigger)}</b><span class="pill ${x.status}">${x.status}</span></div>
+        <div class="sum" title="${esc(full(x.started))}">${esc(ago(x.started))} · ${esc(x.question || x.summary || (x.status === 'Running' ? 'working…' : ''))}</div>
+      </div>`).join('')}</div>
+    <div class="detail">
+      <div class="head">
+        <h3>${esc(r.trigger)} <span class="pill ${r.status}">${r.status}</span></h3>
+        <div class="muted">${esc(full(r.started))}${duration(r) ? ' · ' + duration(r) : ''}${r.costUsd != null ? ' · $' + r.costUsd.toFixed(2) : ''}</div>
+        <div class="actions">
+          <button onclick="send('openLog',{id:'${r.id}'})">Open log</button>
+          <button onclick="send('terminal',{session:'${r.sessionId}'})">Continue in terminal</button>
+          ${r.status === 'Running' ? `<button onclick="if(confirm('Stop this run? Claude is killed where it is.'))send('stop',{id:'${r.id}'})">Stop</button>` : ''}
+          ${r.status === 'Waiting' ? `<button onclick="send('stop',{id:'${r.id}'})" title="Drop the question, the run ends as Stopped">Dismiss</button>` : ''}
+        </div>
+      </div>
+      ${r.status === 'Waiting' ? `<div class="ask">
+        <div class="q">${esc(r.question)}</div>
+        <div class="bar">
+          <button class="primary" onclick="answer('yes')">Yes</button>
+          <button onclick="answer('no')">No</button>
+          <input id="answer" placeholder="Or type an answer…" onkeydown="if(event.key==='Enter')answer(this.value)">
+          <button onclick="answer($('answer').value)">Send</button>
+        </div></div>` : ''}
+      <div class="result">${r.status === 'Running'
+        ? (act?.length ? activity(act) : '<span class="muted">Starting…</span>')
+        : (r.result ? markdown(r.result) : r.status === 'Stopped' ? `<p class="muted">${esc(r.summary)}</p>` : '') + (act?.length ? `<details class="acts" ${actsOpen ? 'open' : ''} ontoggle="actsOpen=this.open"><summary>Activity (${act.length} steps)</summary>${activity(act)}</details>` : '')}</div>
+    </div></div>`;
+  const again = $('answer');
+  if (again) { again.value = draft; if (focused) again.focus(); }
+  const result = document.querySelector('.result');
+  if (r.status === 'Running') result.scrollTop = result.scrollHeight; // follow the live activity
+  else if (r.id === drawnRun) result.scrollTop = resultScroll;
+  drawnRun = r.id;
+}
+
+// Claude's sentences, and "▸ Tool: detail" for each tool call.
+const activity = lines => `<div class="activity">${lines.map(l => `<div class="${l.startsWith('▸') ? 'step' : 'say'}">${esc(l)}</div>`).join('')}</div>`;
+
+function answer(text) {
+  text = (text || '').trim();
+  if (!text) return;
+  draft = '';
+  send('answer', { id: selected, text });
+}
+
+function renderTriggers() {
+  if (!state.triggers.length) { $('content').innerHTML = '<div class="empty">No triggers. Add some in butler.json.</div>'; return; }
+  $('content').innerHTML = `<div class="grid">${state.triggers.map(t => `
+    <div class="card">
+      <div class="title"><b>${esc(t.name)}</b><span class="pill none">${t.on === 'mail' ? '✉ mail' : '⏱ schedule'}</span></div>
+      <div class="kv">
+        <span>When</span><span>${esc(when(t))}</span>
+        ${t.on === 'mail' ? `<span>From</span><span>${t.from.map(f => `<span class="chip">${esc(f)}</span>`).join('')}</span>` : ''}
+        ${t.on === 'schedule' ? `<span>Next</span><span title="${esc(full(t.next))}">${t.next ? esc(full(t.next)) + ' <span class="muted">(' + esc(ago(t.next)) + ')</span>' : '<span class="muted">not scheduled</span>'}</span>` : ''}
+        <span>Skill</span><span>${t.skill ? `<span class="chip ${t.skillKnown ? '' : 'bad'}" title="${t.skillKnown ? '' : 'No such skill in your skills folder'}">/${esc(t.skill)}</span>` : '<span class="muted">none</span>'}</span>
+      </div>
+      <div class="prompt mono">${esc(t.prompt)}</div>
+      <div class="foot">
+        <span class="muted">${t.last ? `Last run ${esc(ago(t.last.started))} <span class="pill ${t.last.status}">${t.last.status}</span>` : 'Never run'}</span>
+        <button class="primary" onclick="send('run',{name:'${t.name}'})">Run now</button>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function renderSkills() {
+  if (!state.skills.length) { $('content').innerHTML = '<div class="empty">No skills found.</div>'; return; }
+  $('content').innerHTML = `<div class="grid">${state.skills.map(s => `
+    <div class="card">
+      <div class="title"><b>/${esc(s.name)}</b></div>
+      <div class="desc" title="${esc(s.description)}">${esc(s.description)}</div>
+      <div class="foot">
+        <span class="muted">${s.triggers.length ? 'Triggered by ' + s.triggers.map(n => `<span class="chip">${esc(n)}</span>`).join('') : 'No trigger'}</span>
+        <button onclick="send('openSkill',{folder:'${esc(s.folder)}'})">Open</button>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+document.querySelectorAll('nav a').forEach(a => a.onclick = () => { view = a.dataset.view; draw(); $('content').scrollTop = 0; });
+let last = '';
+chrome.webview.addEventListener('message', e => {
+  const json = JSON.stringify(e.data);
+  if (json === last) return; // pushed every few seconds; only redraw on change
+  last = json;
+  state = e.data;
+  render();
+});
+</script>
+</body>
+</html>
