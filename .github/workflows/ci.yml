@@ -1,4 +1,4 @@
-# Builds and tests every push and pull request. A tag vX.Y.Z also publishes Butler-X.Y.Z.<commits>-win-x64.zip to a GitHub release.
+# Builds and tests every push and pull request. A tag vX.Y.Z also publishes Butler-X.Y.Z.<commits>.exe (one self-contained file) to a GitHub release.
 name: CI
 
 on:
@@ -36,20 +36,23 @@ jobs:
       - name: Test
         run: dotnet test -c Release --no-build
 
+      # One Butler.exe with .NET and every library inside (native ones extracted at start): nothing to install.
       - name: Publish
         shell: pwsh
         run: |
-          dotnet publish src/Butler -c Release -r win-x64 --self-contained false -o publish ${{ env.VERSION_ARG }}
-          Compress-Archive publish/* "Butler-$env:VERSION-win-x64.zip"
+          dotnet publish src/Butler -c Release -r win-x64 --self-contained true -o publish ${{ env.VERSION_ARG }} `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none
+          Get-ChildItem publish
+          Copy-Item publish/Butler.exe "Butler-$env:VERSION.exe"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Butler-${{ env.VERSION }}-win-x64
-          path: publish/
+          name: Butler-${{ env.VERSION }}
+          path: Butler-${{ env.VERSION }}.exe
 
       - name: Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: Butler-${{ env.VERSION }}-win-x64.zip
+          files: Butler-${{ env.VERSION }}.exe
           generate_release_notes: true
