@@ -11,7 +11,7 @@ arrives, when a work item changes, when a file lands in a folder. It tells you w
 
 [![CI](https://github.com/o0Zz/butler/actions/workflows/ci.yml/badge.svg)](https://github.com/o0Zz/butler/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/o0Zz/butler)](https://github.com/o0Zz/butler/releases)
-![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-informational)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-informational)
 ![.NET](https://img.shields.io/badge/.NET-9-512BD4)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
@@ -50,7 +50,7 @@ in clean Markdown, with the cost of the run.
 ### It asks, you answer in one click
 
 When the agent needs a decision, the run stops with a question instead of guessing. Answer **Yes**, **No** or a
-sentence, from the dashboard or straight from the Windows notification, and the same session goes on.
+sentence, from the dashboard or straight from the notification on Windows, and the same session goes on.
 
 <div align="center">
 <img src="docs/screenshots/waiting.png" alt="A run waiting for an answer: open a ticket for this CVE and draft a reply? Yes, No or a free answer" />
@@ -113,14 +113,19 @@ mail itself (your skills can prepare drafts).
 
 ## Get started
 
-1. **Download** `Butler-x.y.z.exe` from the latest [release](https://github.com/o0Zz/butler/releases), put it
-   where you like (e.g. `%LOCALAPPDATA%\Programs\Butler`) and run it. One file.
+1. **Download** `Butler-x.y.z.exe` (Windows), `Butler-x.y.z-osx-arm64` or `Butler-x.y.z-linux-x64` from the latest
+   [release](https://github.com/o0Zz/butler/releases), put it where you like (e.g. `%LOCALAPPDATA%\Programs\Butler`)
+   and run it (on macOS and Linux, `chmod +x` it first). One file.
 2. Open the dashboard from the tray icon and go to **Settings**: choose your agent CLI, your triggers file and your
    skills folder (and your to-do list if you want one).
 3. Add your first trigger, and press **Run now** to see it work.
 
 Requirements:
-- Windows 10 or 11 (x64) with the WebView2 runtime (built into Windows 11) and the [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0).
+- Windows 10 or 11 (x64) with the WebView2 runtime (built into Windows 11) and the [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0);
+  macOS (Apple silicon) or Linux (x64) with the [.NET 9 Runtime](https://dotnet.microsoft.com/download/dotnet/9.0).
+  On Linux, WebKitGTK 4.1 for the dashboard (`sudo apt install libwebkit2gtk-4.1-0`), and optionally `notify-send`
+  (`libnotify-bin`) for notifications and `secret-tool` (`libsecret-tools`) with a running keyring for the Todoist token.
+- Mail triggers read Outlook classic: Windows only.
 - An agent CLI, logged in: [Claude Code](https://docs.claude.com/en/docs/claude-code) (`claude`) or
   [GitHub Copilot CLI](https://github.com/features/copilot/cli) (`copilot`).
 - For mail triggers: Outlook classic, running. For Azure DevOps triggers: the
@@ -128,11 +133,11 @@ Requirements:
 
 ## How it works
 
-- A tray app (.NET 9, WinForms) with a WebView2 dashboard.
+- A tray app (.NET 9, Avalonia) with a web dashboard in the system's web view (WebView2, WebKit).
 - Each run is a separate `Butler.exe run <trigger>` process that starts the agent headless
   (`claude -p --output-format stream-json`), records its stream and its outcome, and shows a notification.
 - Triggers are polled by the tray from checkpoints stored in `%LOCALAPPDATA%\Butler`,
-  together with the settings and the run history. Secrets (the Todoist token) go to the Windows Credential Manager.
+  together with the settings and the run history. Secrets (the Todoist token) go to the OS's secret store (Credential Manager, Keychain, libsecret).
 - A small protocol lets a run end with a question (`BUTLER-ASK`) or a one-line outcome (`BUTLER-SUMMARY`); an
   answer resumes the same agent session.
 
@@ -149,7 +154,7 @@ src/Butler/bin/Debug/net9.0-windows10.0.17763.0/Butler.exe
 ```
 
 Building needs the [.NET 9 SDK](https://dotnet.microsoft.com/download). The tests run against the real things:
-folders, Credential Manager, and Outlook or Azure DevOps when they are available.
+folders, the OS's secret store, and Outlook or Azure DevOps when they are available.
 
 Versions are `X.Y.Z.N`, N being the number of commits: `0.0.0.N` for any build, `1.0.0.N` for the tag `v1.0.0`.
 [CI](.github/workflows/ci.yml) builds and tests every push and pull request; pushing a tag also publishes the
