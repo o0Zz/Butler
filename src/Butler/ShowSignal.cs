@@ -13,8 +13,8 @@ public static class ShowSignal
     {
         while (true)
         {
-            using var server = new NamedPipeServerStream(Pipe(name));
-            server.WaitForConnection();
+            // Closed before show: on macOS and Linux a start arriving meanwhile would land on this socket and be lost.
+            using (var server = new NamedPipeServerStream(Pipe(name))) server.WaitForConnection();
             show();
         }
     }) { IsBackground = true }.Start();

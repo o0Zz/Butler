@@ -10,8 +10,8 @@ public class SettingsTests : IDisposable
     {
         var s = Settings.Load(File_);
         Assert.Equal("claude", s.Cli);
-        Assert.EndsWith(@".claude\skills\butler.json", s.TriggersFile);
-        Assert.EndsWith(@".claude\skills", s.SkillsFolder);
+        Assert.EndsWith(Path.Combine(".claude", "skills", "butler.json"), s.TriggersFile);
+        Assert.EndsWith(Path.Combine(".claude", "skills"), s.SkillsFolder);
     }
 
     [Fact]

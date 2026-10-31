@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security;
+using System.Text;
 
 namespace Butler;
 
@@ -10,14 +11,17 @@ sealed class OsascriptNotifications : PlainNotifications
         Command.Run("osascript", ["-e", "on run argv\ndisplay notification (item 2 of argv) with title (item 1 of argv)\nend run", title, message]);
 }
 
-// The login keychain, through the security tool.
+// The login keychain, through the security tool. Stored in base64: security prints a non-ASCII secret in hex, which
+// cannot be told apart from a hex token.
 sealed class Keychain : ISecrets
 {
     public string? Read(string target) =>
-        Command.Run("security", ["find-generic-password", "-s", target, "-w"]) is (0, var output, _) ? output.TrimEnd('\n') : null;
+        Command.Run("security", ["find-generic-password", "-s", target, "-w"]) is (0, var output, _)
+            ? Encoding.UTF8.GetString(Convert.FromBase64String(output.Trim())) : null;
 
     public void Write(string target, string secret) => // -U: replaces it
-        Command.Check("security", ["add-generic-password", "-U", "-s", target, "-a", Environment.UserName, "-w", secret]);
+        Command.Check("security", ["add-generic-password", "-U", "-s", target, "-a", Environment.UserName, "-w",
+            Convert.ToBase64String(Encoding.UTF8.GetBytes(secret))]);
 
     public void Delete(string target) => Command.Run("security", ["delete-generic-password", "-s", target]); // fails when not there
 }
