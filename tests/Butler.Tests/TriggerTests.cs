@@ -1,4 +1,3 @@
-using DaysOfTheWeek = Microsoft.Win32.TaskScheduler.DaysOfTheWeek;
 
 namespace Butler.Tests;
 
@@ -63,6 +62,18 @@ public class TriggerTests
     {
         var t = new Trigger("x", "mail", "/triage-mail", From: ["a"]);
         Assert.Equal("/triage-mail\n\nTriggered by this mail: from a@example.com, subject \"Action Required | CVE-2026-1\", received 2026-10-29 13:40.", t.PromptWith(Mail));
+    }
+
+    [Fact]
+    public void Schedules_give_their_last_and_next_times()
+    {
+        var friday = DateTime.Parse("2026-10-30 12:00");
+        Assert.Equal(DateTime.Parse("2026-10-30 07:30"), Schedule.Parse("mon-fri 07:30").Last(friday));
+        Assert.Equal(DateTime.Parse("2026-11-02 07:30"), Schedule.Parse("mon-fri 07:30").Next(friday));
+        Assert.Equal(friday, Schedule.Parse("daily 12:00").Last(friday)); // at the minute
+        Assert.Equal(DateTime.Parse("2026-10-31 12:00"), Schedule.Parse("daily 12:00").Next(friday));
+        Assert.Equal(DateTime.Parse("2026-12-31 09:00"), Schedule.Parse("monthly:31 09:00").Next(DateTime.Parse("2026-11-01 00:00"))); // no 31 November
+        Assert.Equal(DateTime.Parse("2026-10-31 09:00"), Schedule.Parse("monthly:31 09:00").Last(DateTime.Parse("2026-11-30 00:00")));
     }
 
     [Fact]

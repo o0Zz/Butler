@@ -70,7 +70,7 @@ folder gone) instead of failing in silence.
 
 Pick what starts it: a **schedule** (built from menus), a **mail** from given senders, an **Azure DevOps** query,
 or a **new file** in a folder. Pick a skill, click the variables to insert (`${subject}`, `${path}`...). Butler checks
-everything before saving, and syncs Windows Task Scheduler for you. Prefer words? **Ask AI** opens your agent in
+everything before saving. Prefer words? **Ask AI** opens your agent in
 your skills folder to write the trigger and the skill with you.
 
 <div align="center">
@@ -103,7 +103,7 @@ Triggers live in a JSON file (by default `~/.claude/skills/butler.json`), edited
 
 | `on` | Fires | Variables |
 |---|---|---|
-| `schedule` | `daily HH:mm`; days of the week: `fri HH:mm`, `mon-fri HH:mm` (weekdays), `mon,wed,fri HH:mm`; `monthly:28 HH:mm` (Windows Task Scheduler, even when Butler is closed) | none |
+| `schedule` | `daily HH:mm`; days of the week: `fri HH:mm`, `mon-fri HH:mm` (weekdays), `mon,wed,fri HH:mm`; `monthly:28 HH:mm`; a time missed while Butler was closed or the PC off runs at the next start, once | none |
 | `mail` | a mail from one of the `from` addresses, in any folder of Outlook classic (checked every 30 s) | `${from}` `${subject}` `${received}` |
 | `ado` | a work item created or changed that matches the `where` WIQL condition (checked every 2 min) | `${id}` `${title}` `${state}` `${by}` |
 | `file` | a new file in `folder`, optionally matching `filter`, once fully written | `${path}` `${name}` |
@@ -131,9 +131,7 @@ Requirements:
 - A tray app (.NET 9, WinForms) with a WebView2 dashboard.
 - Each run is a separate `Butler.exe run <trigger>` process that starts the agent headless
   (`claude -p --output-format stream-json`), records its stream and its outcome, and shows a notification.
-- Schedule triggers are tasks in the `\Butler\` folder of Task Scheduler, kept in sync with the JSON. Butler never
-  touches other tasks.
-- Mail, Azure DevOps and file triggers are polled by the tray from checkpoints stored in `%LOCALAPPDATA%\Butler`,
+- Triggers are polled by the tray from checkpoints stored in `%LOCALAPPDATA%\Butler`,
   together with the settings and the run history. Secrets (the Todoist token) go to the Windows Credential Manager.
 - A small protocol lets a run end with a question (`BUTLER-ASK`) or a one-line outcome (`BUTLER-SUMMARY`); an
   answer resumes the same agent session.
@@ -151,7 +149,7 @@ src/Butler/bin/Debug/net9.0-windows10.0.17763.0/Butler.exe
 ```
 
 Building needs the [.NET 9 SDK](https://dotnet.microsoft.com/download). The tests run against the real things:
-Task Scheduler, folders, Credential Manager, and Outlook or Azure DevOps when they are available.
+folders, Credential Manager, and Outlook or Azure DevOps when they are available.
 
 Versions are `X.Y.Z.N`, N being the number of commits: `0.0.0.N` for any build, `1.0.0.N` for the tag `v1.0.0`.
 [CI](.github/workflows/ci.yml) builds and tests every push and pull request; pushing a tag also publishes the

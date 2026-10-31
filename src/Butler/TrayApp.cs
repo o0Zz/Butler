@@ -3,8 +3,7 @@ using System.Diagnostics;
 
 namespace Butler;
 
-// Tray icon. Keeps the Task Scheduler in sync with the triggers file, polls the event triggers (mail, ado, file),
-// and shows the dashboard. Runs themselves are separate Butler processes.
+// Tray icon. Polls the triggers (schedule, mail, ado, file) and shows the dashboard. Runs themselves are separate Butler processes.
 sealed class TrayApp : ApplicationContext
 {
     readonly NotifyIcon icon = new() { Icon = AppIcon.Tray, Text = "Butler", Visible = true };
@@ -24,7 +23,6 @@ sealed class TrayApp : ApplicationContext
         ui = new WindowsFormsSynchronizationContext(); // Current is still null: no control exists before Application.Run
         var menu = new ContextMenuStrip();
         menu.Items.Add("Open dashboard", null, (_, _) => ShowDashboard());
-        menu.Items.Add("Sync now", null, (_, _) => Reload());
         menu.Items.Add("Open folder", null, (_, _) => Process.Start("explorer.exe", Program.Home));
         menu.Items.Add("Exit", null, (_, _) => ExitThread());
         icon.ContextMenuStrip = menu;
@@ -51,8 +49,8 @@ sealed class TrayApp : ApplicationContext
     public Runner Runner => Program.NewRunner(settings);
     public string? LastError { get; private set; }
 
-    // Re-reads the settings and the triggers file, then syncs the Task Scheduler.
-    void Reload()
+    // Re-reads the settings and the triggers file.
+    public void Reload()
     {
         try
         {
@@ -67,10 +65,7 @@ sealed class TrayApp : ApplicationContext
         try
         {
             triggers = Trigger.Load(settings.TriggersFile);
-            var r = TaskSync.Sync(triggers, Program.Exe);
             LastError = null;
-            var changes = r.Created.Select(n => "+" + n).Concat(r.Updated.Select(n => "~" + n)).Concat(r.Deleted.Select(n => "-" + n)).ToList();
-            if (changes.Count > 0) icon.ShowBalloonTip(3000, "Butler synced", string.Join(" ", changes), ToolTipIcon.Info);
         }
         catch (Exception ex) { Fail(Path.GetFileName(settings.TriggersFile), ex); return; }
         dashboard?.RefreshAll();
@@ -94,7 +89,7 @@ sealed class TrayApp : ApplicationContext
         return w;
     }
 
-    // Polls each event kind when it is due, on its own thread: a slow source (az, Outlook) never freezes the tray.
+    // Polls each kind when it is due, on its own thread: a slow source (az, Outlook) never freezes the tray.
     void PollLoop()
     {
         var due = new Dictionary<string, DateTime>();
@@ -102,8 +97,8 @@ sealed class TrayApp : ApplicationContext
         {
             foreach (var kind in TriggerKind.All)
             {
-                if (kind.Interval is not { } every || due.GetValueOrDefault(kind.Name) > DateTime.Now) continue;
-                due[kind.Name] = DateTime.Now + every;
+                if (due.GetValueOrDefault(kind.Name) > DateTime.Now) continue;
+                due[kind.Name] = DateTime.Now + kind.Interval;
                 Poll(kind);
             }
             Thread.Sleep(5_000);
@@ -152,8 +147,6 @@ sealed class TrayApp : ApplicationContext
         dashboard = new DashboardForm(this);
         dashboard.Show();
     }
-
-    public void SyncNow() => Reload();
 
     protected override void ExitThreadCore()
     {

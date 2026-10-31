@@ -118,7 +118,6 @@ sealed class DashboardForm : Form
     {
         if (!ready || IsDisposed) return;
         var runs = runner.Recent(100);
-        var next = TaskSync.NextRuns();
         var settings = tray.Settings;
         if (settings.Todo != "none" && DateTime.Now - todoRead > TimeSpan.FromMinutes(1)) LoadTodo();
         TodoBackend? backend = null;
@@ -139,7 +138,7 @@ sealed class DashboardForm : Form
                 costMonth = history.Where(r => r.Started >= monthStart).Sum(r => r.CostUsd ?? 0),
             },
             kinds = TriggerKind.All.Select(k => new { k.Name, k.Label, k.Variables, k.Form }),
-            sources = TriggerKind.All.Where(k => k.Interval != null && tray.Triggers.Any(t => t.On == k.Name)).Select(k => new
+            sources = TriggerKind.All.Where(k => tray.Triggers.Any(t => t.On == k.Name)).Select(k => new
             {
                 k.Name, k.Label,
                 count = tray.Triggers.Count(t => t.On == k.Name),
@@ -168,7 +167,7 @@ sealed class DashboardForm : Form
                 costMonth = history.Where(r => r.Started >= DateTime.Today.AddDays(-30) && r.Trigger.Equals(t.Name, StringComparison.OrdinalIgnoreCase)).Sum(r => r.CostUsd ?? 0),
                 skill = Skills.Invoked(t.Prompt),
                 skillKnown = Skills.Invoked(t.Prompt) is not { } s || s.Contains(':') || skills.Any(k => k.Name == s || k.Folder == s),
-                next = next.TryGetValue(t.Name, out var n) && n > DateTime.MinValue ? n : (DateTime?)null,
+                next = t.On == "schedule" ? Schedule.Parse(t.Schedule!).Next(DateTime.Now) : (DateTime?)null,
                 last = runs.FirstOrDefault(r => r.Trigger.Equals(t.Name, StringComparison.OrdinalIgnoreCase)),
             }),
             runs,
@@ -193,7 +192,6 @@ sealed class DashboardForm : Form
             case "answer": Program.Start("answer", Arg("id"), Arg("text")); break;
             case "stop": runner.Stop(Arg("id")); Push(); break;
             case "clearRuns": runner.Clear(); historyRead = DateTime.MinValue; Push(); break;
-            case "sync": tray.SyncNow(); break;
             case "editConfig": Open(tray.Settings.TriggersFile); break;
             case "openSkills": Process.Start("explorer.exe", tray.Settings.SkillsFolder); break;
             case "openSkill": Open(Path.Combine(tray.Settings.SkillsFolder, Arg("folder"), "SKILL.md")); break;
@@ -220,7 +218,7 @@ sealed class DashboardForm : Form
                     if (token != "") Secrets.Write(Secrets.Todoist, token);
                     Startup.Set(cmd.GetProperty("startup").GetBoolean(), Program.Exe);
                     settings.Save(Program.SettingsFile);
-                    tray.SyncNow(); // also done by the settings watcher, a second later
+                    tray.Reload(); // also done by the settings watcher, a second later
                     (todo, todoError, todoRead) = (null, null, DateTime.MinValue);
                 }
                 Call("settingsSaved", problems);
@@ -254,7 +252,7 @@ sealed class DashboardForm : Form
             case "todoHide":
                 var hidden = tray.Settings.TodoHidden.Where(id => id != Arg("id"));
                 (tray.Settings with { TodoHidden = [.. cmd.GetProperty("hide").GetBoolean() ? hidden.Append(Arg("id")) : hidden] }).Save(Program.SettingsFile);
-                tray.SyncNow();
+                tray.Reload();
                 break;
             case "browse":
                 if (Browse(Arg("pick") == "folder", Arg("title"), Arg("value"), cmd.TryGetProperty("filter", out var filter) ? filter.GetString()! : "All files|*.*") is { } path) Call("picked", Arg("target"), path);
@@ -276,7 +274,7 @@ sealed class DashboardForm : Form
         Push();
     }
 
-    // Changes the triggers file as it is on disk (not the tray's copy: a hand edit is not lost), then syncs.
+    // Changes the triggers file as it is on disk (not the tray's copy: a hand edit is not lost), then reloads.
     // Returns the error, or null when saved.
     string? EditTriggers(Action<List<Trigger>> change)
     {
@@ -286,7 +284,7 @@ sealed class DashboardForm : Form
             var list = Trigger.Load(path);
             change(list);
             Trigger.Save(path, list);
-            tray.SyncNow(); // also done by the file watcher, a second later
+            tray.Reload(); // also done by the file watcher, a second later
             return null;
         }
         catch (Exception e) when (e is FormatException or IOException or JsonException) { return e.Message; }

@@ -40,9 +40,8 @@ static class Program
                 case null: return RunTray();
                 case "run" when args.Length >= 2: return RunTrigger(args[1], args[2..]).GetAwaiter().GetResult();
                 case "answer" when args.Length >= 3: return Report(NewRunner(Settings.Load(SettingsFile)).Answer(args[1], args[2]).GetAwaiter().GetResult());
-                case "sync": Sync(); return 0;
                 default:
-                    Notifier.Error("Butler", "Usage: Butler.exe [run <trigger> [var=value ...] | answer <runId> <text> | sync]");
+                    Notifier.Error("Butler", "Usage: Butler.exe [run <trigger> [var=value ...] | answer <runId> <text>]");
                     return 2;
             }
         }
@@ -70,7 +69,7 @@ static class Program
     {
         var settings = Settings.Load(SettingsFile);
         var trigger = Trigger.Load(settings.TriggersFile).FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-        if (trigger == null) return 0; // removed from butler.json but its task not synced yet: do nothing
+        if (trigger == null) return 0; // removed from butler.json meanwhile: do nothing
         var values = variables.Select(v => v.Split('=', 2)).Where(kv => kv.Length == 2).ToDictionary(kv => kv[0], kv => kv[1]);
         return Report(await NewRunner(settings).Run(trigger.Name, trigger.PromptWith(values)));
     }
@@ -82,8 +81,6 @@ static class Program
         Notifier.Show(run);
         return run.Status == RunStatus.Failed ? 1 : 0;
     }
-
-    public static TaskSync.Result Sync() => TaskSync.Sync(Trigger.Load(Settings.Load(SettingsFile).TriggersFile), Exe);
 
     // Starts another Butler process (runs never live inside the tray process, so closing it kills nothing).
     public static void Start(params string[] args)

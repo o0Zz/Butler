@@ -1,15 +1,14 @@
 using System.Text.RegularExpressions;
-using DaysOfTheWeek = Microsoft.Win32.TaskScheduler.DaysOfTheWeek;
 
 namespace Butler;
 
-// "schedule": a Windows scheduled task in \Butler\ (TaskSync) runs it, even when the tray is closed.
+// "schedule": polled by the tray like the other kinds. A time missed while Butler was closed or the PC off or asleep
+// runs at the next poll, once however many were missed. Checkpoint: <state>/schedule.json, the last time run per trigger.
 public sealed class ScheduleTrigger : TriggerKind
 {
     public override string Name => "schedule";
     public override string Label => "Schedule";
     public override FormField[] Form => [new("schedule", "When", "schedule")];
-    public override TimeSpan? Interval => null;
 
     public override void Validate(Trigger t) =>
         Schedule.Parse(t.Schedule ?? throw new FormatException($"Trigger '{t.Name}': schedule is missing"));
@@ -26,12 +25,40 @@ public sealed class ScheduleTrigger : TriggerKind
             _ => $"Monthly on day {s.DayOfMonth} at {at}",
         };
     }
+
+    public override List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir) =>
+        Poll(triggers, stateDir, DateTime.Now);
+
+    internal List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, string stateDir, DateTime now)
+    {
+        var path = Path.Combine(stateDir, "schedule.json");
+        var old = Checkpoint.Load<Dictionary<string, DateTime>>(path);
+        var seen = new Dictionary<string, DateTime>(); // only the current triggers: removed ones are forgotten
+        var runs = new List<(Trigger, Dictionary<string, string>)>();
+        foreach (var t in triggers)
+        {
+            var key = $"{t.Name}|{t.Schedule}"; // a new trigger or schedule starts from now: a time already gone does not run
+            if (!old.TryGetValue(key, out var done))
+            {
+                seen[key] = now;
+                continue;
+            }
+            var last = Schedule.Parse(t.Schedule!).Last(now);
+            if (last > done) runs.Add((t, []));
+            seen[key] = last > done ? last : done;
+        }
+        Checkpoint.Save(path, seen);
+        return runs;
+    }
 }
+
+[Flags]
+public enum DaysOfTheWeek { Sunday = 1, Monday = 2, Tuesday = 4, Wednesday = 8, Thursday = 16, Friday = 32, Saturday = 64 }
 
 public enum ScheduleKind { Daily, Weekly, Monthly }
 
 // "daily 09:00"; days of the week: "fri 09:00", "mon-fri 09:00", "mon,wed,fri 09:00" (ranges and lists can mix);
-// "monthly:28 09:00". What the Task Scheduler can do (daily, weekly on days, monthly on a day), so no cron.
+// "monthly:28 09:00". No cron.
 public sealed record Schedule(ScheduleKind Kind, TimeSpan At, int DayOfMonth = 0, DaysOfTheWeek Days = 0)
 {
     static readonly string[] Names = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -70,4 +97,19 @@ public sealed record Schedule(ScheduleKind Kind, TimeSpan At, int DayOfMonth = 0
         }
         return new(ScheduleKind.Daily, at);
     }
+
+    // The latest time at or before now, and the first one after now.
+    public DateTime Last(DateTime now) => Times(now.Date, -1).First(t => t <= now);
+    public DateTime Next(DateTime now) => Times(now.Date, 1).First(t => t > now);
+
+    // Its times day by day from a day, forward or back; 400 days always hold one (a day 31 is skipped by shorter months).
+    IEnumerable<DateTime> Times(DateTime from, int step) =>
+        Enumerable.Range(0, 400).Select(i => from.AddDays(i * step)).Where(On).Select(day => day + At);
+
+    bool On(DateTime day) => Kind switch
+    {
+        ScheduleKind.Daily => true,
+        ScheduleKind.Weekly => Days.HasFlag(Flag(day.DayOfWeek)),
+        _ => day.Day == DayOfMonth,
+    };
 }

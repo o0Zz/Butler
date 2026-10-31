@@ -53,6 +53,26 @@ public class TriggerKindTests : IDisposable
     }
 
     [Fact]
+    public void Schedule_trigger_runs_once_per_time_passed_however_many_were_missed()
+    {
+        var kind = new ScheduleTrigger();
+        var brief = new Trigger("brief", "schedule", "/brief", Schedule: "mon-fri 07:30");
+        int Runs(Trigger t, string at) => kind.Poll([t], State, DateTime.Parse(at)).Count;
+
+        Assert.Equal(0, Runs(brief, "2026-11-02 08:00")); // Monday, first poll: today's time is already gone
+        Assert.Equal(0, Runs(brief, "2026-11-03 07:29"));
+        Assert.Equal(1, Runs(brief, "2026-11-03 07:30"));
+        Assert.Equal(0, Runs(brief, "2026-11-03 07:31")); // never twice
+        Assert.Equal(1, Runs(brief, "2026-11-06 10:00")); // PC off from Tuesday to Friday: one run, not three
+        Assert.Equal(0, Runs(brief, "2026-11-07 10:00")); // Saturday
+        Assert.Equal(1, Runs(brief, "2026-11-09 07:30"));
+
+        var moved = brief with { Schedule = "daily 09:00" }; // a changed schedule starts from now
+        Assert.Equal(0, Runs(moved, "2026-11-09 10:00"));
+        Assert.Equal(1, Runs(moved, "2026-11-10 09:00"));
+    }
+
+    [Fact]
     public void File_trigger_fires_once_per_new_file_once_it_is_written()
     {
         var inbox = Directory.CreateDirectory(Path.Combine(dir, "inbox")).FullName;

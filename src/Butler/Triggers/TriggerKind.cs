@@ -1,7 +1,7 @@
 namespace Butler;
 
 // A kind of trigger: the value of "on" in the triggers file. To add one, write a class in this folder and list it in All.
-// Schedule triggers are started by the Task Scheduler (TaskSync); the others are polled by the tray (Poll, every Interval).
+// The tray polls each kind (Poll, every Interval).
 public abstract class TriggerKind
 {
     public static readonly TriggerKind[] All = [new ScheduleTrigger(), new MailTrigger(), new AdoTrigger(), new FileTrigger()];
@@ -28,8 +28,8 @@ public abstract class TriggerKind
     // When it runs, in one line for the dashboard.
     public abstract string Describe(Trigger t);
 
-    // How often the tray polls it; null: not polled.
-    public virtual TimeSpan? Interval => TimeSpan.FromSeconds(30);
+    // How often the tray polls it.
+    public virtual TimeSpan Interval => TimeSpan.FromSeconds(30);
 
     // The runs to start since the last poll (trigger + variable values), for the triggers of this kind.
     // Keeps its own checkpoint in stateDir; the first poll starts from now. Runs on the tray's polling thread (STA).

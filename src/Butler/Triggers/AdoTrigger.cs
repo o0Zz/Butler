@@ -17,7 +17,7 @@ public sealed class AdoTrigger : TriggerKind
         [new("where", "Work items where", "text", "A WIQL condition, e.g. [System.AssignedTo] = @Me AND [System.ChangedBy] <> @Me")];
     public override string[] Variables => ["id", "title", "state", "by"];
     public override string? Context => "Triggered by this Azure DevOps work item change: #${id} \"${title}\" (${state}), changed by ${by}.";
-    public override TimeSpan? Interval => TimeSpan.FromMinutes(2); // az takes seconds per call
+    public override TimeSpan Interval => TimeSpan.FromMinutes(2); // az takes seconds per call
 
     public override void Validate(Trigger t)
     {
