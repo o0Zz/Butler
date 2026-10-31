@@ -1,60 +1,59 @@
 using System.Diagnostics;
 using System.Text.Json;
-using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.WinForms;
+using Avalonia.Controls;
+using Avalonia.Platform;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 
 namespace Butler;
 
-// The dashboard is dashboard.html in a WebView2. C# pushes the whole state as JSON; the page sends commands back.
-sealed class DashboardForm : Form
+// The dashboard is dashboard.html in the system's web view (WebView2 on Windows). C# pushes the whole state as JSON
+// (receive), the page sends commands back (invokeCSharpAction).
+sealed class DashboardWindow : Window
 {
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
 
     readonly TrayApp tray;
-    readonly WebView2 web = new() { Dock = DockStyle.Fill };
-    bool ready;
+    readonly NativeWebView web = new();
+    bool ready, closed;
     string? selectedRun; // its activity is pushed with the state
     Dictionary<string, string?> installed = Installed(); // where each CLI is; looked up again when the settings change
 
     Runner runner => tray.Runner;
 
-    public DashboardForm(TrayApp tray)
+    public DashboardWindow(TrayApp tray)
     {
         this.tray = tray;
-        Text = "Butler";
-        Size = new Size(1280, 800);
-        MinimumSize = new Size(900, 560);
-        StartPosition = FormStartPosition.CenterScreen;
+        Title = "Butler";
+        (Width, Height, MinWidth, MinHeight) = (1280, 800, 900, 560);
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Icon = AppIcon.App;
-        Controls.Add(web);
-        Load += async (_, _) => await Init();
-    }
-
-    async Task Init()
-    {
-        var env = await CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(Program.Home, "webview"));
-        await web.EnsureCoreWebView2Async(env);
-        web.CoreWebView2.Settings.AreDevToolsEnabled = Debugger.IsAttached;
-        web.CoreWebView2.Settings.IsStatusBarEnabled = false;
-        web.CoreWebView2.WebMessageReceived += (_, e) => OnCommand(e.WebMessageAsJson);
-        web.CoreWebView2.NavigationCompleted += (_, _) => { ready = true; RefreshAll(); };
+        Content = web;
+        Closed += (_, _) => closed = true;
+        web.EnvironmentRequested += (_, e) =>
+        {
+            e.EnableDevTools = Debugger.IsAttached;
+            if (e is WindowsWebView2EnvironmentRequestedEventArgs w) w.UserDataFolder = Path.Combine(Program.Home, "webview");
+        };
+        web.WebMessageReceived += (_, e) => { if (e.Body is { } body) OnCommand(body); };
+        web.NavigationCompleted += (_, _) => { ready = true; RefreshAll(); };
         // Links in Claude's output open in the browser; the dashboard itself never navigates away.
-        web.CoreWebView2.NavigationStarting += (_, e) => { if (ready) { e.Cancel = true; OpenLink(e.Uri); } };
-        web.CoreWebView2.NewWindowRequested += (_, e) => { e.Handled = true; OpenLink(e.Uri); };
-        var html = Resource("dashboard.html").Replace("<!--marked-->", $"<script>{Resource("marked.min.js")}</script>")
-            .Replace("<!--logo-->", Resource("butler.svg")).Replace("<!--version-->", Program.Version);
-        web.NavigateToString(html);
+        web.NavigationStarted += (_, e) => { if (ready) { e.Cancel = true; OpenLink(e.Request?.AbsoluteUri); } };
+        web.NewWindowRequested += (_, e) => { e.Handled = true; OpenLink(e.Request?.AbsoluteUri); };
+        web.AdapterCreated += (_, _) => web.NavigateToString(Resource("dashboard.html") // once the engine is up
+            .Replace("<!--marked-->", $"<script>{Resource("marked.min.js")}</script>")
+            .Replace("<!--logo-->", Resource("butler.svg")).Replace("<!--version-->", Program.Version), new Uri("about:blank"));
     }
 
     static string Resource(string name)
     {
-        using var s = typeof(DashboardForm).Assembly.GetManifestResourceStream("Butler." + name)!;
+        using var s = typeof(DashboardWindow).Assembly.GetManifestResourceStream("Butler." + name)!;
         return new StreamReader(s).ReadToEnd();
     }
 
-    static void OpenLink(string uri)
+    static void OpenLink(string? uri)
     {
-        if (uri.StartsWith("https://") || uri.StartsWith("http://")) Open(uri);
+        if (uri != null && (uri.StartsWith("https://") || uri.StartsWith("http://"))) Open(uri);
     }
 
     public void RefreshAll()
@@ -87,7 +86,7 @@ sealed class DashboardForm : Form
         if (todoLoading) { todoAgain = true; return; }
         todoLoading = true;
         var settings = tray.Settings;
-        Task.Run(async () => (TodoBackend.From(settings) is { } b ? await b.Load() : null)).ContinueWith(t => BeginInvoke(() =>
+        Task.Run(async () => (TodoBackend.From(settings) is { } b ? await b.Load() : null)).ContinueWith(t => Dispatcher.UIThread.Post(() =>
         {
             (todo, todoError) = t.IsCompletedSuccessfully ? (t.Result, null) : (todo, Error(t.Exception!));
             (todoRead, todoLoading) = (DateTime.Now, false);
@@ -101,7 +100,7 @@ sealed class DashboardForm : Form
     {
         var settings = tray.Settings;
         var list = todo ?? new TodoList([], [], []);
-        Task.Run(async () => TodoBackend.From(settings) is { } b ? await edit(b, list) : null).ContinueWith(t => BeginInvoke(() =>
+        Task.Run(async () => TodoBackend.From(settings) is { } b ? await edit(b, list) : null).ContinueWith(t => Dispatcher.UIThread.Post(() =>
         {
             Call("todoDone", t.IsCompletedSuccessfully ? null : Error(t.Exception!), t.IsCompletedSuccessfully ? t.Result : null);
             LoadTodo();
@@ -116,7 +115,7 @@ sealed class DashboardForm : Form
 
     void Push()
     {
-        if (!ready || IsDisposed) return;
+        if (!ready || closed) return;
         var runs = runner.Recent(100);
         var settings = tray.Settings;
         if (settings.Todo != "none" && DateTime.Now - todoRead > TimeSpan.FromMinutes(1)) LoadTodo();
@@ -178,7 +177,7 @@ sealed class DashboardForm : Form
                 triggers = tray.Triggers.Where(t => Skills.Invoked(t.Prompt) is { } k && (k == s.Name || k == s.Folder)).Select(t => t.Name),
             }),
         };
-        web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(state, Json));
+        _ = web.InvokeScript($"receive({JsonSerializer.Serialize(state, Json)})");
     }
 
     void OnCommand(string json)
@@ -255,7 +254,7 @@ sealed class DashboardForm : Form
                 tray.Reload();
                 break;
             case "browse":
-                if (Browse(Arg("pick") == "folder", Arg("title"), Arg("value"), cmd.TryGetProperty("filter", out var filter) ? filter.GetString()! : "All files|*.*") is { } path) Call("picked", Arg("target"), path);
+                _ = Browse(Arg("pick") == "folder", Arg("title"), Arg("value"), cmd.TryGetProperty("filter", out var filter) ? filter.GetString()! : "All files|*.*", Arg("target"));
                 break;
             case "saveTrigger":
                 Call("triggerSaved", EditTriggers(list =>
@@ -290,22 +289,26 @@ sealed class DashboardForm : Form
         catch (Exception e) when (e is FormatException or IOException or JsonException) { return e.Message; }
     }
 
-    // A file or folder picked for a path field; null when cancelled.
-    string? Browse(bool folder, string title, string current, string filter)
+    // Picks a file or folder for a path field and gives it to the page (nothing when cancelled).
+    // filter: "Text (*.txt)|*.txt|All files|*.*", name|patterns pairs, patterns separated by ;.
+    async Task Browse(bool folder, string title, string current, string filter, string target)
     {
-        if (folder)
-        {
-            using var dialog = new FolderBrowserDialog { SelectedPath = Environment.ExpandEnvironmentVariables(current), UseDescriptionForTitle = true, Description = title };
-            return dialog.ShowDialog(this) == DialogResult.OK ? dialog.SelectedPath : null;
-        }
-        using var file = new OpenFileDialog { Title = title, Filter = filter, CheckFileExists = false }; // a todo.txt may not exist yet
-        if (File.Exists(current)) (file.InitialDirectory, file.FileName) = (Path.GetDirectoryName(current)!, Path.GetFileName(current));
-        return file.ShowDialog(this) == DialogResult.OK ? file.FileName : null;
+        current = Environment.ExpandEnvironmentVariables(current);
+        var dir = folder ? current : Path.GetDirectoryName(current);
+        var start = await StorageProvider.TryGetFolderFromPathAsync(Directory.Exists(dir) ? dir : Program.Home);
+        IStorageItem? picked = folder
+            ? (await StorageProvider.OpenFolderPickerAsync(new() { Title = title, SuggestedStartLocation = start })).FirstOrDefault()
+            : (await StorageProvider.OpenFilePickerAsync(new()
+            {
+                Title = title, SuggestedStartLocation = start, SuggestedFileName = Path.GetFileName(current),
+                FileTypeFilter = [.. filter.Split('|').Chunk(2).Select(p => new FilePickerFileType(p[0]) { Patterns = p[1].Split(';') })],
+            })).FirstOrDefault();
+        if (picked?.TryGetLocalPath() is { } path) Call("picked", target, path);
     }
 
     // Calls a function of the page with JSON arguments (the answer to a command).
     void Call(string function, params object?[] args) =>
-        _ = web.CoreWebView2.ExecuteScriptAsync($"{function}({string.Join(",", args.Select(a => JsonSerializer.Serialize(a, Json)))})");
+        _ = web.InvokeScript($"{function}({string.Join(",", args.Select(a => JsonSerializer.Serialize(a, Json)))})");
 
     // An interactive CLI in Windows Terminal, resuming that session when given.
     static void Terminal(string dir, Cli cli, string? session)

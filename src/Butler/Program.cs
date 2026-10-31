@@ -1,5 +1,8 @@
 using System.Diagnostics;
 using System.Reflection;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Themes.Fluent;
 using Microsoft.Toolkit.Uwp.Notifications;
 
 namespace Butler;
@@ -60,9 +63,20 @@ static class Program
             if (EventWaitHandle.TryOpenExisting(ShowDashboardEvent, out var show)) show.Set();
             return 0;
         }
-        ApplicationConfiguration.Initialize();
-        Application.Run(new TrayApp());
+        AppBuilder.Configure<App>().UsePlatformDetect().StartWithClassicDesktopLifetime([], ShutdownMode.OnExplicitShutdown);
         return 0;
+    }
+
+    // The tray app; it lives until Exit in the tray menu, with or without a window.
+    sealed class App : Application
+    {
+        public override void Initialize() => Styles.Add(new FluentTheme());
+
+        public override void OnFrameworkInitializationCompleted()
+        {
+            _ = new TrayApp(this);
+            base.OnFrameworkInitializationCompleted();
+        }
     }
 
     static async Task<int> RunTrigger(string name, string[] variables)

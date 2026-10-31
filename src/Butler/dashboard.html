@@ -257,7 +257,7 @@ let state = { triggers: [], runs: [], skills: [], kinds: [], sources: [] }, view
 let watched = null, drawnRun = null, resultScroll = 0, actsOpen = false;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const send = (cmd, args = {}) => chrome.webview.postMessage({ cmd, ...args });
+const send = (cmd, args = {}) => invokeCSharpAction(JSON.stringify({ cmd, ...args })); // the web view's bridge to C#
 const cap = s => s ? s[0].toUpperCase() + s.slice(1) : '';
 
 // Icons: 24x24 strokes, drawn with currentColor.
@@ -1081,14 +1081,15 @@ function picked(target, path) {
 
 document.querySelectorAll('nav a').forEach(a => a.onclick = () => { view = a.dataset.view; draw(); $('content').scrollTop = 0; });
 let last = '';
-chrome.webview.addEventListener('message', e => {
-  const json = JSON.stringify(e.data);
+// Called by C# with the whole state.
+function receive(data) {
+  const json = JSON.stringify(data);
   if (json === last) return; // pushed every few seconds; only redraw on change
-  if (!last && document.querySelector(`nav a[data-view="${e.data.settings.startPage}"]`)) view = e.data.settings.startPage; // the first push
+  if (!last && document.querySelector(`nav a[data-view="${data.settings.startPage}"]`)) view = data.settings.startPage; // the first push
   last = json;
-  state = e.data;
+  state = data;
   render();
-});
+}
 </script>
 </body>
 </html>

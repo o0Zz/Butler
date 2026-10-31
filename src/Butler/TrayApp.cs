@@ -1,39 +1,38 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 
 namespace Butler;
 
 // Tray icon. Polls the triggers (schedule, mail, ado, file) and shows the dashboard. Runs themselves are separate Butler processes.
-sealed class TrayApp : ApplicationContext
+sealed class TrayApp
 {
-    readonly NotifyIcon icon = new() { Icon = AppIcon.Tray, Text = "Butler", Visible = true };
-    readonly SynchronizationContext ui;
+    readonly TrayIcon icon = new() { Icon = AppIcon.Tray, ToolTipText = "Butler", IsVisible = true };
     readonly FileSystemWatcher settingsWatcher;
     FileSystemWatcher? triggersWatcher; // follows the triggers file of the settings
-    readonly System.Windows.Forms.Timer statusTimer = new() { Interval = 2_000 }; // also refreshes the dashboard (live activity)
-    readonly System.Windows.Forms.Timer reloadDelay = new() { Interval = 1_000 };
+    readonly DispatcherTimer statusTimer = new() { Interval = TimeSpan.FromSeconds(2) }; // also refreshes the dashboard (live activity)
+    readonly DispatcherTimer reloadDelay = new() { Interval = TimeSpan.FromSeconds(1) };
     readonly EventWaitHandle showEvent = new(false, EventResetMode.AutoReset, Program.ShowDashboardEvent);
     readonly ConcurrentDictionary<string, SourceStatus> sources = new(); // by trigger kind: last poll and its error
     Settings settings = new();
     List<Trigger> triggers = [];
-    DashboardForm? dashboard;
+    DashboardWindow? dashboard;
 
-    public TrayApp()
+    public TrayApp(Application app)
     {
-        ui = new WindowsFormsSynchronizationContext(); // Current is still null: no control exists before Application.Run
-        var menu = new ContextMenuStrip();
-        menu.Items.Add("Open dashboard", null, (_, _) => ShowDashboard());
-        menu.Items.Add("Open folder", null, (_, _) => Process.Start("explorer.exe", Program.Home));
-        menu.Items.Add("Exit", null, (_, _) => ExitThread());
-        icon.ContextMenuStrip = menu;
-        icon.DoubleClick += (_, _) => ShowDashboard();
+        icon.Menu = [Item("Open dashboard", ShowDashboard), Item("Open folder", () => Process.Start("explorer.exe", Program.Home)), Item("Exit", Exit)];
+        icon.Clicked += (_, _) => ShowDashboard();
+        TrayIcon.SetIcons(app, [icon]);
 
         Directory.CreateDirectory(Program.Home);
         settingsWatcher = Watch(Program.SettingsFile);
         reloadDelay.Tick += (_, _) => { reloadDelay.Stop(); Reload(); };
         statusTimer.Tick += (_, _) => UpdateStatus();
 
-        new Thread(() => { while (showEvent.WaitOne()) ui.Post(_ => ShowDashboard(), null); }) { IsBackground = true }.Start();
+        new Thread(() => { while (showEvent.WaitOne()) Dispatcher.UIThread.Post(ShowDashboard); }) { IsBackground = true }.Start();
 
         Reload();
         var poller = new Thread(PollLoop) { IsBackground = true, Name = "Butler poll" };
@@ -74,7 +73,7 @@ sealed class TrayApp : ApplicationContext
     void Fail(string file, Exception ex)
     {
         LastError = $"{file}: {ex.Message}";
-        icon.ShowBalloonTip(5000, $"Butler: {file} not applied", ex.Message, ToolTipIcon.Error);
+        Notifier.Error($"Butler: {file} not applied", ex.Message);
         dashboard?.RefreshAll();
     }
 
@@ -82,7 +81,7 @@ sealed class TrayApp : ApplicationContext
     {
         var w = new FileSystemWatcher(Path.GetDirectoryName(file)!, Path.GetFileName(file)) { EnableRaisingEvents = true };
         // Editors write in bursts, and many save by renaming a temp file over it (Created/Renamed, not Changed).
-        FileSystemEventHandler later = (_, _) => ui.Post(_ => { reloadDelay.Stop(); reloadDelay.Start(); }, null);
+        FileSystemEventHandler later = (_, _) => Dispatcher.UIThread.Post(() => { reloadDelay.Stop(); reloadDelay.Start(); });
         w.Changed += later;
         w.Created += later;
         w.Renamed += (s, e) => later(s, e);
@@ -123,7 +122,7 @@ sealed class TrayApp : ApplicationContext
         var before = sources.GetValueOrDefault(kind.Name);
         sources[kind.Name] = new SourceStatus(DateTime.Now, error);
         if (error != null && before?.Error == null) // once, not every poll
-            ui.Post(_ => icon.ShowBalloonTip(5000, $"Butler: {kind.Label} triggers failed", error, ToolTipIcon.Warning), null);
+            Notifier.Error($"Butler: {kind.Label} triggers failed", error);
     }
 
     void UpdateStatus()
@@ -132,27 +131,34 @@ sealed class TrayApp : ApplicationContext
         var problem = LastError ?? sources.Where(s => s.Value.Error != null).Select(s => $"{s.Key} triggers: {s.Value.Error}").FirstOrDefault();
         icon.Icon = problem != null ? AppIcon.TrayError : waiting > 0 ? AppIcon.TrayWaiting : AppIcon.Tray;
         var text = problem ?? (waiting > 0 ? $"Butler: {waiting} waiting for you" : "Butler");
-        icon.Text = text.Length > 63 ? text[..63] : text; // NotifyIcon limit
+        icon.ToolTipText = text.Length > 63 ? text[..63] : text; // Windows' tray tooltip limit
         dashboard?.RefreshRuns();
     }
 
     void ShowDashboard()
     {
-        if (dashboard is { IsDisposed: false })
+        if (dashboard != null)
         {
-            dashboard.WindowState = FormWindowState.Normal;
+            if (dashboard.WindowState == WindowState.Minimized) dashboard.WindowState = WindowState.Normal;
             dashboard.Activate();
             return;
         }
-        dashboard = new DashboardForm(this);
+        dashboard = new DashboardWindow(this);
+        dashboard.Closed += (_, _) => dashboard = null;
         dashboard.Show();
     }
 
-    protected override void ExitThreadCore()
+    static NativeMenuItem Item(string header, Action click)
     {
-        icon.Visible = false;
-        icon.Dispose();
-        base.ExitThreadCore();
+        var item = new NativeMenuItem(header);
+        item.Click += (_, _) => click();
+        return item;
+    }
+
+    void Exit()
+    {
+        icon.IsVisible = false;
+        ((IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!).Shutdown();
     }
 }
 
