@@ -149,7 +149,7 @@ sealed class DashboardForm : Form
             settings = new
             {
                 settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, settings.Todo, settings.TodoFile, settings.StartPage,
-                file = Program.SettingsFile, installed, todoist = Secrets.Read(Secrets.Todoist) != null,
+                file = Program.SettingsFile, installed, todoist = Secrets.Read(Secrets.Todoist) != null, startup = Startup.IsOn(Program.Exe),
                 todos = TodoBackend.All.Select(b => new { b.Name, b.Label }),
             },
             todo = settings.Todo == "none" ? null : new
@@ -218,6 +218,7 @@ sealed class DashboardForm : Form
                 if (problems.Count == 0)
                 {
                     if (token != "") Secrets.Write(Secrets.Todoist, token);
+                    Startup.Set(cmd.GetProperty("startup").GetBoolean(), Program.Exe);
                     settings.Save(Program.SettingsFile);
                     tray.SyncNow(); // also done by the settings watcher, a second later
                     (todo, todoError, todoRead) = (null, null, DateTime.MinValue);

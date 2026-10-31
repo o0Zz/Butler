@@ -985,13 +985,18 @@ function renderSettings() {
       </div>
     </div>
     <div class="card">
-      <h3>Dashboard</h3>
+      <h3>Startup</h3>
       <div class="field">
         <label for="s-startPage">Start page</label>
         <div class="hint">The page shown when the dashboard opens.</div>
         <div class="bar"><select id="s-startPage" onchange="checkSettings()">${[...document.querySelectorAll('nav a')].map(a =>
           `<option value="${a.dataset.view}" ${a.dataset.view === s.startPage ? 'selected' : ''}>${esc(a.querySelector('.label').textContent)}</option>`).join('')}</select></div>
         <div class="err" id="e-startPage"></div>
+      </div>
+      <div class="field">
+        <label><input id="s-startup" type="checkbox" ${s.startup ? 'checked' : ''} onchange="checkSettings()"> Start Butler with Windows</label>
+        <div class="hint">When you sign in, in the tray. Without it, mail, Azure DevOps and file triggers wait until Butler is started (scheduled triggers run anyway).</div>
+        <div class="err" id="e-startup"></div>
       </div>
     </div>
     <div class="savebar">
@@ -1013,7 +1018,7 @@ const pathField = (id, label, hint, value, pick = 'file', filter = 'JSON (*.json
   <div class="err" id="e-${id}"></div></div>`;
 const settingsDraft = () => ({ cli: $('s-cli').value, triggersFile: $('s-triggersFile').value.trim(), skillsFolder: $('s-skillsFolder').value.trim(),
   adoOrganization: $('s-adoOrganization').value.trim(), todo: $('s-todo').value, todoFile: $('s-todoFile').value.trim(), todoistToken: $('s-todoistToken').value.trim(),
-  startPage: $('s-startPage').value });
+  startPage: $('s-startPage').value, startup: $('s-startup').checked });
 
 function forgetTodoist() {
   if (!confirm('Forget the Todoist token? The To do page cannot read Todoist until a new one is saved.')) return;
