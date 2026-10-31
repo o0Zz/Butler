@@ -123,7 +123,7 @@ public class TriggerKindTests : IDisposable
         Skip.If(string.IsNullOrEmpty(org), "BUTLER_TEST_ADO_ORG is not set");
         var since = DateTime.Now.AddDays(-30);
 
-        var items = AdoTrigger.Query(new WindowsShell(), org!, "[System.AssignedTo] = @Me", since);
+        var items = AdoTrigger.Query(Platform.Current.Shell, org!, "[System.AssignedTo] = @Me", since);
 
         Assert.All(items, w => Assert.True(w.Changed >= since.Date.AddDays(-1) && w.Id > 0 && w.Title.Length > 0 && w.ChangedBy.Length > 0));
         var t = LoadJson("""[{ "name": "mine", "on": "ado", "where": "[System.AssignedTo] = @Me", "prompt": "/x" }]""");

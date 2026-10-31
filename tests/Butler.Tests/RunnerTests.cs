@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace Butler.Tests;
 
-// Runs the real Runner against a fake `claude` (a .cmd that prints a canned stream-json output).
+// Runs the real Runner against a fake `claude` (a script that prints a canned stream-json output).
 public class RunnerTests : IDisposable
 {
     readonly string home = Directory.CreateTempSubdirectory("butler-").FullName;
@@ -13,10 +13,9 @@ public class RunnerTests : IDisposable
 
     public RunnerTests()
     {
-        fake = Path.Combine(home, "claude.cmd");
+        fake = Fake.Cli(home);
         argsFile = Path.Combine(home, "args.txt");
         outFile = Path.Combine(home, "out.jsonl");
-        File.WriteAllText(fake, "@echo off\r\necho %* > \"%FAKE_ARGS%\"\r\ntype \"%FAKE_OUT%\"\r\nexit /b %FAKE_EXIT%\r\n");
         Environment.SetEnvironmentVariable("FAKE_ARGS", argsFile);
         Environment.SetEnvironmentVariable("FAKE_OUT", outFile);
         Environment.SetEnvironmentVariable("FAKE_EXIT", "0");
@@ -126,8 +125,7 @@ public class RunnerTests : IDisposable
     [Fact]
     public async Task Stop_kills_claude_and_the_run_ends_stopped()
     {
-        var hanging = Path.Combine(home, "hang.cmd");
-        File.WriteAllText(hanging, "@echo off\r\necho {\"type\":\"system\",\"subtype\":\"init\"}\r\nping -n 60 127.0.0.1 > nul\r\n");
+        var hanging = Fake.Hanging(home);
         var runner = new Runner(home, new ClaudeCli(hanging));
         var task = runner.Run("x", "/x");
         var running = await Until(() => runner.Recent(1).FirstOrDefault(r => r.ClaudePid != null));
@@ -135,7 +133,7 @@ public class RunnerTests : IDisposable
 
         runner.Stop(running.Id);
 
-        var run = await task.WaitAsync(TimeSpan.FromSeconds(10)); // returns once claude is killed, not after the 60 s ping
+        var run = await task.WaitAsync(TimeSpan.FromSeconds(10)); // returns once claude is killed, not after its minute
         Assert.Equal(RunStatus.Stopped, run.Status);
         Assert.Equal(RunStatus.Stopped, runner.Load(running.Id)!.Status);
         Assert.Throws<ArgumentException>(() => Process.GetProcessById(running.ClaudePid!.Value));
@@ -154,7 +152,7 @@ public class RunnerTests : IDisposable
     [Fact]
     public void Running_run_whose_process_is_gone_shows_as_stopped()
     {
-        using var gone = Process.Start(new ProcessStartInfo("cmd.exe", "/c exit") { CreateNoWindow = true })!;
+        using var gone = Process.Start(Fake.Exiting())!;
         gone.WaitForExit();
         var runner = new Runner(home, new ClaudeCli(fake));
         Directory.CreateDirectory(runner.RunsDir);
