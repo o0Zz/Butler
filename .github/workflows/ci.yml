@@ -44,7 +44,14 @@ jobs:
       # Outlook and Azure DevOps tests skip themselves here (no Outlook running, no BUTLER_TEST_ADO_ORG), and so does
       # the secret service test on Linux (no keyring running).
       - name: Test
-        run: dotnet test -c Release --no-build --logger GitHubActions # a failed test shows as an annotation
+        shell: bash
+        run: dotnet test -c Release --no-build --logger GitHubActions 2>&1 | tee test.log; exit ${PIPESTATUS[0]} # a failed test shows as an annotation
+
+      # A test run that crashes or hangs reports no failed test: its last lines become annotations, readable without logging in.
+      - name: Test output
+        if: failure()
+        shell: bash
+        run: grep -v '^\s*$' test.log | tail -n 10 | sed 's/^/::error::/'
 
       # One Butler file with every library inside (native ones extracted at start), without .NET.
       - name: Publish
