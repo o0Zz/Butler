@@ -36,12 +36,12 @@ public sealed record Settings
     }
 
     // Why these settings cannot be saved, by field (the names of the Settings page); empty when they can.
-    public Dictionary<string, string> Problems()
+    public Dictionary<string, string> Problems(IShell shell)
     {
         var problems = new Dictionary<string, string>();
         try
         {
-            if (Butler.Cli.FromName(Cli).Find() == null) problems["cli"] = $"{Cli} is not installed: {Cli}.exe is not on the PATH";
+            if (Butler.Cli.FromName(Cli).Find(shell) == null) problems["cli"] = $"{Cli} is not installed: {shell.ExecutableName(Cli)} is not on the PATH";
         }
         catch (ArgumentException e) { problems["cli"] = e.Message; }
         if (!File.Exists(TriggersFile)) problems["triggersFile"] = "File not found";

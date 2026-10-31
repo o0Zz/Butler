@@ -4,12 +4,10 @@ using System.Text;
 
 namespace Butler;
 
-// Secrets (the Todoist token) in the Windows Credential Manager, per user, never in settings.json.
-public static class Secrets
+// The Windows Credential Manager.
+public sealed class CredentialManager : ISecrets
 {
-    public const string Todoist = "Butler/Todoist";
-
-    public static string? Read(string target)
+    public string? Read(string target)
     {
         if (!CredRead(target, CredTypeGeneric, 0, out var p))
         {
@@ -24,7 +22,7 @@ public static class Secrets
         finally { CredFree(p); }
     }
 
-    public static void Write(string target, string secret)
+    public void Write(string target, string secret)
     {
         var blob = Encoding.Unicode.GetBytes(secret);
         var p = Marshal.AllocHGlobal(blob.Length);
@@ -41,7 +39,7 @@ public static class Secrets
         finally { Marshal.FreeHGlobal(p); }
     }
 
-    public static void Delete(string target)
+    public void Delete(string target)
     {
         if (!CredDelete(target, CredTypeGeneric, 0) && Marshal.GetLastWin32Error() != ErrorNotFound) throw new Win32Exception();
     }

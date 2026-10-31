@@ -21,9 +21,10 @@ sealed class TrayApp
     List<Trigger> triggers = [];
     DashboardWindow? dashboard;
 
-    public TrayApp(Application app)
+    public TrayApp(Application app, Platform platform)
     {
-        icon.Menu = [Item("Open dashboard", ShowDashboard), Item("Open folder", () => Process.Start("explorer.exe", Program.Home)), Item("Exit", Exit)];
+        Platform = platform;
+        icon.Menu = [Item("Open dashboard", ShowDashboard), Item("Open folder", () => platform.Shell.OpenFolder(Program.Home)), Item("Exit", Exit)];
         icon.Clicked += (_, _) => ShowDashboard();
         TrayIcon.SetIcons(app, [icon]);
 
@@ -36,12 +37,13 @@ sealed class TrayApp
 
         Reload();
         var poller = new Thread(PollLoop) { IsBackground = true, Name = "Butler poll" };
-        poller.SetApartmentState(ApartmentState.STA); // Outlook COM
+        if (OperatingSystem.IsWindows()) poller.SetApartmentState(ApartmentState.STA); // Outlook COM
         poller.Start(); // its first poll catches up what came while Butler was not running
         statusTimer.Start();
         UpdateStatus();
     }
 
+    public Platform Platform { get; }
     public IReadOnlyList<Trigger> Triggers => triggers;
     public Settings Settings => settings;
     public IReadOnlyDictionary<string, SourceStatus> Sources => sources;
@@ -73,7 +75,7 @@ sealed class TrayApp
     void Fail(string file, Exception ex)
     {
         LastError = $"{file}: {ex.Message}";
-        Notifier.Error($"Butler: {file} not applied", ex.Message);
+        Platform.Notifications.Error($"Butler: {file} not applied", ex.Message);
         dashboard?.RefreshAll();
     }
 
@@ -115,14 +117,14 @@ sealed class TrayApp
         string? error = null;
         try
         {
-            foreach (var (t, values) in kind.Poll(mine, settings, Path.Combine(Program.Home, "state")))
+            foreach (var (t, values) in kind.Poll(mine, settings, Path.Combine(Program.Home, "state"), Platform))
                 Program.Start(["run", t.Name, .. values.Select(v => $"{v.Key}={v.Value}")]);
         }
         catch (Exception ex) { error = ex.Message; }
         var before = sources.GetValueOrDefault(kind.Name);
         sources[kind.Name] = new SourceStatus(DateTime.Now, error);
         if (error != null && before?.Error == null) // once, not every poll
-            Notifier.Error($"Butler: {kind.Label} triggers failed", error);
+            Platform.Notifications.Error($"Butler: {kind.Label} triggers failed", error);
     }
 
     void UpdateStatus()

@@ -6,17 +6,18 @@ public class SecretsTests
     [Fact]
     public void A_secret_is_written_read_back_and_deleted()
     {
+        var secrets = new CredentialManager();
         var target = $"ButlerTest/{Guid.NewGuid()}";
         try
         {
-            Assert.Null(Secrets.Read(target));
-            Secrets.Write(target, "tok-é-123");
-            Assert.Equal("tok-é-123", Secrets.Read(target));
-            Secrets.Write(target, "new");
-            Assert.Equal("new", Secrets.Read(target));
+            Assert.Null(secrets.Read(target));
+            secrets.Write(target, "tok-é-123");
+            Assert.Equal("tok-é-123", secrets.Read(target));
+            secrets.Write(target, "new");
+            Assert.Equal("new", secrets.Read(target));
         }
-        finally { Secrets.Delete(target); }
-        Assert.Null(Secrets.Read(target));
-        Secrets.Delete(target); // already gone: no error
+        finally { secrets.Delete(target); }
+        Assert.Null(secrets.Read(target));
+        secrets.Delete(target); // already gone: no error
     }
 }

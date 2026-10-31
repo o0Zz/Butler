@@ -3,14 +3,12 @@ using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Themes.Fluent;
-using Microsoft.Toolkit.Uwp.Notifications;
 
 namespace Butler;
 
 // Butler.exe                          tray app + dashboard + mail watcher (single instance)
-// Butler.exe run <trigger> [var=value ...]  one headless run (what the scheduled tasks and the mail watcher call)
+// Butler.exe run <trigger> [var=value ...]  one headless run (what the tray starts for a trigger)
 // Butler.exe answer <runId> <text>    resume a run waiting for an answer
-// Butler.exe sync                     apply butler.json to the Task Scheduler
 static class Program
 {
     public const string ShowDashboardEvent = "Butler.ShowDashboard";
@@ -29,33 +27,30 @@ static class Program
     [STAThread]
     static int Main(string[] args)
     {
-        ToastNotificationManagerCompat.OnActivated += OnToast;
-        if (ToastNotificationManagerCompat.WasCurrentProcessToastActivated())
-        {
-            Thread.Sleep(3000); // OnActivated fires on another thread; give it time to start what it needs
-            return 0;
-        }
+        var platform = Platform.Current; // the OS's services, handed from here to what needs them
+        if (platform.Notifications.StartedByClick()) return 0;
 
         try
         {
             switch (args.FirstOrDefault())
             {
-                case null: return RunTray();
-                case "run" when args.Length >= 2: return RunTrigger(args[1], args[2..]).GetAwaiter().GetResult();
-                case "answer" when args.Length >= 3: return Report(NewRunner(Settings.Load(SettingsFile)).Answer(args[1], args[2]).GetAwaiter().GetResult());
+                case null: return RunTray(platform);
+                case "run" when args.Length >= 2: return RunTrigger(platform.Notifications, args[1], args[2..]).GetAwaiter().GetResult();
+                case "answer" when args.Length >= 3:
+                    return Report(platform.Notifications, NewRunner(Settings.Load(SettingsFile)).Answer(args[1], args[2]).GetAwaiter().GetResult());
                 default:
-                    Notifier.Error("Butler", "Usage: Butler.exe [run <trigger> [var=value ...] | answer <runId> <text>]");
+                    platform.Notifications.Error("Butler", "Usage: Butler.exe [run <trigger> [var=value ...] | answer <runId> <text>]");
                     return 2;
             }
         }
         catch (Exception ex)
         {
-            Notifier.Error("Butler failed", ex.Message);
+            platform.Notifications.Error("Butler failed", ex.Message);
             return 1;
         }
     }
 
-    static int RunTray()
+    static int RunTray(Platform platform)
     {
         using var mutex = new Mutex(true, "Butler.Tray", out var first);
         if (!first)
@@ -63,36 +58,36 @@ static class Program
             if (EventWaitHandle.TryOpenExisting(ShowDashboardEvent, out var show)) show.Set();
             return 0;
         }
-        AppBuilder.Configure<App>().UsePlatformDetect().StartWithClassicDesktopLifetime([], ShutdownMode.OnExplicitShutdown);
+        AppBuilder.Configure(() => new App(platform)).UsePlatformDetect().StartWithClassicDesktopLifetime([], ShutdownMode.OnExplicitShutdown);
         return 0;
     }
 
     // The tray app; it lives until Exit in the tray menu, with or without a window.
-    sealed class App : Application
+    sealed class App(Platform platform) : Application
     {
         public override void Initialize() => Styles.Add(new FluentTheme());
 
         public override void OnFrameworkInitializationCompleted()
         {
-            _ = new TrayApp(this);
+            _ = new TrayApp(this, platform);
             base.OnFrameworkInitializationCompleted();
         }
     }
 
-    static async Task<int> RunTrigger(string name, string[] variables)
+    static async Task<int> RunTrigger(INotifications notifications, string name, string[] variables)
     {
         var settings = Settings.Load(SettingsFile);
         var trigger = Trigger.Load(settings.TriggersFile).FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         if (trigger == null) return 0; // removed from butler.json meanwhile: do nothing
         var values = variables.Select(v => v.Split('=', 2)).Where(kv => kv.Length == 2).ToDictionary(kv => kv[0], kv => kv[1]);
-        return Report(await NewRunner(settings).Run(trigger.Name, trigger.PromptWith(values)));
+        return Report(notifications, await NewRunner(settings).Run(trigger.Name, trigger.PromptWith(values)));
     }
 
     public static Runner NewRunner(Settings settings) => new(Home, Cli.FromName(settings.Cli));
 
-    static int Report(RunRecord run)
+    static int Report(INotifications notifications, RunRecord run)
     {
-        Notifier.Show(run);
+        notifications.Show(run);
         return run.Status == RunStatus.Failed ? 1 : 0;
     }
 
@@ -102,13 +97,5 @@ static class Program
         var psi = new ProcessStartInfo(Exe) { UseShellExecute = false };
         foreach (var a in args) psi.ArgumentList.Add(a);
         Process.Start(psi);
-    }
-
-    static void OnToast(ToastNotificationActivatedEventArgsCompat e)
-    {
-        var args = ToastArguments.Parse(e.Argument);
-        if (!args.TryGetValue("run", out var runId)) return;
-        if (args.TryGetValue("answer", out var answer)) Start("answer", runId, answer);
-        else Start(); // opens the dashboard, or brings it up if the tray app already runs
     }
 }

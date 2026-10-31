@@ -22,7 +22,7 @@ public sealed class FileTrigger : TriggerKind
 
     public override string Describe(Trigger t) => $"When a file{(t.Field("filter") is { } f ? $" ({f})" : "")} appears in {t.Field("folder")}";
 
-    public override List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir)
+    public override List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir, Platform platform)
     {
         // A poll that fails moves no checkpoint.
         var missing = triggers.Select(Folder).Where(f => !Directory.Exists(f)).Distinct().ToList();

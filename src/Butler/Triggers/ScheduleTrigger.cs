@@ -26,7 +26,7 @@ public sealed class ScheduleTrigger : TriggerKind
         };
     }
 
-    public override List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir) =>
+    public override List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir, Platform platform) =>
         Poll(triggers, stateDir, DateTime.Now);
 
     internal List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, string stateDir, DateTime now)

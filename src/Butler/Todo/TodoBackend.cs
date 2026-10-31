@@ -19,9 +19,9 @@ public abstract class TodoBackend
     public static readonly (string Name, string Label)[] All = [("none", "None"), ("todoist", "Todoist"), ("txt", "todo.txt file")];
 
     // null when no to-do list is set.
-    public static TodoBackend? From(Settings settings) => settings.Todo switch
+    public static TodoBackend? From(Settings settings, ISecrets secrets) => settings.Todo switch
     {
-        "todoist" => new Todoist(Secrets.Read(Secrets.Todoist) is { Length: > 0 } token ? token
+        "todoist" => new Todoist(secrets.Read(ISecrets.Todoist) is { Length: > 0 } token ? token
             : throw new TodoException("No Todoist token: paste it on the Settings page")),
         "txt" => new TodoTxt(Environment.ExpandEnvironmentVariables(settings.TodoFile)),
         _ => null,

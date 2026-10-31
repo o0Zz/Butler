@@ -17,13 +17,15 @@ sealed class DashboardWindow : Window
     readonly NativeWebView web = new();
     bool ready, closed;
     string? selectedRun; // its activity is pushed with the state
-    Dictionary<string, string?> installed = Installed(); // where each CLI is; looked up again when the settings change
+    Dictionary<string, string?> installed; // where each CLI is; looked up again when the settings change
 
     Runner runner => tray.Runner;
+    Platform platform => tray.Platform;
 
     public DashboardWindow(TrayApp tray)
     {
         this.tray = tray;
+        installed = Installed();
         Title = "Butler";
         (Width, Height, MinWidth, MinHeight) = (1280, 800, 900, 560);
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -62,7 +64,7 @@ sealed class DashboardWindow : Window
         Push();
     }
 
-    static Dictionary<string, string?> Installed() => Cli.Names.ToDictionary(n => n, n => Cli.FromName(n).Find());
+    Dictionary<string, string?> Installed() => Cli.Names.ToDictionary(n => n, n => Cli.FromName(n).Find(platform.Shell));
     public void RefreshRuns() => Push();
 
     // Runs of the last 30 days and more, for the stats; read again at most once a minute (the page is pushed every 2 s).
@@ -86,7 +88,7 @@ sealed class DashboardWindow : Window
         if (todoLoading) { todoAgain = true; return; }
         todoLoading = true;
         var settings = tray.Settings;
-        Task.Run(async () => (TodoBackend.From(settings) is { } b ? await b.Load() : null)).ContinueWith(t => Dispatcher.UIThread.Post(() =>
+        Task.Run(async () => (TodoBackend.From(settings, platform.Secrets) is { } b ? await b.Load() : null)).ContinueWith(t => Dispatcher.UIThread.Post(() =>
         {
             (todo, todoError) = t.IsCompletedSuccessfully ? (t.Result, null) : (todo, Error(t.Exception!));
             (todoRead, todoLoading) = (DateTime.Now, false);
@@ -100,7 +102,7 @@ sealed class DashboardWindow : Window
     {
         var settings = tray.Settings;
         var list = todo ?? new TodoList([], [], []);
-        Task.Run(async () => TodoBackend.From(settings) is { } b ? await edit(b, list) : null).ContinueWith(t => Dispatcher.UIThread.Post(() =>
+        Task.Run(async () => TodoBackend.From(settings, platform.Secrets) is { } b ? await edit(b, list) : null).ContinueWith(t => Dispatcher.UIThread.Post(() =>
         {
             Call("todoDone", t.IsCompletedSuccessfully ? null : Error(t.Exception!), t.IsCompletedSuccessfully ? t.Result : null);
             LoadTodo();
@@ -120,7 +122,7 @@ sealed class DashboardWindow : Window
         var settings = tray.Settings;
         if (settings.Todo != "none" && DateTime.Now - todoRead > TimeSpan.FromMinutes(1)) LoadTodo();
         TodoBackend? backend = null;
-        try { backend = TodoBackend.From(settings); } catch (TodoException) { } // no token: the load says so
+        try { backend = TodoBackend.From(settings, platform.Secrets); } catch (TodoException) { } // no token: the load says so
         var skills = Skills.Load(settings.SkillsFolder);
         var history = History();
         var monthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
@@ -147,7 +149,7 @@ sealed class DashboardWindow : Window
             settings = new
             {
                 settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, settings.Todo, settings.TodoFile, settings.StartPage,
-                file = Program.SettingsFile, installed, todoist = Secrets.Read(Secrets.Todoist) != null, startup = Startup.IsOn(Program.Exe),
+                file = Program.SettingsFile, installed, todoist = platform.Secrets.Read(ISecrets.Todoist) != null, startup = platform.StartAtLogin.IsOn(Program.Exe),
                 todos = TodoBackend.All.Select(b => new { b.Name, b.Label }),
             },
             todo = settings.Todo == "none" ? null : new
@@ -192,30 +194,33 @@ sealed class DashboardWindow : Window
             case "stop": runner.Stop(Arg("id")); Push(); break;
             case "clearRuns": runner.Clear(); historyRead = DateTime.MinValue; Push(); break;
             case "editConfig": Open(tray.Settings.TriggersFile); break;
-            case "openSkills": Process.Start("explorer.exe", tray.Settings.SkillsFolder); break;
+            case "openSkills": platform.Shell.OpenFolder(tray.Settings.SkillsFolder); break;
             case "openSkill": Open(Path.Combine(tray.Settings.SkillsFolder, Arg("folder"), "SKILL.md")); break;
             case "openLog": Open(Path.Combine(runner.RunsDir, Arg("id") + ".log")); break;
             // Edits the triggers and skills; the file watcher then syncs and refreshes this page.
-            case "chat": Terminal(tray.Settings.SkillsFolder, runner.Cli, null); break;
-            case "terminal": Terminal(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Cli.FromName(Arg("cli")), Arg("session")); break;
+            case "chat": platform.Shell.Terminal(tray.Settings.SkillsFolder, runner.Cli.Exe, runner.Cli.TerminalArguments(null)); break;
+            case "terminal":
+                var cli = Cli.FromName(Arg("cli"));
+                platform.Shell.Terminal(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), cli.Exe, cli.TerminalArguments(Arg("session")));
+                break;
             case "saveSettings":
                 var settings = tray.Settings with // what the page does not edit (hidden lists) is kept
                 {
                     Cli = Arg("cli"), TriggersFile = Arg("triggersFile").Trim(), SkillsFolder = Arg("skillsFolder").Trim(),
                     AdoOrganization = Arg("adoOrganization").Trim(), Todo = Arg("todo"), TodoFile = Arg("todoFile").Trim(), StartPage = Arg("startPage"),
                 };
-                var problems = settings.Problems();
+                var problems = settings.Problems(platform.Shell);
                 var token = Arg("todoistToken").Trim(); // empty: keep the saved one
                 if (settings.Todo == "todoist")
                 {
-                    if (token == "" && Secrets.Read(Secrets.Todoist) == null) problems["todoistToken"] = "Paste your Todoist API token";
+                    if (token == "" && platform.Secrets.Read(ISecrets.Todoist) == null) problems["todoistToken"] = "Paste your Todoist API token";
                     else if (token != "" && Task.Run(() => new Todoist(token).Check()).ContinueWith(t => t.Exception?.InnerException?.Message).Result is { } refused)
                         problems["todoistToken"] = refused;
                 }
                 if (problems.Count == 0)
                 {
-                    if (token != "") Secrets.Write(Secrets.Todoist, token);
-                    Startup.Set(cmd.GetProperty("startup").GetBoolean(), Program.Exe);
+                    if (token != "") platform.Secrets.Write(ISecrets.Todoist, token);
+                    platform.StartAtLogin.Set(cmd.GetProperty("startup").GetBoolean(), Program.Exe);
                     settings.Save(Program.SettingsFile);
                     tray.Reload(); // also done by the settings watcher, a second later
                     (todo, todoError, todoRead) = (null, null, DateTime.MinValue);
@@ -223,12 +228,12 @@ sealed class DashboardWindow : Window
                 Call("settingsSaved", problems);
                 break;
             case "forgetTodoist":
-                Secrets.Delete(Secrets.Todoist);
+                platform.Secrets.Delete(ISecrets.Todoist);
                 break;
             case "todoOpen":
                 if (tray.Settings.Todo == "todoist") Open("https://app.todoist.com/");
-                else if (Environment.ExpandEnvironmentVariables(tray.Settings.TodoFile) is var file && File.Exists(file)) Process.Start("explorer.exe", $"/select,\"{file}\"");
-                else Process.Start("explorer.exe", Path.GetDirectoryName(file)!); // not created yet
+                else if (Environment.ExpandEnvironmentVariables(tray.Settings.TodoFile) is var file && File.Exists(file)) platform.Shell.Reveal(file);
+                else platform.Shell.OpenFolder(Path.GetDirectoryName(file)!); // not created yet
                 break;
             case "todoRefresh": todoRead = DateTime.MinValue; LoadTodo(); break;
             case "todoAdd": EditTodo(async (b, _) => { await b.Add(Arg("text")); return null; }); break;
@@ -309,14 +314,6 @@ sealed class DashboardWindow : Window
     // Calls a function of the page with JSON arguments (the answer to a command).
     void Call(string function, params object?[] args) =>
         _ = web.InvokeScript($"{function}({string.Join(",", args.Select(a => JsonSerializer.Serialize(a, Json)))})");
-
-    // An interactive CLI in Windows Terminal, resuming that session when given.
-    static void Terminal(string dir, Cli cli, string? session)
-    {
-        var psi = new ProcessStartInfo("wt.exe") { ArgumentList = { "-d", dir, cli.Exe } };
-        foreach (var a in cli.TerminalArguments(session)) psi.ArgumentList.Add(a);
-        Process.Start(psi);
-    }
 
     static void Open(string path) => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
 }

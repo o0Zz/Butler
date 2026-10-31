@@ -33,7 +33,7 @@ public abstract class TriggerKind
 
     // The runs to start since the last poll (trigger + variable values), for the triggers of this kind.
     // Keeps its own checkpoint in stateDir; the first poll starts from now. Runs on the tray's polling thread (STA).
-    public virtual List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir) => [];
+    public abstract List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir, Platform platform);
 }
 
 // A field of a trigger kind in the editor. Type: "text", "list" (one value per line), "folder", "schedule".

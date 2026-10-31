@@ -7,7 +7,7 @@ public class OutlookInboxTests
     public void Reads_recent_mails_newest_first_with_smtp_senders()
     {
         Skip.IfNot(OutlookInbox.IsRunning, "Outlook is not running");
-        var mails = OutlookInbox.ReadSince(DateTime.Now.AddDays(-7));
+        var mails = new OutlookInbox().ReadSince(DateTime.Now.AddDays(-7));
         Assert.NotEmpty(mails);
         Assert.Equal(mails.OrderByDescending(m => m.Received).Select(m => m.EntryId), mails.Select(m => m.EntryId));
         Assert.All(mails, m => Assert.True(m.Received >= DateTime.Now.AddDays(-7)));
@@ -32,11 +32,11 @@ public class OutlookInboxTests
             moved = NewestMail(folder);
         }
         Skip.If(moved == null, "No recent mail outside the Inbox");
-        Assert.Contains(OutlookInbox.ReadSince(moved!.ReceivedTime), (Predicate<Mail>)(m => m.EntryId == (string)moved.EntryID));
+        Assert.Contains(new OutlookInbox().ReadSince(moved!.ReceivedTime), (Predicate<Mail>)(m => m.EntryId == (string)moved.EntryID));
 
         dynamic? sent = NewestMail(ns.GetDefaultFolder(5));
         Skip.If(sent == null, "No recent sent mail");
-        Assert.DoesNotContain(OutlookInbox.ReadSince(sent!.ReceivedTime), (Predicate<Mail>)(m => m.EntryId == (string)sent.EntryID));
+        Assert.DoesNotContain(new OutlookInbox().ReadSince(sent!.ReceivedTime), (Predicate<Mail>)(m => m.EntryId == (string)sent.EntryID));
     }
 
     static dynamic? NewestMail(dynamic folder)

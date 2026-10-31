@@ -9,6 +9,7 @@ public class StartupTests
     public void Start_with_windows_is_turned_on_and_off_in_the_run_key()
     {
         var name = $"ButlerTest-{Guid.NewGuid()}";
+        var startup = new RunKeyStartup(name);
         const string exe = @"C:\Program Files\Butler\Butler.exe";
         string? Value()
         {
@@ -17,15 +18,15 @@ public class StartupTests
         }
         try
         {
-            Assert.False(Startup.IsOn(exe, name));
-            Startup.Set(true, exe, name);
+            Assert.False(startup.IsOn(exe));
+            startup.Set(true, exe);
             Assert.Equal("\"C:\\Program Files\\Butler\\Butler.exe\"", Value()); // quoted: the path has spaces
-            Assert.True(Startup.IsOn(exe, name));
-            Assert.False(Startup.IsOn(@"C:\old\Butler-0.9.0.exe", name)); // another copy starts: off for this one
-            Startup.Set(false, exe, name);
+            Assert.True(startup.IsOn(exe));
+            Assert.False(startup.IsOn(@"C:\old\Butler-0.9.0.exe")); // another copy starts: off for this one
+            startup.Set(false, exe);
             Assert.Null(Value());
-            Startup.Set(false, exe, name); // already off: no error
+            startup.Set(false, exe); // already off: no error
         }
-        finally { Startup.Set(false, exe, name); }
+        finally { startup.Set(false, exe); }
     }
 }

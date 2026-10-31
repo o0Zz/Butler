@@ -24,11 +24,11 @@ public abstract class Cli(string name, string exe)
         _ => throw new ArgumentException($"Unknown CLI \"{name}\": use claude or copilot"),
     };
 
-    // Where the executable is on the PATH, or null. Only .exe: that is all Process.Start finds without a shell.
-    public string? Find(string? path = null)
+    // Where the executable is on the PATH, or null.
+    public string? Find(IShell shell, string? path = null)
     {
-        var file = Path.HasExtension(Exe) ? Exe : Exe + ".exe";
-        foreach (var dir in (path ?? Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries))
+        var file = shell.ExecutableName(Exe);
+        foreach (var dir in (path ?? Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
             if (Path.Combine(dir.Trim(), file) is var f && File.Exists(f)) return f;
         return null;
     }

@@ -79,14 +79,14 @@ public class TriggerKindTests : IDisposable
         Write(inbox, "old.pdf", 3600);
         var kind = new FileTrigger();
         var t = FileTrigger(inbox, "*.pdf");
-        var poll = () => kind.Poll([t], new Settings(), State).Select(r => r.Values["name"]).ToList();
+        var poll = () => kind.Poll([t], new Settings(), State, Platform.Current).Select(r => r.Values["name"]).ToList();
 
         Assert.Empty(poll()); // first poll: what is already there is not replayed
         var spec = Write(inbox, "spec.pdf", 60);
         Write(inbox, "downloading.pdf", 0); // still being written
         Write(inbox, "notes.txt", 60);      // filtered out
 
-        var runs = kind.Poll([t], new Settings(), State);
+        var runs = kind.Poll([t], new Settings(), State, Platform.Current);
         Assert.Equal(["spec.pdf"], runs.Select(r => r.Values["name"]));
         Assert.Equal(spec, runs[0].Values["path"]);
         Assert.Empty(poll()); // never twice
@@ -101,18 +101,18 @@ public class TriggerKindTests : IDisposable
         var inbox = Directory.CreateDirectory(Path.Combine(dir, "inbox")).FullName;
         var kind = new FileTrigger();
         var t = FileTrigger(inbox);
-        kind.Poll([t], new Settings(), State);
+        kind.Poll([t], new Settings(), State, Platform.Current);
         Write(inbox, "a.pdf", 60);
 
-        Assert.Throws<DirectoryNotFoundException>(() => kind.Poll([t, FileTrigger(Path.Combine(dir, "nope")) with { Name = "other" }], new Settings(), State));
-        Assert.Equal(["a.pdf"], kind.Poll([t], new Settings(), State).Select(r => r.Values["name"]));
+        Assert.Throws<DirectoryNotFoundException>(() => kind.Poll([t, FileTrigger(Path.Combine(dir, "nope")) with { Name = "other" }], new Settings(), State, Platform.Current));
+        Assert.Equal(["a.pdf"], kind.Poll([t], new Settings(), State, Platform.Current).Select(r => r.Values["name"]));
     }
 
     [Fact]
     public void Ado_trigger_needs_the_organization_setting()
     {
         var t = LoadJson("""[{ "name": "mine", "on": "ado", "where": "[System.AssignedTo] = @Me", "prompt": "/x" }]""");
-        Assert.Contains("organization", Assert.Throws<InvalidOperationException>(() => new AdoTrigger().Poll(t, new Settings(), State)).Message);
+        Assert.Contains("organization", Assert.Throws<InvalidOperationException>(() => new AdoTrigger().Poll(t, new Settings(), State, Platform.Current)).Message);
     }
 
     // Real Azure DevOps through az (logged in): set BUTLER_TEST_ADO_ORG to the organization URL.
@@ -123,11 +123,11 @@ public class TriggerKindTests : IDisposable
         Skip.If(string.IsNullOrEmpty(org), "BUTLER_TEST_ADO_ORG is not set");
         var since = DateTime.Now.AddDays(-30);
 
-        var items = AdoTrigger.Query(org!, "[System.AssignedTo] = @Me", since);
+        var items = AdoTrigger.Query(new WindowsShell(), org!, "[System.AssignedTo] = @Me", since);
 
         Assert.All(items, w => Assert.True(w.Changed >= since.Date.AddDays(-1) && w.Id > 0 && w.Title.Length > 0 && w.ChangedBy.Length > 0));
         var t = LoadJson("""[{ "name": "mine", "on": "ado", "where": "[System.AssignedTo] = @Me", "prompt": "/x" }]""");
-        Assert.Empty(new AdoTrigger().Poll(t, new Settings { AdoOrganization = org! }, State)); // first poll starts from now
+        Assert.Empty(new AdoTrigger().Poll(t, new Settings { AdoOrganization = org! }, State, Platform.Current)); // first poll starts from now
     }
 
     public void Dispose() => Directory.Delete(dir, true);
