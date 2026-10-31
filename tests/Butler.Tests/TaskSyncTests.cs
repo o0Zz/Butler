@@ -39,7 +39,7 @@ public class TaskSyncTests : IDisposable
         Assert.Empty(r.Created.Concat(r.Updated).Concat(r.Deleted));
 
         // Schedule changed on one, the other removed from triggers.json.
-        r = TaskSync.Sync([Sched("timesheet", "weekly:fri 17:00")], Exe, folder);
+        r = TaskSync.Sync([Sched("timesheet", "fri 17:00")], Exe, folder);
         Assert.Equal(["timesheet"], r.Updated);
         Assert.Equal(["daily-one"], r.Deleted);
 
@@ -49,6 +49,18 @@ public class TaskSyncTests : IDisposable
             var weekly = Assert.IsType<WeeklyTrigger>(Assert.Single(Assert.Single(f.Tasks).Definition.Triggers));
             Assert.Equal(DaysOfTheWeek.Friday, weekly.DaysOfWeek);
             Assert.Contains("timesheet", TaskSync.NextRuns(folder).Keys);
+        }
+
+        // Weekdays only: one weekly task on Monday to Friday, never on a weekend.
+        TaskSync.Sync([Sched("timesheet", "mon-fri 08:30")], Exe, folder);
+        using (var ts = new TaskService())
+        {
+            var task = Assert.Single(ts.GetFolder(folder).Tasks);
+            var weekly = Assert.IsType<WeeklyTrigger>(Assert.Single(task.Definition.Triggers));
+            Assert.Equal(DaysOfTheWeek.Monday | DaysOfTheWeek.Tuesday | DaysOfTheWeek.Wednesday | DaysOfTheWeek.Thursday | DaysOfTheWeek.Friday, weekly.DaysOfWeek);
+            Assert.Equal(1, weekly.WeeksInterval);
+            Assert.True(task.NextRunTime.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday));
+            Assert.Equal(new TimeSpan(8, 30, 0), task.NextRunTime.TimeOfDay);
         }
     }
 

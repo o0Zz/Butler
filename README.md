@@ -103,7 +103,7 @@ Triggers live in a JSON file (by default `~/.claude/skills/butler.json`), edited
 
 | `on` | Fires | Variables |
 |---|---|---|
-| `schedule` | `daily HH:mm`, `weekly:mon HH:mm`, `monthly:28 HH:mm` (Windows Task Scheduler, even when Butler is closed) | none |
+| `schedule` | `daily HH:mm`; days of the week: `fri HH:mm`, `mon-fri HH:mm` (weekdays), `mon,wed,fri HH:mm`; `monthly:28 HH:mm` (Windows Task Scheduler, even when Butler is closed) | none |
 | `mail` | a mail from one of the `from` addresses, in any folder of Outlook classic (checked every 30 s) | `${from}` `${subject}` `${received}` |
 | `ado` | a work item created or changed that matches the `where` WIQL condition (checked every 2 min) | `${id}` `${title}` `${state}` `${by}` |
 | `file` | a new file in `folder`, optionally matching `filter`, once fully written | `${path}` `${name}` |

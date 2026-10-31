@@ -64,7 +64,7 @@ public static class TaskSync
         Microsoft.Win32.TaskScheduler.Trigger trigger = s.Kind switch
         {
             ScheduleKind.Daily => new DailyTrigger(),
-            ScheduleKind.Weekly => new WeeklyTrigger((DaysOfTheWeek)(1 << (int)s.DayOfWeek)),
+            ScheduleKind.Weekly => new WeeklyTrigger(s.Days),
             _ => new MonthlyTrigger(s.DayOfMonth),
         };
         trigger.StartBoundary = start;

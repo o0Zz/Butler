@@ -1,3 +1,5 @@
+using DaysOfTheWeek = Microsoft.Win32.TaskScheduler.DaysOfTheWeek;
+
 namespace Butler.Tests;
 
 public class TriggerTests
@@ -67,12 +69,27 @@ public class TriggerTests
     public void Parses_schedules()
     {
         Assert.Equal(new Schedule(ScheduleKind.Daily, new TimeSpan(9, 0, 0)), Schedule.Parse("daily 09:00"));
-        Assert.Equal(new Schedule(ScheduleKind.Weekly, new TimeSpan(7, 30, 0), DayOfWeek: DayOfWeek.Monday), Schedule.Parse("weekly:mon 7:30"));
+        Assert.Equal(new Schedule(ScheduleKind.Weekly, new TimeSpan(7, 30, 0), Days: DaysOfTheWeek.Monday), Schedule.Parse("mon 7:30"));
+        Assert.Equal(new Schedule(ScheduleKind.Weekly, new TimeSpan(8, 30, 0), Days: Schedule.Weekdays), Schedule.Parse("mon-fri 08:30"));
+        Assert.Equal(DaysOfTheWeek.Monday | DaysOfTheWeek.Wednesday | DaysOfTheWeek.Friday, Schedule.Parse("Mon,wed,FRI 09:00").Days);
+        Assert.Equal(DaysOfTheWeek.Friday | DaysOfTheWeek.Saturday | DaysOfTheWeek.Sunday | DaysOfTheWeek.Monday, Schedule.Parse("fri-mon 09:00").Days); // wraps
+        Assert.Equal(DaysOfTheWeek.Monday | DaysOfTheWeek.Tuesday | DaysOfTheWeek.Thursday, Schedule.Parse("mon-tue,thu 09:00").Days);
         Assert.Equal(new Schedule(ScheduleKind.Monthly, new TimeSpan(9, 0, 0), DayOfMonth: 28), Schedule.Parse("monthly:28 09:00"));
         Assert.Throws<FormatException>(() => Schedule.Parse("monthly:32 09:00"));
-        Assert.Throws<FormatException>(() => Schedule.Parse("weekly:xyz 09:00"));
+        Assert.Throws<FormatException>(() => Schedule.Parse("xyz 09:00"));
+        Assert.Throws<FormatException>(() => Schedule.Parse("mon-tue-wed 09:00"));
+        Assert.Throws<FormatException>(() => Schedule.Parse("weekly:mon 09:00")); // the old format
+        Assert.Throws<FormatException>(() => Schedule.Parse("30 8 * * 1-5")); // no cron
         Assert.Throws<FormatException>(() => Schedule.Parse("daily 25:00"));
     }
+
+    [Theory]
+    [InlineData("daily 08:30", "Every day at 08:30")]
+    [InlineData("mon-fri 08:30", "Weekdays at 08:30")]
+    [InlineData("mon,fri 12:00", "Every Monday, Friday at 12:00")]
+    [InlineData("monthly:28 09:00", "Monthly on day 28 at 09:00")]
+    public void Describes_schedules(string schedule, string text) =>
+        Assert.Equal(text, new ScheduleTrigger().Describe(new Trigger("x", "schedule", "/x", Schedule: schedule)));
 
     // What the dashboard's trigger editor does: build from the form values, then write the whole file.
     [Fact]

@@ -141,6 +141,8 @@
   .field input.mono, .field textarea.mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px; }
   .field textarea { resize: vertical; }
   .field .ok, .field .err { font-size: 12.5px; }
+  .field .days { display: flex; gap: 12px; flex-wrap: wrap; }
+  .field .days label { font-weight: normal; display: flex; gap: 4px; align-items: center; }
   .note { padding: 8px 12px; border-radius: 6px; background: var(--warn-bg); color: var(--warn); font-size: 13px; }
   .savebar { display: flex; gap: 8px; align-items: center; }
   .savebar .file { margin-left: auto; font-size: 11px; }
@@ -878,24 +880,39 @@ function fieldInput(f) {
   const head = `<label for="f-${f.name}">${esc(f.label)}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>${f.hint ? `<div class="hint">${esc(f.hint)}</div>` : ''}`;
   const set = `oninput="form.values['${f.name}']=this.value"`;
   if (f.type === 'schedule') {
-    const m = v.match(/^(daily|weekly:(\w+)|monthly:(\d+)) (\d{1,2}:\d{2})$/) || [, 'daily', , , '08:30'];
-    const freq = m[1].split(':')[0];
+    const m = v.match(/^(daily|monthly:(\d+)|([a-z,-]+)) (\d{1,2}:\d{2})$/i) || [, 'daily', , , '08:30'];
+    const on = m[3] ? expandDays(m[3]) : [];
+    const freq = form.freq || (m[2] ? 'monthly' : !m[3] ? 'daily' : on.join() === 'mon,tue,wed,thu,fri' ? 'weekdays' : 'days');
     return `<div class="field">${head}<div class="bar">
-      <select id="s-freq" onchange="scheduleChanged()">${[['daily', 'Every day'], ['weekly', 'Every week'], ['monthly', 'Every month']].map(([k, l]) => `<option value="${k}" ${k === freq ? 'selected' : ''}>${l}</option>`).join('')}</select>
-      ${freq === 'weekly' ? `<select id="s-day" onchange="scheduleChanged()">${days.map(([k, l]) => `<option value="${k}" ${k === m[2] ? 'selected' : ''}>on ${l}</option>`).join('')}</select>` : ''}
-      ${freq === 'monthly' ? `<select id="s-day" onchange="scheduleChanged()">${Array.from({ length: 31 }, (_, i) => i + 1).map(d => `<option value="${d}" ${String(d) === m[3] ? 'selected' : ''}>on day ${d}</option>`).join('')}</select>` : ''}
-      <input id="s-time" type="time" value="${m[4].padStart(5, '0')}" onchange="scheduleChanged()" style="flex:0 0 120px"></div></div>`;
+      <select id="s-freq" onchange="scheduleChanged()">${[['daily', 'Every day'], ['weekdays', 'Weekdays (Mon–Fri)'], ['days', 'Days of the week'], ['monthly', 'Every month']].map(([k, l]) => `<option value="${k}" ${k === freq ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      ${freq === 'monthly' ? `<select id="s-day" onchange="scheduleChanged()">${Array.from({ length: 31 }, (_, i) => i + 1).map(d => `<option value="${d}" ${String(d) === m[2] ? 'selected' : ''}>on day ${d}</option>`).join('')}</select>` : ''}
+      <input id="s-time" type="time" value="${m[4].padStart(5, '0')}" onchange="scheduleChanged()" style="flex:0 0 120px"></div>
+      ${freq === 'days' ? `<div class="days" id="s-days">${days.map(([k, l]) => `<label><input type="checkbox" value="${k}" ${on.includes(k) ? 'checked' : ''} onchange="scheduleChanged()">${l.slice(0, 3)}</label>`).join('')}</div>` : ''}</div>`;
   }
   if (f.type === 'list') return `<div class="field">${head}<textarea id="f-${f.name}" class="mono" rows="3" ${set}>${esc(v)}</textarea></div>`;
   const browse = f.type === 'folder' ? `<button onclick="send('browse',{pick:'folder',title:'${esc(f.label)}',target:'f-${f.name}',value:$('f-${f.name}').value})">${icon('folder')}Browse…</button>` : '';
   return `<div class="field">${head}<div class="bar"><input id="f-${f.name}" class="mono" value="${esc(v)}" ${set}>${browse}</div></div>`;
 }
 
+// "mon-fri" / "fri-mon" / "mon,wed" as day keys in the order of `days` (as the scheduler reads them).
+function expandDays(text) {
+  const week = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'], set = new Set();
+  for (const part of text.toLowerCase().split(',')) {
+    const [a, b = a] = part.split('-').map(n => week.indexOf(n));
+    if (a < 0 || b < 0) continue;
+    for (let d = a; ; d = (d + 1) % 7) { set.add(week[d]); if (d === b) break; }
+  }
+  return days.map(d => d[0]).filter(k => set.has(k));
+}
+
 function scheduleChanged() {
   const freq = $('s-freq').value, day = $('s-day')?.value, time = $('s-time').value || '08:30';
-  const fallback = freq === 'weekly' ? 'mon' : '1';
-  const okDay = freq === 'weekly' ? days.some(d => d[0] === day) : freq === 'monthly' ? /^\d+$/.test(day || '') : true;
-  form.values.schedule = freq === 'daily' ? `daily ${time}` : `${freq}:${okDay ? day : fallback} ${time}`;
+  // Days of the week: the boxes ticked, or (just switched to it) the days of the current schedule.
+  const ticked = $('s-days') ? [...document.querySelectorAll('#s-days input:checked')].map(i => i.value)
+    : expandDays(form.values.schedule?.split(' ')[0] || '');
+  form.freq = freq; // "Days of the week" with mon..fri ticked stays that, not "Weekdays"
+  form.values.schedule = freq === 'daily' ? `daily ${time}` : freq === 'weekdays' ? `mon-fri ${time}`
+    : freq === 'monthly' ? `monthly:${/^\d+$/.test(day || '') ? day : 1} ${time}` : `${(ticked.length ? ticked : ['mon']).join(',')} ${time}`;
   drawEditor();
 }
 
