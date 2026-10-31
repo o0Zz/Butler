@@ -6,7 +6,8 @@ namespace Butler;
 // and Linux): the tray listens, the second start connects and quits.
 public static class ShowSignal
 {
-    static string Pipe(string? name) => name ?? $"Butler.ShowDashboard.{Environment.UserName}";
+    // Short: on macOS the socket lives in a long temp folder, and a socket path is at most 104 characters.
+    static string Pipe(string? name) => name ?? $"Butler.{Environment.UserName}";
 
     // Calls show at each connection, on a background thread, for the life of the process.
     public static void Listen(Action show, string? name = null) => new Thread(() =>

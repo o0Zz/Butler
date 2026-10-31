@@ -6,7 +6,7 @@ public class ShowSignalTests
     [Fact]
     public void A_second_start_reaches_the_running_tray_each_time()
     {
-        var name = $"ButlerTest-{Guid.NewGuid()}";
+        var name = $"BT-{Guid.NewGuid():N}"[..12]; // short, as the real one (macOS limits socket paths)
         using var shown = new SemaphoreSlim(0);
         ShowSignal.Listen(() => shown.Release(), name);
 
