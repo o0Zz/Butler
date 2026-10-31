@@ -15,7 +15,6 @@ sealed class TrayApp
     FileSystemWatcher? triggersWatcher; // follows the triggers file of the settings
     readonly DispatcherTimer statusTimer = new() { Interval = TimeSpan.FromSeconds(2) }; // also refreshes the dashboard (live activity)
     readonly DispatcherTimer reloadDelay = new() { Interval = TimeSpan.FromSeconds(1) };
-    readonly EventWaitHandle showEvent = new(false, EventResetMode.AutoReset, Program.ShowDashboardEvent);
     readonly ConcurrentDictionary<string, SourceStatus> sources = new(); // by trigger kind: last poll and its error
     Settings settings = new();
     List<Trigger> triggers = [];
@@ -33,7 +32,7 @@ sealed class TrayApp
         reloadDelay.Tick += (_, _) => { reloadDelay.Stop(); Reload(); };
         statusTimer.Tick += (_, _) => UpdateStatus();
 
-        new Thread(() => { while (showEvent.WaitOne()) Dispatcher.UIThread.Post(ShowDashboard); }) { IsBackground = true }.Start();
+        ShowSignal.Listen(() => Dispatcher.UIThread.Post(ShowDashboard));
 
         Reload();
         var poller = new Thread(PollLoop) { IsBackground = true, Name = "Butler poll" };

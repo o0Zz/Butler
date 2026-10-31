@@ -11,8 +11,6 @@ namespace Butler;
 // Butler.exe answer <runId> <text>    resume a run waiting for an answer
 static class Program
 {
-    public const string ShowDashboardEvent = "Butler.ShowDashboard";
-
     // Local data: settings, runs, state. The triggers file is wherever the settings say (by default with the skills).
     public static string Home { get; } = Environment.GetEnvironmentVariable("BUTLER_DATA") is { Length: > 0 } d ? d
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Butler");
@@ -55,7 +53,7 @@ static class Program
         using var mutex = new Mutex(true, "Butler.Tray", out var first);
         if (!first)
         {
-            if (EventWaitHandle.TryOpenExisting(ShowDashboardEvent, out var show)) show.Set();
+            ShowSignal.Send();
             return 0;
         }
         AppBuilder.Configure(() => new App(platform)).UsePlatformDetect().StartWithClassicDesktopLifetime([], ShutdownMode.OnExplicitShutdown);
