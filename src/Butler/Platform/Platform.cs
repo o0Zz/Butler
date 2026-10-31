@@ -1,11 +1,12 @@
 using System.Diagnostics;
+using Avalonia.Controls;
 
 namespace Butler;
 
 // What differs between operating systems: one implementation of each service per OS. The project compiles
 // Platform/Windows for Windows and Platform/Unix for macOS and Linux, each with its own Create.
 // Program builds it once and hands it to what needs it.
-public sealed partial record Platform(INotifications Notifications, ISecrets Secrets, IStartAtLogin StartAtLogin, IShell Shell, IMailbox Mailbox)
+public sealed partial record Platform(INotifications Notifications, ISecrets Secrets, IStartAtLogin StartAtLogin, IShell Shell, IMailbox Mailbox, IWebView WebView)
 {
     public static Platform Current { get; } = Create();
 
@@ -27,6 +28,8 @@ public interface ISecrets
 {
     const string Todoist = "Butler/Todoist";
 
+    string Name { get; } // where they go, for the Settings page: "the Windows Credential Manager"
+
     string? Read(string target);
     void Write(string target, string secret);
     void Delete(string target); // no error when it is not there
@@ -35,6 +38,7 @@ public interface ISecrets
 // Starting Butler at login. On only when it starts this exe: an entry left by another copy (an older release) reads as off.
 public interface IStartAtLogin
 {
+    string Label { get; } // the Settings page's checkbox: "Start Butler with Windows"
     bool IsOn(string exe);
     void Set(bool on, string exe);
 }
@@ -47,6 +51,12 @@ public interface IShell
     void Reveal(string file);           // its folder, with the file selected where the OS can
     void Terminal(string folder, string exe, IEnumerable<string> args); // an interactive program in a terminal window
     ProcessStartInfo Az();              // the az CLI, to add its arguments to
+}
+
+// The dashboard's web engine (WebView2, WebKit), set up when the dashboard creates it.
+public interface IWebView
+{
+    void Configure(WebViewEnvironmentRequestedEventArgs engine, string dataFolder); // its profile goes in dataFolder
 }
 
 // The mailbox the mail triggers read.

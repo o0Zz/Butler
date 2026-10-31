@@ -6,9 +6,9 @@ using Avalonia.Themes.Fluent;
 
 namespace Butler;
 
-// Butler.exe                          tray app + dashboard + mail watcher (single instance)
-// Butler.exe run <trigger> [var=value ...]  one headless run (what the tray starts for a trigger)
-// Butler.exe answer <runId> <text>    resume a run waiting for an answer
+// Butler                              tray app + dashboard + trigger polling (single instance)
+// Butler run <trigger> [var=value ...]  one headless run (what the tray starts for a trigger)
+// Butler answer <runId> <text>        resume a run waiting for an answer
 static class Program
 {
     // Local data: settings, runs, state. The triggers file is wherever the settings say (by default with the skills).
@@ -37,7 +37,7 @@ static class Program
                 case "answer" when args.Length >= 3:
                     return Report(platform.Notifications, NewRunner(Settings.Load(SettingsFile)).Answer(args[1], args[2]).GetAwaiter().GetResult());
                 default:
-                    platform.Notifications.Error("Butler", "Usage: Butler.exe [run <trigger> [var=value ...] | answer <runId> <text>]");
+                    platform.Notifications.Error("Butler", "Usage: Butler [run <trigger> [var=value ...] | answer <runId> <text>]");
                     return 2;
             }
         }

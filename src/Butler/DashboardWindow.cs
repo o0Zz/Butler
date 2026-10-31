@@ -35,7 +35,7 @@ sealed class DashboardWindow : Window
         web.EnvironmentRequested += (_, e) =>
         {
             e.EnableDevTools = Debugger.IsAttached;
-            if (e is WindowsWebView2EnvironmentRequestedEventArgs w) w.UserDataFolder = Path.Combine(Program.Home, "webview");
+            platform.WebView.Configure(e, Path.Combine(Program.Home, "webview"));
         };
         web.WebMessageReceived += (_, e) => { if (e.Body is { } body) OnCommand(body); };
         web.NavigationCompleted += (_, _) => { ready = true; RefreshAll(); };
@@ -150,6 +150,7 @@ sealed class DashboardWindow : Window
             {
                 settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, settings.Todo, settings.TodoFile, settings.StartPage,
                 file = Program.SettingsFile, installed, todoist = platform.Secrets.Read(ISecrets.Todoist) != null, startup = platform.StartAtLogin.IsOn(Program.Exe),
+                secretStore = platform.Secrets.Name, startupLabel = platform.StartAtLogin.Label,
                 todos = TodoBackend.All.Select(b => new { b.Name, b.Label }),
             },
             todo = settings.Todo == "none" ? null : new

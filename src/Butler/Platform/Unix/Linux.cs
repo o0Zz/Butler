@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using Avalonia.Controls;
+using Avalonia.Platform;
 
 namespace Butler;
 
@@ -16,6 +18,8 @@ sealed class NotifySend : PlainNotifications
 // The desktop's secret service (GNOME Keyring, KWallet), through secret-tool (libsecret-tools). The secret goes on stdin.
 sealed class SecretTool : ISecrets
 {
+    public string Name => "the desktop's secret service";
+
     public string? Read(string target) =>
         Command.Run("secret-tool", ["lookup", "service", "Butler", "target", target]) is (0, var output, _) ? output : null;
 
@@ -34,6 +38,23 @@ sealed class AutostartFile(string name = "Butler") : StartupFile
         "autostart", $"{name}.desktop");
 
     protected override string Content(string exe) => $"[Desktop Entry]\nType=Application\nName={name}\nExec=\"{exe}\"\n";
+}
+
+// WPE WebKit when installed, else WebKitGTK: either way, its data and cache in the folder.
+sealed class WebKitLinux : IWebView
+{
+    public void Configure(WebViewEnvironmentRequestedEventArgs engine, string dataFolder)
+    {
+        switch (engine)
+        {
+            case LinuxWpeWebViewEnvironmentRequestedEventArgs wpe:
+                (wpe.DataDirectory, wpe.CacheDirectory) = (dataFolder, Path.Combine(dataFolder, "cache"));
+                break;
+            case GtkWebViewEnvironmentRequestedEventArgs gtk:
+                (gtk.BaseDataDirectory, gtk.BaseCacheDirectory) = (dataFolder, Path.Combine(dataFolder, "cache"));
+                break;
+        }
+    }
 }
 
 // The file manager (xdg-open) and the default terminal (x-terminal-emulator, Debian and Ubuntu).

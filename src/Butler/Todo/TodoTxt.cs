@@ -129,11 +129,11 @@ public sealed class TodoTxt(string path, Func<DateTime>? today = null) : TodoBac
 
     List<string> Lines() => File.Exists(path) ? [.. File.ReadAllText(path).Split('\n').Select(l => l.TrimEnd('\r'))] : [];
 
-    // Reads the file, applies the change, writes it back with its line endings (CRLF for a new file, as on Windows).
+    // Reads the file, applies the change, writes it back with its line endings (the OS's for a new file).
     Task Change(Action<List<string>> change)
     {
         var text = File.Exists(path) ? File.ReadAllText(path) : "";
-        var nl = text.Contains("\r\n") || !text.Contains('\n') ? "\r\n" : "\n";
+        var nl = text.Contains("\r\n") ? "\r\n" : text.Contains('\n') ? "\n" : Environment.NewLine;
         var lines = Lines();
         if (lines.Count > 0 && lines[^1] == "") lines.RemoveAt(lines.Count - 1); // the file's last newline
         change(lines);

@@ -993,7 +993,7 @@ function renderSettings() {
       <div id="s-todo-txt">${pathField('todoFile', 'todo.txt file', 'One task per line, in the todo.txt format (todotxt.org): (A) Call Lena +Work due:2026-11-03. Created with the first task.', s.todoFile, 'file', 'Text (*.txt)|*.txt|All files|*.*')}</div>
       <div class="field" id="s-todo-todoist">
         <label for="s-todoistToken">Todoist API token</label>
-        <div class="hint">In Todoist: Settings → Integrations → Developer. Kept in the Windows Credential Manager, not in the settings file.</div>
+        <div class="hint">In Todoist: Settings → Integrations → Developer. Kept in ${esc(s.secretStore)}, not in the settings file.</div>
         <div class="bar"><input id="s-todoistToken" type="password" class="mono" autocomplete="off" oninput="checkSettings()"
             placeholder="${s.todoist ? 'Saved. Paste a new one to replace it' : 'Paste your token'}">
           ${s.todoist ? `<button id="s-forget" onclick="forgetTodoist()">Forget</button>` : ''}</div>
@@ -1010,8 +1010,8 @@ function renderSettings() {
         <div class="err" id="e-startPage"></div>
       </div>
       <div class="field">
-        <label><input id="s-startup" type="checkbox" ${s.startup ? 'checked' : ''} onchange="checkSettings()"> Start Butler with Windows</label>
-        <div class="hint">When you sign in, in the tray. Without it, mail, Azure DevOps and file triggers wait until Butler is started (scheduled triggers run anyway).</div>
+        <label><input id="s-startup" type="checkbox" ${s.startup ? 'checked' : ''} onchange="checkSettings()"> ${esc(s.startupLabel)}</label>
+        <div class="hint">When you sign in, in the tray. Without it, triggers wait until Butler is started (a missed schedule then runs once).</div>
         <div class="err" id="e-startup"></div>
       </div>
     </div>

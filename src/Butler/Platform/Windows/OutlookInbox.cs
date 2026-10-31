@@ -1,8 +1,9 @@
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 
 namespace Butler;
 
-// Reads the mail folders of the default Outlook classic mailbox through COM. Only call from an STA thread.
+// Reads the mail folders of the default Outlook classic mailbox through COM, on a thread of its own (COM needs STA).
 public sealed class OutlookInbox : IMailbox
 {
     public static bool IsRunning => Process.GetProcessesByName("OUTLOOK").Length > 0;
@@ -15,6 +16,22 @@ public sealed class OutlookInbox : IMailbox
     // Mails received at or after `since`, newest first. Every mail folder is read, not only the Inbox:
     // rules move mails out of it.
     public List<Mail> ReadSince(DateTime since)
+    {
+        List<Mail>? mails = null;
+        ExceptionDispatchInfo? error = null;
+        var sta = new Thread(() =>
+        {
+            try { mails = Read(since); }
+            catch (Exception e) { error = ExceptionDispatchInfo.Capture(e); }
+        });
+        sta.SetApartmentState(ApartmentState.STA);
+        sta.Start();
+        sta.Join();
+        error?.Throw();
+        return mails!;
+    }
+
+    static List<Mail> Read(DateTime since)
     {
         dynamic app = Activator.CreateInstance(Type.GetTypeFromProgID("Outlook.Application")!)!;
         dynamic ns = app.GetNamespace("MAPI");

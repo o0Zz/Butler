@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Security;
 using System.Text;
+using Avalonia.Controls;
 
 namespace Butler;
 
@@ -15,6 +16,8 @@ sealed class OsascriptNotifications : PlainNotifications
 // cannot be told apart from a hex token.
 sealed class Keychain : ISecrets
 {
+    public string Name => "the macOS Keychain";
+
     public string? Read(string target) =>
         Command.Run("security", ["find-generic-password", "-s", target, "-w"]) is (0, var output, _)
             ? Encoding.UTF8.GetString(Convert.FromBase64String(output.Trim())) : null;
@@ -56,6 +59,12 @@ sealed class MacShell : IShell
         Command.Start("osascript", ["-e", "on run argv\ntell application \"Terminal\" to do script (item 1 of argv)\nend run", Command.ShellLine(folder, exe, args)]);
 
     public ProcessStartInfo Az() => new("az");
+}
+
+// WKWebView: its data stays in the app's own WebKit store, which has no folder to choose.
+sealed class WkWebView : IWebView
+{
+    public void Configure(WebViewEnvironmentRequestedEventArgs engine, string dataFolder) { }
 }
 
 // Mail triggers read Outlook classic, which only exists on Windows.

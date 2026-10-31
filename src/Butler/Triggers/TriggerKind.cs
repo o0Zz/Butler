@@ -32,7 +32,7 @@ public abstract class TriggerKind
     public virtual TimeSpan Interval => TimeSpan.FromSeconds(30);
 
     // The runs to start since the last poll (trigger + variable values), for the triggers of this kind.
-    // Keeps its own checkpoint in stateDir; the first poll starts from now. Runs on the tray's polling thread (STA).
+    // Keeps its own checkpoint in stateDir; the first poll starts from now. Runs on the tray's polling thread.
     public abstract List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir, Platform platform);
 }
 

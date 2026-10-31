@@ -59,6 +59,7 @@ abstract class PlainNotifications : INotifications
 // Starting at login through a file the desktop reads (a LaunchAgent, an autostart entry): on when it holds this exe.
 abstract class StartupFile : IStartAtLogin
 {
+    public string Label => "Start Butler at login";
     protected abstract string File { get; }
     protected abstract string Content(string exe);
 

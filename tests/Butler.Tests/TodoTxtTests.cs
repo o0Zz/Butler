@@ -46,7 +46,7 @@ public class TodoTxtTests : IDisposable
     public async Task A_new_file_is_created_with_the_first_task()
     {
         await List().Add("Buy milk");
-        Assert.Equal("Buy milk\r\n", File.ReadAllText(File_));
+        Assert.Equal("Buy milk" + Environment.NewLine, File.ReadAllText(File_)); // the OS's line endings
     }
 
     [Fact]

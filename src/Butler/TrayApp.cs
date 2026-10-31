@@ -36,7 +36,6 @@ sealed class TrayApp
 
         Reload();
         var poller = new Thread(PollLoop) { IsBackground = true, Name = "Butler poll" };
-        if (OperatingSystem.IsWindows()) poller.SetApartmentState(ApartmentState.STA); // Outlook COM
         poller.Start(); // its first poll catches up what came while Butler was not running
         statusTimer.Start();
         UpdateStatus();
