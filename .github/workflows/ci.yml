@@ -1,4 +1,6 @@
-# Builds and tests every push and pull request. A tag vX.Y.Z also publishes Butler-X.Y.Z.<commits>.exe (one file, needing the .NET 9 Desktop Runtime) to a GitHub release.
+# Builds and tests every push and pull request on Windows, Linux and macOS. A tag vX.Y.Z also publishes one file per OS
+# to a GitHub release: Butler-X.Y.Z.<commits>.exe (Windows), Butler-X.Y.Z.<commits>-linux-x64, Butler-X.Y.Z.<commits>-osx-arm64.
+# Each needs the .NET 9 runtime (on Windows the Desktop Runtime).
 name: CI
 
 on:
@@ -9,7 +11,14 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, framework: net9.0-windows10.0.17763.0, rid: win-x64, suffix: .exe }
+          - { os: ubuntu-latest, framework: net9.0, rid: linux-x64, suffix: -linux-x64 }
+          - { os: macos-latest, framework: net9.0, rid: osx-arm64, suffix: -osx-arm64 }
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write # the release, on a tag
     steps:
@@ -32,27 +41,28 @@ jobs:
       - name: Build
         run: dotnet build -c Release ${{ env.VERSION_ARG }}
 
-      # Outlook and Azure DevOps tests skip themselves here (no Outlook running, no BUTLER_TEST_ADO_ORG).
+      # Outlook and Azure DevOps tests skip themselves here (no Outlook running, no BUTLER_TEST_ADO_ORG), and so does
+      # the secret service test on Linux (no keyring running).
       - name: Test
         run: dotnet test -c Release --no-build
 
-      # One Butler.exe with every library inside (native ones extracted at start), without .NET: it needs the .NET 9 Desktop Runtime.
+      # One Butler file with every library inside (native ones extracted at start), without .NET.
       - name: Publish
         shell: pwsh
         run: |
-          dotnet publish src/Butler -c Release -r win-x64 --self-contained false -o publish ${{ env.VERSION_ARG }} `
+          dotnet publish src/Butler -c Release -f ${{ matrix.framework }} -r ${{ matrix.rid }} --self-contained false -o publish ${{ env.VERSION_ARG }} `
             -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
           Get-ChildItem publish
-          Copy-Item publish/Butler.exe "Butler-$env:VERSION.exe"
+          Copy-Item (Get-ChildItem publish -Filter 'Butler*' | Where-Object Extension -in '', '.exe').FullName "Butler-$env:VERSION${{ matrix.suffix }}"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Butler-${{ env.VERSION }}
-          path: Butler-${{ env.VERSION }}.exe
+          name: Butler-${{ env.VERSION }}${{ matrix.suffix }}
+          path: Butler-${{ env.VERSION }}${{ matrix.suffix }}
 
       - name: Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: Butler-${{ env.VERSION }}.exe
+          files: Butler-${{ env.VERSION }}${{ matrix.suffix }}
           generate_release_notes: true
