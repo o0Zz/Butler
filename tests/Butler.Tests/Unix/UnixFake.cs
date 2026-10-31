@@ -16,7 +16,7 @@ static partial class Fake
     {
         var path = Path.Combine(folder, name);
         File.WriteAllText(path, script);
-        File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Command.Check("chmod", ["+x", path]);
         return path;
     }
 }
