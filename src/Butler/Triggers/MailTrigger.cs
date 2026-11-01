@@ -9,8 +9,8 @@ public sealed record Mail(string EntryId, DateTime Received, string From, string
 public sealed class MailTrigger : TriggerKind
 {
     public override string Name => "mail";
-    public override string Label => "Mail";
-    public override FormField[] Form => [new("from", "From", "list", "Sender addresses, one per line (exact match, any case)")];
+    public override string Label => T("Mail");
+    public override FormField[] Form => [new("from", T("From"), "list", T("Sender addresses, one per line (exact match, any case)"))];
     public override string[] Variables => ["from", "subject", "received"];
     public override string? Context => "Triggered by this mail: from ${from}, subject \"${subject}\", received ${received}.";
 
@@ -19,7 +19,7 @@ public sealed class MailTrigger : TriggerKind
         if (t.From is not { Length: > 0 }) throw new FormatException($"Trigger '{t.Name}': from is empty");
     }
 
-    public override string Describe(Trigger t) => "When a mail arrives";
+    public override string Describe(Trigger t) => T("When a mail arrives");
 
     public override List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir, Platform platform)
     {

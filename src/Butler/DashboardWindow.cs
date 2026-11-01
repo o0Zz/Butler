@@ -42,7 +42,15 @@ sealed class DashboardWindow : Window
         // Links in Claude's output open in the browser; the dashboard itself never navigates away.
         web.NavigationStarted += (_, e) => { if (ready) { e.Cancel = true; OpenLink(e.Request?.AbsoluteUri); } };
         web.NewWindowRequested += (_, e) => { e.Handled = true; OpenLink(e.Request?.AbsoluteUri); };
-        web.AdapterCreated += (_, _) => web.NavigateToString(Resource("dashboard.html") // once the engine is up
+        web.AdapterCreated += (_, _) => Load(null); // once the engine is up
+    }
+
+    // The page, in the current language; page: the one to show instead of the start page (after a change of language).
+    void Load(string? page)
+    {
+        ready = false;
+        var lang = $"const LANG = {JsonSerializer.Serialize(Lang.Texts)}, LOCALE = '{Lang.Code}', OPEN = '{page}';";
+        web.NavigateToString(Resource("dashboard.html").Replace("<!--lang-->", $"<script>{lang}</script>")
             .Replace("<!--marked-->", $"<script>{Resource("marked.min.js")}</script>")
             .Replace("<!--logo-->", Resource("butler.svg")).Replace("<!--version-->", Program.Version), new Uri("about:blank"));
     }
@@ -148,7 +156,7 @@ sealed class DashboardWindow : Window
             }),
             settings = new
             {
-                settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, settings.Todo, settings.TodoFile, settings.StartPage,
+                settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, settings.Todo, settings.TodoFile, settings.StartPage, settings.Language,
                 file = Program.SettingsFile, installed, todoist = platform.Secrets.Read(ISecrets.Todoist) != null, startup = platform.StartAtLogin.IsOn(Program.Exe),
                 secretStore = platform.Secrets.Name, startupLabel = platform.StartAtLogin.Label,
                 todos = TodoBackend.All.Select(b => new { b.Name, b.Label }),
@@ -209,12 +217,14 @@ sealed class DashboardWindow : Window
                 {
                     Cli = Arg("cli"), TriggersFile = Arg("triggersFile").Trim(), SkillsFolder = Arg("skillsFolder").Trim(),
                     AdoOrganization = Arg("adoOrganization").Trim(), Todo = Arg("todo"), TodoFile = Arg("todoFile").Trim(), StartPage = Arg("startPage"),
+                    Language = Arg("language"),
                 };
+                var language = Lang.Code;
                 var problems = settings.Problems(platform.Shell);
                 var token = Arg("todoistToken").Trim(); // empty: keep the saved one
                 if (settings.Todo == "todoist")
                 {
-                    if (token == "" && platform.Secrets.Read(ISecrets.Todoist) == null) problems["todoistToken"] = "Paste your Todoist API token";
+                    if (token == "" && platform.Secrets.Read(ISecrets.Todoist) == null) problems["todoistToken"] = T("Paste your Todoist API token");
                     else if (token != "" && Task.Run(() => new Todoist(token).Check()).ContinueWith(t => t.Exception?.InnerException?.Message).Result is { } refused)
                         problems["todoistToken"] = refused;
                 }
@@ -227,6 +237,7 @@ sealed class DashboardWindow : Window
                     (todo, todoError, todoRead) = (null, null, DateTime.MinValue);
                 }
                 Call("settingsSaved", problems);
+                if (Lang.Code != language) Load("settings"); // its texts are in the page
                 break;
             case "forgetTodoist":
                 platform.Secrets.Delete(ISecrets.Todoist);
@@ -260,7 +271,7 @@ sealed class DashboardWindow : Window
                 tray.Reload();
                 break;
             case "browse":
-                _ = Browse(Arg("pick") == "folder", Arg("title"), Arg("value"), cmd.TryGetProperty("filter", out var filter) ? filter.GetString()! : "All files|*.*", Arg("target"));
+                _ = Browse(Arg("pick") == "folder", Arg("title"), Arg("value"), cmd.TryGetProperty("filter", out var filter) ? filter.GetString()! : T("All files") + "|*.*", Arg("target"));
                 break;
             case "saveTrigger":
                 Call("triggerSaved", EditTriggers(list =>

@@ -23,7 +23,7 @@ sealed class TrayApp
     public TrayApp(Application app, Platform platform)
     {
         Platform = platform;
-        icon.Menu = [Item("Open dashboard", ShowDashboard), Item("Open folder", () => platform.Shell.OpenFolder(Program.Home)), Item("Exit", Exit)];
+        icon.Menu = Menu();
         icon.Clicked += (_, _) => ShowDashboard();
         TrayIcon.SetIcons(app, [icon]);
 
@@ -54,6 +54,8 @@ sealed class TrayApp
         try
         {
             settings = Settings.Load(Program.SettingsFile);
+            Lang.Use(settings.Language);
+            icon.Menu = Menu();
             if (triggersWatcher == null || Path.Combine(triggersWatcher.Path, triggersWatcher.Filter) != settings.TriggersFile)
             {
                 triggersWatcher?.Dispose();
@@ -73,7 +75,7 @@ sealed class TrayApp
     void Fail(string file, Exception ex)
     {
         LastError = $"{file}: {ex.Message}";
-        Platform.Notifications.Error($"Butler: {file} not applied", ex.Message);
+        Platform.Notifications.Error(T("Butler: {0} not applied", file), ex.Message);
         dashboard?.RefreshAll();
     }
 
@@ -122,15 +124,15 @@ sealed class TrayApp
         var before = sources.GetValueOrDefault(kind.Name);
         sources[kind.Name] = new SourceStatus(DateTime.Now, error);
         if (error != null && before?.Error == null) // once, not every poll
-            Platform.Notifications.Error($"Butler: {kind.Label} triggers failed", error);
+            Platform.Notifications.Error(T("Butler: {0} triggers failed", kind.Label), error);
     }
 
     void UpdateStatus()
     {
         var waiting = Runner.Recent(50).Count(r => r.Status == RunStatus.Waiting);
-        var problem = LastError ?? sources.Where(s => s.Value.Error != null).Select(s => $"{s.Key} triggers: {s.Value.Error}").FirstOrDefault();
+        var problem = LastError ?? sources.Where(s => s.Value.Error != null).Select(s => T("{0} triggers: {1}", s.Key, s.Value.Error)).FirstOrDefault();
         icon.Icon = problem != null ? AppIcon.TrayError : waiting > 0 ? AppIcon.TrayWaiting : AppIcon.Tray;
-        var text = problem ?? (waiting > 0 ? $"Butler: {waiting} waiting for you" : "Butler");
+        var text = problem ?? (waiting > 0 ? T("Butler: {0} waiting for you", waiting) : "Butler");
         icon.ToolTipText = text.Length > 63 ? text[..63] : text; // Windows' tray tooltip limit
         dashboard?.RefreshRuns();
     }
@@ -147,6 +149,9 @@ sealed class TrayApp
         dashboard.Closed += (_, _) => dashboard = null;
         dashboard.Show();
     }
+
+    NativeMenu Menu() =>
+        [Item(T("Open dashboard"), ShowDashboard), Item(T("Open folder"), () => Platform.Shell.OpenFolder(Program.Home)), Item(T("Exit"), Exit)];
 
     static NativeMenuItem Item(string header, Action click)
     {

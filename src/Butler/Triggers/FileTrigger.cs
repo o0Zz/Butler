@@ -8,9 +8,9 @@ namespace Butler;
 public sealed class FileTrigger : TriggerKind
 {
     public override string Name => "file";
-    public override string Label => "New file";
+    public override string Label => T("New file");
     public override FormField[] Form =>
-        [new("folder", "Folder", "folder", "Not its subfolders; %VARIABLES% allowed"), new("filter", "Filter", "text", "A file pattern like *.pdf", Optional: true)];
+        [new("folder", T("Folder"), "folder", T("Not its subfolders; %VARIABLES% allowed")), new("filter", T("Filter"), "text", T("A file pattern like *.pdf"), Optional: true)];
     public override string[] Variables => ["path", "name"];
     public override string? Context => "Triggered by this new file: ${path}";
 
@@ -20,7 +20,8 @@ public sealed class FileTrigger : TriggerKind
         if (t.Field("filter") is { } f && f.IndexOfAny(['\\', '/']) >= 0) throw new FormatException($"Trigger '{t.Name}': filter is a file pattern like *.pdf, not a path");
     }
 
-    public override string Describe(Trigger t) => $"When a file{(t.Field("filter") is { } f ? $" ({f})" : "")} appears in {t.Field("folder")}";
+    public override string Describe(Trigger t) => t.Field("filter") is { } f
+        ? T("When a file ({0}) appears in {1}", f, t.Field("folder")) : T("When a file appears in {0}", t.Field("folder"));
 
     public override List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir, Platform platform)
     {

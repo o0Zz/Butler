@@ -16,7 +16,7 @@ public sealed class TodoException(string message) : Exception(message);
 // on the dashboard; agents reach the same list through their own tools.
 public abstract class TodoBackend
 {
-    public static readonly (string Name, string Label)[] All = [("none", "None"), ("todoist", "Todoist"), ("txt", "todo.txt file")];
+    public static (string Name, string Label)[] All => [("none", T("None")), ("todoist", "Todoist"), ("txt", T("todo.txt file"))];
 
     // null when no to-do list is set.
     public static TodoBackend? From(Settings settings, ISecrets secrets) => settings.Todo switch

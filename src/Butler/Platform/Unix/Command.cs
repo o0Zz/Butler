@@ -49,7 +49,7 @@ static class Command
 // macOS and Linux: a plain notification, without buttons: a waiting run is answered on the dashboard.
 abstract class PlainNotifications : INotifications
 {
-    public void Show(RunRecord run) => Notify($"{run.Trigger}: {run.Status}", run.Question ?? run.Summary ?? "");
+    public void Show(RunRecord run) => Notify($"{run.Trigger}: {T(run.Status.ToString())}", run.Question ?? run.Summary ?? "");
     public void Error(string title, string message) => Notify(title, message);
     public bool StartedByClick() => false;
 
@@ -59,7 +59,7 @@ abstract class PlainNotifications : INotifications
 // Starting at login through a file the desktop reads (a LaunchAgent, an autostart entry): on when it holds this exe.
 abstract class StartupFile : IStartAtLogin
 {
-    public string Label => "Start Butler at login";
+    public string Label => T("Start Butler at login");
     protected abstract string File { get; }
     protected abstract string Content(string exe);
 

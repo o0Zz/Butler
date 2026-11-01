@@ -9,13 +9,13 @@ public sealed class ToastNotifications : INotifications
     {
         var builder = new ToastContentBuilder()
             .AddArgument("run", run.Id)
-            .AddText($"{run.Trigger}: {run.Status}")
+            .AddText($"{run.Trigger}: {T(run.Status.ToString())}")
             .AddText(run.Question ?? run.Summary ?? "");
         if (run.Status == RunStatus.Waiting)
         {
-            builder.AddButton(new ToastButton().SetContent("Yes").AddArgument("run", run.Id).AddArgument("answer", "yes"));
-            builder.AddButton(new ToastButton().SetContent("No").AddArgument("run", run.Id).AddArgument("answer", "no"));
-            builder.AddButton(new ToastButton().SetContent("Open").AddArgument("run", run.Id));
+            builder.AddButton(new ToastButton().SetContent(T("Yes")).AddArgument("run", run.Id).AddArgument("answer", "yes"));
+            builder.AddButton(new ToastButton().SetContent(T("No")).AddArgument("run", run.Id).AddArgument("answer", "no"));
+            builder.AddButton(new ToastButton().SetContent(T("Open")).AddArgument("run", run.Id));
         }
         builder.Show();
     }

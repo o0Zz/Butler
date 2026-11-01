@@ -116,7 +116,7 @@ public sealed class Runner(string home, Cli cli)
         if ((waiting.Cli ?? "claude") != Cli.Name)
             throw new InvalidOperationException($"Run {runId} is a {waiting.Cli ?? "claude"} session and the CLI setting is {Cli.Name}: switch back to answer it");
         waiting.Status = RunStatus.Answered;
-        waiting.Summary = $"Answered: {answer}";
+        waiting.Summary = T("Answered: {0}", answer);
         Save(waiting);
         return Run(waiting.Trigger, answer, waiting.SessionId);
     }
@@ -129,7 +129,7 @@ public sealed class Runner(string home, Cli cli)
         var claude = run.Status == RunStatus.Running ? Live(run.ClaudePid, p => p.StartTime >= run.Started.AddSeconds(-2)) : null;
         run.Status = RunStatus.Stopped;
         run.Ended = DateTime.Now;
-        run.Summary = "Stopped from the dashboard";
+        run.Summary = T("Stopped from the dashboard");
         Save(run); // before the kill, so the run process sees it and keeps it
         if (claude != null)
         {
@@ -168,7 +168,7 @@ public sealed class Runner(string home, Cli cli)
         var log = Path.Combine(RunsDir, run.Id + ".log");
         run.Status = RunStatus.Stopped;
         run.Ended = File.Exists(log) ? File.GetLastWriteTime(log) : run.Started;
-        run.Summary = "Stopped: the Butler process running it ended before Claude finished (killed, sign-out or reboot)";
+        run.Summary = T("Stopped: the Butler process running it ended before Claude finished (killed, sign-out or reboot)");
         Save(run);
     }
 
@@ -180,7 +180,7 @@ public sealed class Runner(string home, Cli cli)
         if (isError)
         {
             run.Status = RunStatus.Failed;
-            run.Summary = lines.FirstOrDefault(l => l.Length > 0) ?? "the run failed";
+            run.Summary = lines.FirstOrDefault(l => l.Length > 0) ?? T("the run failed");
         }
         else if (ask != null)
         {

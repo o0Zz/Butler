@@ -7,7 +7,7 @@ namespace Butler;
 // The Windows Credential Manager.
 public sealed class CredentialManager : ISecrets
 {
-    public string Name => "the Windows Credential Manager";
+    public string Name => T("the Windows Credential Manager");
 
     public string? Read(string target)
     {

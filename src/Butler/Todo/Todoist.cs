@@ -12,8 +12,8 @@ public sealed class Todoist(string token, string api = "https://api.todoist.com/
     public override string Label => "Todoist";
     public override bool Notes => true;
     public override bool Sections => true;
-    public override string AddHint => "Add a task: Call Lena tomorrow 9am #Work p1";
-    public override string DateHint => "In words, as in Todoist: tomorrow 9am, every monday, Nov 3. Empty: no date.";
+    public override string AddHint => T("Add a task: Call Lena tomorrow 9am #Work p1");
+    public override string DateHint => T("In words, as in Todoist: tomorrow 9am, every monday, Nov 3. Empty: no date.");
 
     // Fails with a TodoException when the token is refused.
     public Task Check() => Send(HttpMethod.Get, "projects?limit=1");

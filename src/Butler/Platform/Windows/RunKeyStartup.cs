@@ -8,7 +8,7 @@ public sealed class RunKeyStartup(string name = "Butler") : IStartAtLogin
 {
     const string Run = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
-    public string Label => "Start Butler with Windows";
+    public string Label => T("Start Butler with Windows");
 
     public bool IsOn(string exe)
     {

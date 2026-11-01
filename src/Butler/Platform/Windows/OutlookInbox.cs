@@ -8,7 +8,7 @@ public sealed class OutlookInbox : IMailbox
 {
     public static bool IsRunning => Process.GetProcessesByName("OUTLOOK").Length > 0;
 
-    public string? Unavailable => IsRunning ? null : "Outlook classic is not running: mail triggers wait for it";
+    public string? Unavailable => IsRunning ? null : T("Outlook classic is not running: mail triggers wait for it");
 
     // Deleted, Outbox, Sent, Drafts, Junk: never hold mails to react to. Skipped with their subfolders.
     static readonly int[] SkippedFolders = [3, 4, 5, 16, 23];

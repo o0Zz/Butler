@@ -18,7 +18,7 @@ sealed class NotifySend : PlainNotifications
 // The desktop's secret service (GNOME Keyring, KWallet), through secret-tool (libsecret-tools). The secret goes on stdin.
 sealed class SecretTool : ISecrets
 {
-    public string Name => "the desktop's secret service";
+    public string Name => T("the desktop's secret service");
 
     public string? Read(string target) =>
         Command.Run("secret-tool", ["lookup", "service", "Butler", "target", target]) is (0, var output, _) ? output : null;

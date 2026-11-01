@@ -7,8 +7,8 @@ namespace Butler;
 public sealed class ScheduleTrigger : TriggerKind
 {
     public override string Name => "schedule";
-    public override string Label => "Schedule";
-    public override FormField[] Form => [new("schedule", "When", "schedule")];
+    public override string Label => T("Schedule");
+    public override FormField[] Form => [new("schedule", T("When"), "schedule")];
 
     public override void Validate(Trigger t) =>
         Schedule.Parse(t.Schedule ?? throw new FormatException($"Trigger '{t.Name}': schedule is missing"));
@@ -19,10 +19,11 @@ public sealed class ScheduleTrigger : TriggerKind
         var at = s.At.ToString(@"hh\:mm");
         return s.Kind switch
         {
-            ScheduleKind.Daily => $"Every day at {at}",
-            ScheduleKind.Weekly when s.Days == Schedule.Weekdays => $"Weekdays at {at}",
-            ScheduleKind.Weekly => $"Every {string.Join(", ", Enum.GetValues<DayOfWeek>().Where(d => s.Days.HasFlag(Schedule.Flag(d))))} at {at}",
-            _ => $"Monthly on day {s.DayOfMonth} at {at}",
+            ScheduleKind.Daily => T("Every day at {0}", at),
+            ScheduleKind.Weekly when s.Days == Schedule.Weekdays => T("Weekdays at {0}", at),
+            ScheduleKind.Weekly => T("Every {0} at {1}", string.Join(", ", Enum.GetValues<DayOfWeek>().Where(d => s.Days.HasFlag(Schedule.Flag(d)))
+                .Select(Lang.Culture.DateTimeFormat.GetDayName)), at),
+            _ => T("Monthly on day {0} at {1}", s.DayOfMonth, at),
         };
     }
 

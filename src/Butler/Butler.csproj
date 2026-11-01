@@ -27,10 +27,12 @@
     <EmbeddedResource Include="marked.min.js" LogicalName="Butler.marked.min.js" />
     <EmbeddedResource Include="butler.ico" LogicalName="Butler.butler.ico" />
     <EmbeddedResource Include="..\..\docs\butler.svg" LogicalName="Butler.butler.svg" />
+    <EmbeddedResource Include="Lang\*.json" LogicalName="Butler.Lang.%(Filename).json" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Butler.Tests" />
+    <Using Include="Butler.Lang" Static="true" /><!-- T("...") everywhere -->
   </ItemGroup>
 
   <!-- The OS services (Platform): Windows' for Windows, macOS' and Linux' for the other target -->

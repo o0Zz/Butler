@@ -14,7 +14,7 @@ public sealed class AdoTrigger : TriggerKind
     public override string Name => "ado";
     public override string Label => "Azure DevOps";
     public override FormField[] Form =>
-        [new("where", "Work items where", "text", "A WIQL condition, e.g. [System.AssignedTo] = @Me AND [System.ChangedBy] <> @Me")];
+        [new("where", T("Work items where"), "text", T("A WIQL condition, e.g. [System.AssignedTo] = @Me AND [System.ChangedBy] <> @Me"))];
     public override string[] Variables => ["id", "title", "state", "by"];
     public override string? Context => "Triggered by this Azure DevOps work item change: #${id} \"${title}\" (${state}), changed by ${by}.";
     public override TimeSpan Interval => TimeSpan.FromMinutes(2); // az takes seconds per call
@@ -24,7 +24,7 @@ public sealed class AdoTrigger : TriggerKind
         if (string.IsNullOrWhiteSpace(t.Field("where"))) throw new FormatException($"Trigger '{t.Name}': where is missing (a WIQL condition)");
     }
 
-    public override string Describe(Trigger t) => $"When a work item changes where {t.Field("where")}";
+    public override string Describe(Trigger t) => T("When a work item changes where {0}", t.Field("where"));
 
     public override List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir, Platform platform)
     {

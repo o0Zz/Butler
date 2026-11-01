@@ -224,16 +224,16 @@
 </head>
 <body>
 <nav>
-  <h1><span class="logo"><!--logo--></span><span>Butler<small title="Butler's version (and its commit)"><!--version--></small></span></h1>
-  <a data-view="runs"><i data-ic="runs"></i><span class="label">Runs</span><span class="count" id="c-runs"></span></a>
-  <a data-view="todo"><i data-ic="todo"></i><span class="label">To do</span><span class="count" id="c-todo"></span></a>
-  <a data-view="triggers"><i data-ic="triggers"></i><span class="label">Triggers</span><span class="count" id="c-triggers"></span></a>
-  <a data-view="skills"><i data-ic="skills"></i><span class="label">Skills</span><span class="count" id="c-skills"></span></a>
-  <a data-view="settings"><i data-ic="settings"></i><span class="label">Settings</span></a>
+  <h1><span class="logo"><!--logo--></span><span>Butler<small data-tr-title title="Butler's version (and its commit)"><!--version--></small></span></h1>
+  <a data-view="runs"><i data-ic="runs"></i><span class="label" data-tr>Runs</span><span class="count" id="c-runs"></span></a>
+  <a data-view="todo"><i data-ic="todo"></i><span class="label" data-tr>To do</span><span class="count" id="c-todo"></span></a>
+  <a data-view="triggers"><i data-ic="triggers"></i><span class="label" data-tr>Triggers</span><span class="count" id="c-triggers"></span></a>
+  <a data-view="skills"><i data-ic="skills"></i><span class="label" data-tr>Skills</span><span class="count" id="c-skills"></span></a>
+  <a data-view="settings"><i data-ic="settings"></i><span class="label" data-tr>Settings</span></a>
   <div class="bottom">
     <div class="sources" id="sources"></div>
     <div class="row2">
-      <button onclick="send('editConfig')" title="Open the triggers file in your editor"><i data-ic="code"></i>File</button>
+      <button onclick="send('editConfig')" data-tr-title title="Open the triggers file in your editor"><i data-ic="code"></i><span data-tr>File</span></button>
     </div>
   </div>
 </nav>
@@ -244,6 +244,7 @@
 </main>
 <div id="modal"></div>
 <div id="toast"></div>
+<!--lang-->
 <!--marked-->
 <script>
 // Claude's output can quote mail content: raw HTML is shown as text and only http(s) links are kept.
@@ -259,6 +260,9 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const send = (cmd, args = {}) => invokeCSharpAction(JSON.stringify({ cmd, ...args })); // the web view's bridge to C#
 const cap = s => s ? s[0].toUpperCase() + s.slice(1) : '';
+// The texts in the language of the settings: LANG maps the English text to its translation (Lang/<code>.json), "{0}" is filled.
+const tr = (text, ...args) => (LANG[text] ?? text).replace(/\{(\d)\}/g, (_, i) => args[i]);
+const js = v => esc(JSON.stringify(v)); // a JS value inside an HTML attribute (onclick="...")
 
 // Icons: 24x24 strokes, drawn with currentColor.
 const IC = {
@@ -295,21 +299,23 @@ const IC = {
 };
 const icon = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24">${IC[name] || ''}</svg>`;
 document.querySelectorAll('[data-ic]').forEach(el => el.outerHTML = icon(el.dataset.ic));
+document.querySelectorAll('[data-tr]').forEach(el => el.textContent = tr(el.textContent));
+document.querySelectorAll('[data-tr-title]').forEach(el => el.title = tr(el.title));
 
 function ago(d) {
   if (!d) return '';
   const s = (Date.now() - new Date(d)) / 1000;
-  if (s < 0) return 'in ' + span(-s);
-  return s < 60 ? 'just now' : span(s) + ' ago';
+  if (s < 0) return tr('in {0}', span(-s));
+  return s < 60 ? tr('just now') : tr('{0} ago', span(s));
 }
 function span(s) {
-  return s < 3600 ? Math.round(s / 60) + ' min' : s < 86400 ? Math.round(s / 3600) + ' h' : Math.round(s / 86400) + ' d';
+  return s < 3600 ? tr('{0} min', Math.round(s / 60)) : s < 86400 ? tr('{0} h', Math.round(s / 3600)) : tr('{0} d', Math.round(s / 86400));
 }
-const full = d => d ? new Date(d).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+const full = d => d ? new Date(d).toLocaleString(LOCALE, { dateStyle: 'medium', timeStyle: 'short' }) : '';
 function duration(r) {
   if (!r.ended) return '';
   const s = Math.round((new Date(r.ended) - new Date(r.started)) / 1000);
-  return s < 60 ? s + ' s' : Math.floor(s / 60) + ' min ' + (s % 60) + ' s';
+  return s < 60 ? tr('{0} s', s) : tr('{0} min {1} s', Math.floor(s / 60), s % 60);
 }
 const money = n => '$' + (n || 0).toFixed(2);
 const kindOf = name => state.triggers.find(t => t.name.toLowerCase() === String(name).toLowerCase())?.on;
@@ -331,42 +337,42 @@ function draw() {
   $('c-skills').textContent = state.skills.length;
   const dueNow = (state.todo?.list?.tasks || []).filter(x => x.due && x.due.slice(0, 10) <= day(0) && !state.todo.hidden.includes(x.projectId)).length;
   $('c-todo').textContent = dueNow || '';
-  $('c-todo').title = dueNow ? `${dueNow} due today or late` : '';
+  $('c-todo').title = dueNow ? tr('{0} due today or late', dueNow) : '';
   $('banner').innerHTML = state.error ? `<div class="banner">${icon('alert')}${esc(state.error)}</div>` : '';
   drawSources();
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === view));
-  $('title').textContent = { runs: 'Runs', todo: 'To do', triggers: 'Triggers', skills: 'Skills', settings: 'Settings' }[view];
-  $('hdr').innerHTML = view === 'runs' ? stats() + (state.runs.length ? `<button class="danger" onclick="if(confirm('Delete every run? Runs still running or waiting for an answer are kept. Their history and costs are lost.'))send('clearRuns')">${icon('trash')}Clear</button>` : '')
-    : view === 'todo' ? (state.todo ? `<span class="muted" style="font-size:12.5px">${esc(state.todo.label || '')}${state.todo.read ? ' · updated ' + esc(ago(state.todo.read)) : ''}</span>
-        <button onclick="send('todoRefresh')" title="Read the list again (F5)">${icon('sync')}Refresh</button>
-        <button onclick="send('todoOpen')" title="${state.todo.backend === 'todoist' ? 'Open Todoist in the browser' : 'Show the todo.txt file in its folder'}">${icon('open')}${state.todo.backend === 'todoist' ? 'Todoist' : 'Folder'}</button>` : '')
-    : view === 'skills' ? `<button onclick="send('openSkills')">${icon('folder')}Open folder</button>`
-    : view === 'triggers' ? `<button onclick="send('chat')" title="Opens ${esc(cap(state.cli))} in a terminal, in your skills folder: describe what you want, it edits the triggers and skills">${icon('sparkles')}Ask AI</button>
-        <button class="primary" onclick="openEditor()">${icon('plus')}New trigger</button>` : '';
+  $('title').textContent = { runs: tr('Runs'), todo: tr('To do'), triggers: tr('Triggers'), skills: tr('Skills'), settings: tr('Settings') }[view];
+  $('hdr').innerHTML = view === 'runs' ? stats() + (state.runs.length ? `<button class="danger" onclick="if(confirm(${js(tr('Delete every run? Runs still running or waiting for an answer are kept. Their history and costs are lost.'))}))send('clearRuns')">${icon('trash')}${tr('Clear')}</button>` : '')
+    : view === 'todo' ? (state.todo ? `<span class="muted" style="font-size:12.5px">${esc(state.todo.label || '')}${state.todo.read ? ' · ' + esc(tr('updated {0}', ago(state.todo.read))) : ''}</span>
+        <button onclick="send('todoRefresh')" title="${tr('Read the list again (F5)')}">${icon('sync')}${tr('Refresh')}</button>
+        <button onclick="send('todoOpen')" title="${state.todo.backend === 'todoist' ? tr('Open Todoist in the browser') : tr('Show the todo.txt file in its folder')}">${icon('open')}${state.todo.backend === 'todoist' ? 'Todoist' : tr('Folder')}</button>` : '')
+    : view === 'skills' ? `<button onclick="send('openSkills')">${icon('folder')}${tr('Open folder')}</button>`
+    : view === 'triggers' ? `<button onclick="send('chat')" title="${esc(tr('Opens {0} in a terminal, in your skills folder: describe what you want, it edits the triggers and skills', cap(state.cli)))}">${icon('sparkles')}${tr('Ask AI')}</button>
+        <button class="primary" onclick="openEditor()">${icon('plus')}${tr('New trigger')}</button>` : '';
   ({ runs: renderRuns, todo: renderTodo, triggers: renderTriggers, skills: renderSkills, settings: renderSettings })[view]();
 }
 
 function stats() {
   const st = state.stats || {};
   const tile = (value, label, cls = '') => `<div class="stat ${cls}"><b>${value}</b><span>${label}</span></div>`;
-  return `<div style="display:flex">${tile(st.waiting || 0, 'waiting', st.waiting ? 'hot' : '')}${tile(st.running || 0, 'running')}
-    ${tile(st.today || 0, 'runs today')}${tile(st.failedWeek || 0, 'failed, 7 days', st.failedWeek ? 'bad' : '')}${tile(money(st.costMonth), 'this month')}</div>`;
+  return `<div style="display:flex">${tile(st.waiting || 0, tr('waiting'), st.waiting ? 'hot' : '')}${tile(st.running || 0, tr('running'))}
+    ${tile(st.today || 0, tr('runs today'))}${tile(st.failedWeek || 0, tr('failed, 7 days'), st.failedWeek ? 'bad' : '')}${tile(money(st.costMonth), tr('this month'))}</div>`;
 }
 
 // Event sources (mail, Azure DevOps, files): when they were last checked, and their error.
 function drawSources() {
-  $('sources').innerHTML = state.sources.length ? `<h4>Watching</h4>${state.sources.map(s => `
-    <div class="source" title="${esc(s.error || (s.checked ? 'Checked ' + full(s.checked) : 'Not checked yet'))}">
+  $('sources').innerHTML = state.sources.length ? `<h4>${tr('Watching')}</h4>${state.sources.map(s => `
+    <div class="source" title="${esc(s.error || (s.checked ? tr('Checked {0}', full(s.checked)) : tr('Not checked yet')))}">
       <span class="k-${esc(s.name)}">${icon(s.name)}</span>
       <div class="what">${esc(s.label)} <span class="muted">· ${s.count}</span>
-        <div class="state ${s.error ? 'err' : ''}">${s.error ? esc(s.error) : s.checked ? 'checked ' + esc(ago(s.checked)) : 'starting…'}</div></div>
+        <div class="state ${s.error ? 'err' : ''}">${s.error ? esc(s.error) : s.checked ? esc(tr('checked {0}', ago(s.checked))) : tr('starting…')}</div></div>
       <span class="led ${s.error ? 'err' : s.checked ? '' : 'wait'}"></span>
     </div>`).join('')}` : '';
 }
 
 function renderRuns() {
   const runs = state.runs;
-  if (!runs.length) { $('content').innerHTML = `<div class="empty">${icon('runs')}No runs yet. Start one from the Triggers page.</div>`; return; }
+  if (!runs.length) { $('content').innerHTML = `<div class="empty">${icon('runs')}${tr('No runs yet. Start one from the Triggers page.')}</div>`; return; }
   if (!runs.some(r => r.id === selected)) selected = runs[0].id;
   if (selected !== watched) { watched = selected; send('select', { id: selected }); } // C# then pushes its activity
   const r = runs.find(r => r.id === selected);
@@ -379,33 +385,33 @@ function renderRuns() {
   $('content').innerHTML = `<div class="split">
     <div class="list">${runs.map(x => `
       <div class="row ${x.id === selected ? 'sel' : ''}" onclick="selected='${x.id}';draft='';render()" title="${esc(full(x.started))}">
-        <div class="top"><span class="k-${esc(kindOf(x.trigger) || 'none')}">${icon(kindOf(x.trigger) || 'runs')}</span><b>${esc(x.trigger)}</b><span class="pill ${x.status}">${x.status}</span></div>
+        <div class="top"><span class="k-${esc(kindOf(x.trigger) || 'none')}">${icon(kindOf(x.trigger) || 'runs')}</span><b>${esc(x.trigger)}</b><span class="pill ${x.status}">${tr(x.status)}</span></div>
         <div class="meta">${meta(x)}</div>
-        <div class="sum">${esc(x.question || x.summary || (x.status === 'Running' ? 'working…' : ''))}</div>
+        <div class="sum">${esc(x.question || x.summary || (x.status === 'Running' ? tr('working…') : ''))}</div>
       </div>`).join('')}</div>
     <div class="detail">
       <div class="head">
-        <h3>${kindOf(r.trigger) ? kindBadge(kindOf(r.trigger)) : ''}${esc(r.trigger)} <span class="pill ${r.status}">${r.status}</span></h3>
+        <h3>${kindOf(r.trigger) ? kindBadge(kindOf(r.trigger)) : ''}${esc(r.trigger)} <span class="pill ${r.status}">${tr(r.status)}</span></h3>
         <div class="muted">${esc(full(r.started))}${duration(r) ? ' · ' + duration(r) : ''}${r.costUsd != null ? ' · ' + money(r.costUsd) : ''}${r.cli ? ' · ' + esc(cap(r.cli)) : ''}</div>
         <div class="actions">
-          <button onclick="send('openLog',{id:'${r.id}'})">${icon('log')}Open log</button>
-          <button onclick="send('terminal',{session:'${r.sessionId}',cli:'${r.cli || ''}'})">${icon('terminal')}Continue in terminal</button>
-          ${kindOf(r.trigger) ? `<button onclick="send('run',{name:'${esc(r.trigger)}'})">${icon('play')}Run again</button>` : ''}
-          ${r.status === 'Running' ? `<button class="danger" onclick="if(confirm('Stop this run? The agent is killed where it is.'))send('stop',{id:'${r.id}'})">${icon('stop')}Stop</button>` : ''}
-          ${r.status === 'Waiting' ? `<button onclick="send('stop',{id:'${r.id}'})" title="Drop the question, the run ends as Stopped">${icon('close')}Dismiss</button>` : ''}
+          <button onclick="send('openLog',{id:'${r.id}'})">${icon('log')}${tr('Open log')}</button>
+          <button onclick="send('terminal',{session:'${r.sessionId}',cli:'${r.cli || ''}'})">${icon('terminal')}${tr('Continue in terminal')}</button>
+          ${kindOf(r.trigger) ? `<button onclick="send('run',{name:'${esc(r.trigger)}'})">${icon('play')}${tr('Run again')}</button>` : ''}
+          ${r.status === 'Running' ? `<button class="danger" onclick="if(confirm(${js(tr('Stop this run? The agent is killed where it is.'))}))send('stop',{id:'${r.id}'})">${icon('stop')}${tr('Stop')}</button>` : ''}
+          ${r.status === 'Waiting' ? `<button onclick="send('stop',{id:'${r.id}'})" title="${tr('Drop the question, the run ends as Stopped')}">${icon('close')}${tr('Dismiss')}</button>` : ''}
         </div>
       </div>
       ${r.status === 'Waiting' ? `<div class="ask">
         <div class="q">${esc(r.question)}</div>
         <div class="bar">
-          <button class="primary" onclick="answer('yes')">Yes</button>
-          <button onclick="answer('no')">No</button>
-          <input id="answer" placeholder="Or type an answer…" onkeydown="if(event.key==='Enter')answer(this.value)">
-          <button onclick="answer($('answer').value)">Send</button>
+          <button class="primary" onclick="answer('yes')">${tr('Yes')}</button>
+          <button onclick="answer('no')">${tr('No')}</button>
+          <input id="answer" placeholder="${tr('Or type an answer…')}" onkeydown="if(event.key==='Enter')answer(this.value)">
+          <button onclick="answer($('answer').value)">${tr('Send')}</button>
         </div></div>` : ''}
       <div class="result">${r.status === 'Running'
-        ? (act?.length ? activity(act) : '<span class="muted">Starting…</span>')
-        : (r.result ? markdown(r.result) : r.status === 'Stopped' ? `<p class="muted">${esc(r.summary)}</p>` : '') + (act?.length ? `<details class="acts" ${actsOpen ? 'open' : ''} ontoggle="actsOpen=this.open"><summary>Activity (${act.length} steps)</summary>${activity(act)}</details>` : '')}</div>
+        ? (act?.length ? activity(act) : `<span class="muted">${tr('Starting…')}</span>`)
+        : (r.result ? markdown(r.result) : r.status === 'Stopped' ? `<p class="muted">${esc(r.summary)}</p>` : '') + (act?.length ? `<details class="acts" ${actsOpen ? 'open' : ''} ontoggle="actsOpen=this.open"><summary>${tr('Activity ({0} steps)', act.length)}</summary>${activity(act)}</details>` : '')}</div>
     </div></div>`;
   const again = $('answer');
   if (again) { again.value = draft; if (focused) again.focus(); }
@@ -427,7 +433,7 @@ function answer(text) {
 
 function renderTriggers() {
   if (!state.triggers.length) {
-    $('content').innerHTML = `<div class="empty">${icon('triggers')}No triggers yet.<button class="primary" onclick="openEditor()">${icon('plus')}New trigger</button></div>`;
+    $('content').innerHTML = `<div class="empty">${icon('triggers')}${tr('No triggers yet.')}<button class="primary" onclick="openEditor()">${icon('plus')}${tr('New trigger')}</button></div>`;
     return;
   }
   const kind = on => state.kinds.find(k => k.name === on) || { label: on, form: [] };
@@ -436,31 +442,31 @@ function renderTriggers() {
   $('content').innerHTML = `<div class="grid">${state.triggers.map(t => `
     <div class="card">
       <div class="title">${kindBadge(t.on)}<b>${esc(t.name)}</b><span class="pill none">${esc(kind(t.on).label)}</span>
-        <button class="icon" title="Edit" onclick="openEditor('${esc(t.name)}')">${icon('edit')}</button></div>
+        <button class="icon" title="${tr('Edit')}" onclick="openEditor('${esc(t.name)}')">${icon('edit')}</button></div>
       <div class="kv">
-        <span>When</span><span>${esc(t.when)}</span>
+        <span>${tr('When')}</span><span>${esc(t.when)}</span>
         ${fieldRows(t)}
-        ${t.on === 'schedule' ? `<span>Next</span><span title="${esc(full(t.next))}">${t.next ? esc(full(t.next)) + ' <span class="muted">(' + esc(ago(t.next)) + ')</span>' : '<span class="muted">not scheduled</span>'}</span>` : ''}
-        <span>Skill</span><span>${t.skill ? `<span class="chip ${t.skillKnown ? '' : 'bad'}" title="${t.skillKnown ? '' : 'No such skill in your skills folder'}">/${esc(t.skill)}</span>` : '<span class="muted">none</span>'}</span>
+        ${t.on === 'schedule' ? `<span>${tr('Next')}</span><span title="${esc(full(t.next))}">${t.next ? esc(full(t.next)) + ' <span class="muted">(' + esc(ago(t.next)) + ')</span>' : `<span class="muted">${tr('not scheduled')}</span>`}</span>` : ''}
+        <span>${tr('Skill')}</span><span>${t.skill ? `<span class="chip ${t.skillKnown ? '' : 'bad'}" title="${t.skillKnown ? '' : tr('No such skill in your skills folder')}">/${esc(t.skill)}</span>` : `<span class="muted">${tr('none')}</span>`}</span>
       </div>
       <div class="prompt mono">${esc(t.prompt)}</div>
       <div class="foot">
-        <span class="info">${t.recent.length ? `<span class="dots" title="Last ${t.recent.length} runs, newest on the right">${[...t.recent].reverse().map(s => `<i class="${s}" title="${s}"></i>`).join('')}</span>` : ''}
-          ${t.last ? `Last ${esc(ago(t.last.started))}` : 'Never run'}${t.costMonth ? ` · ${money(t.costMonth)} / 30 d` : ''}</span>
-        <button class="primary" onclick="send('run',{name:'${esc(t.name)}'})">${icon('play')}Run now</button>
+        <span class="info">${t.recent.length ? `<span class="dots" title="${tr('Last {0} runs, newest on the right', t.recent.length)}">${[...t.recent].reverse().map(s => `<i class="${s}" title="${tr(s)}"></i>`).join('')}</span>` : ''}
+          ${t.last ? esc(tr('Last run {0}', ago(t.last.started))) : tr('Never run')}${t.costMonth ? ' · ' + tr('{0} / 30 d', money(t.costMonth)) : ''}</span>
+        <button class="primary" onclick="send('run',{name:'${esc(t.name)}'})">${icon('play')}${tr('Run now')}</button>
       </div>
     </div>`).join('')}</div>`;
 }
 
 function renderSkills() {
-  if (!state.skills.length) { $('content').innerHTML = `<div class="empty">${icon('skills')}No skills found.</div>`; return; }
+  if (!state.skills.length) { $('content').innerHTML = `<div class="empty">${icon('skills')}${tr('No skills found.')}</div>`; return; }
   $('content').innerHTML = `<div class="grid">${state.skills.map(s => `
     <div class="card">
       <div class="title"><span class="badge-kind" style="color:var(--accent)">${icon('skills')}</span><b>/${esc(s.name)}</b></div>
       <div class="desc" title="${esc(s.description)}">${esc(s.description)}</div>
       <div class="foot">
-        <span class="info">${s.triggers.length ? 'Triggered by ' + s.triggers.map(n => `<span class="chip">${esc(n)}</span>`).join('') : 'No trigger'}</span>
-        <button onclick="send('openSkill',{folder:'${esc(s.folder)}'})">${icon('open')}Open</button>
+        <span class="info">${s.triggers.length ? tr('Triggered by') + ' ' + s.triggers.map(n => `<span class="chip">${esc(n)}</span>`).join('') : tr('No trigger')}</span>
+        <button onclick="send('openSkill',{folder:'${esc(s.folder)}'})">${icon('open')}${tr('Open')}</button>
       </div>
     </div>`).join('')}</div>`;
 }
@@ -474,8 +480,8 @@ function renderTodo() {
   const t = state.todo;
   if (!t) {
     todoKey = '';
-    $('content').innerHTML = `<div class="empty">${icon('todo')}No to-do list yet. Choose Todoist or a todo.txt file in the settings.
-      <button class="primary" onclick="view='settings';draw()">${icon('settings')}Settings</button></div>`;
+    $('content').innerHTML = `<div class="empty">${icon('todo')}${tr('No to-do list yet. Choose Todoist or a todo.txt file in the settings.')}
+      <button class="primary" onclick="view='settings';draw()">${icon('settings')}${tr('Settings')}</button></div>`;
     return;
   }
   if (todoClearAfter !== undefined && t.read !== todoClearAfter) { todoPending.clear(); todoClearAfter = undefined; } // the reload after an edit
@@ -488,7 +494,7 @@ function renderTodo() {
   const L = t.list;
   const error = t.error ? `<div class="error-box">${esc(t.error)}</div>` : '';
   if (!L) {
-    $('content').innerHTML = `<div class="todo">${error || `<div class="empty">${icon('todo')}Loading ${esc(t.label || '')}…</div>`}</div>`;
+    $('content').innerHTML = `<div class="todo">${error || `<div class="empty">${icon('todo')}${esc(tr('Loading {0}…', t.label || ''))}</div>`}</div>`;
     return;
   }
   const hidden = new Set(t.hidden);
@@ -513,10 +519,10 @@ function renderTodo() {
   $('content').innerHTML = `<div class="todo">
     ${error}
     <div class="addbar"><input id="todo-add" placeholder="${esc(t.addHint)}" onkeydown="if(event.key==='Enter')todoAdd()">
-      <button class="primary" onclick="todoAdd()">${icon('plus')}Add</button></div>
-    <div class="chips"><button class="${todoProject === 'all' ? 'on' : ''}" onclick="todoProject='all';render()">All <span class="n">${open.filter(x => !hidden.has(x.projectId)).length}</span></button>
+      <button class="primary" onclick="todoAdd()">${icon('plus')}${tr('Add')}</button></div>
+    <div class="chips"><button class="${todoProject === 'all' ? 'on' : ''}" onclick="todoProject='all';render()">${tr('All')} <span class="n">${open.filter(x => !hidden.has(x.projectId)).length}</span></button>
       ${shown.map(chip).join('')}
-      ${hiddenOnes.length ? `<button onclick="todoShowHidden=!todoShowHidden;render()" title="Lists hidden from All">${icon(todoShowHidden ? 'eye' : 'eyeOff')}Hidden <span class="n">${hiddenOnes.length}</span></button>` : ''}
+      ${hiddenOnes.length ? `<button onclick="todoShowHidden=!todoShowHidden;render()" title="${tr('Lists hidden from All')}">${icon(todoShowHidden ? 'eye' : 'eyeOff')}${tr('Hidden')} <span class="n">${hiddenOnes.length}</span></button>` : ''}
       ${todoShowHidden ? hiddenOnes.map(chip).join('') : ''}</div>
     ${projects.filter(p => todoProject !== 'all' || count(p.id)).map(p => {
       const mine = open.filter(x => x.projectId === p.id);
@@ -524,11 +530,11 @@ function renderTodo() {
       const loose = mine.filter(x => !sections.some(s => s.id === x.sectionId));
       const isHidden = hidden.has(p.id);
       return `<div class="proj"><h3 ${drop(p.id, null)}>${esc(p.name)} <span class="n">${mine.length}</span>
-          <button class="hide" title="${isHidden ? 'Show this list in All again' : 'Hide this list from All (still under Hidden)'}"
+          <button class="hide" title="${isHidden ? tr('Show this list in All again') : tr('Hide this list from All (still under Hidden)')}"
             onclick="todoHide(${esc(JSON.stringify(p.id))},${!isHidden})">${icon(isHidden ? 'eye' : 'eyeOff')}</button></h3>
         ${loose.length || !mine.length ? block(loose, { projectId: p.id, sectionId: null }) : ''}
         ${sections.map(s => { const inside = mine.filter(x => x.sectionId === s.id); return `<h4 ${drop(p.id, s.id)}>${esc(s.name)} <span class="n">${inside.length}</span></h4>${block(inside, { projectId: p.id, sectionId: s.id })}`; }).join('')}</div>`;
-    }).join('') || `<div class="empty">${icon('todo')}Nothing to do.</div>`}
+    }).join('') || `<div class="empty">${icon('todo')}${tr('Nothing to do.')}</div>`}
   </div>`;
   todoRedrawing = false;
   const again = $('todo-add');
@@ -545,26 +551,26 @@ function renderTodo() {
 function slot(place, index, visible) {
   const at = { ...place, index };
   if (JSON.stringify(at) === JSON.stringify(todoInsertAt))
-    return `<div class="task inserting"><span class="check"></span><input id="todo-insert" class="inline" placeholder="Task name, Enter to add, Esc to cancel"
+    return `<div class="task inserting"><span class="check"></span><input id="todo-insert" class="inline" placeholder="${tr('Task name, Enter to add, Esc to cancel')}"
       onkeydown="if(event.key==='Enter')todoInsert();if(event.key==='Escape')closeInsert()" onblur="insertBlur()"></div>`;
   const i = todoSlots.push(at) - 1;
-  return visible ? `<div class="addhere" onclick="openInsert(${i})">${icon('plus')}Add a task</div>`
-    : `<div class="slot" title="Add a task here" onclick="openInsert(${i})"></div>`;
+  return visible ? `<div class="addhere" onclick="openInsert(${i})">${icon('plus')}${tr('Add a task')}</div>`
+    : `<div class="slot" title="${tr('Add a task here')}" onclick="openInsert(${i})"></div>`;
 }
 
 function row(x, depth) {
   const i = todoIndex.push(x) - 1;
   if (x.id === todoEditing) todoEditingAt = i;
-  const meta = [dueLabel(x), x.recurring ? `<span title="Repeats: ${esc(x.dueText)}">${icon('repeat')}</span>` : '',
+  const meta = [dueLabel(x), x.recurring ? `<span title="${esc(tr('Repeats: {0}', x.dueText))}">${icon('repeat')}</span>` : '',
     x.description ? `<span title="${esc(x.description)}">${icon('note')}${esc(x.description.split('\n')[0])}</span>` : ''].filter(Boolean).join('');
   return `<div class="task ${todoPending.has(x.id) ? 'gone' : ''}" style="padding-left:${16 + depth * 26}px" data-i="${i}"
       ondragover="dragOver(event,${i})" ondragleave="this.classList.remove('drop-before','drop-after')" ondrop="dragDrop(event,${i})">
-    <span class="grip" draggable="true" title="Drag to move" ondragstart="dragStart(event,${i})" ondragend="dragEnd()">${icon('grip')}</span>
-    <button class="check p${x.priority}" title="Complete" onclick="todoComplete(${i})"></button>
+    <span class="grip" draggable="true" title="${tr('Drag to move')}" ondragstart="dragStart(event,${i})" ondragend="dragEnd()">${icon('grip')}</span>
+    <button class="check p${x.priority}" title="${tr('Complete')}" onclick="todoComplete(${i})"></button>
     <div class="what">${todoEditing === x.id
       ? `<input id="todo-edit" class="inline" value="${esc(x.content)}" onkeydown="if(event.key==='Enter')commitEdit();if(event.key==='Escape')cancelEdit()" onblur="commitEdit()">`
-      : `<div class="text" title="Click to edit" onmousedown="event.preventDefault();startEdit(${i})">${esc(x.content)}</div>`}${meta ? `<div class="tm">${meta}</div>` : ''}</div>
-    <button class="pen" title="Edit all: date, priority, list${state.todo.notes ? ', notes' : ''}" onclick="openTask(${i})">${icon('edit')}</button>
+      : `<div class="text" title="${tr('Click to edit')}" onmousedown="event.preventDefault();startEdit(${i})">${esc(x.content)}</div>`}${meta ? `<div class="tm">${meta}</div>` : ''}</div>
+    <button class="pen" title="${state.todo.notes ? tr('Edit all: date, priority, list, notes') : tr('Edit all: date, priority, list')}" onclick="openTask(${i})">${icon('edit')}</button>
   </div>`;
 }
 
@@ -602,7 +608,7 @@ function closeEdit(text) {
   const input = $('todo-edit'), i = todoEditingAt;
   todoEditing = null;
   todoKey = '';
-  if (input) input.outerHTML = `<div class="text" title="Click to edit" onmousedown="event.preventDefault();startEdit(${i})">${esc(text)}</div>`;
+  if (input) input.outerHTML = `<div class="text" title="${tr('Click to edit')}" onmousedown="event.preventDefault();startEdit(${i})">${esc(text)}</div>`;
 }
 
 function openInsert(i) { todoInsertAt = todoSlots[i]; render(); }
@@ -616,7 +622,7 @@ function todoInsert() {
   $('todo-insert').value = '';
   todoInsertAt = { ...at, index: at.index + 1 };
   todoLast = { kind: 'add' };
-  toast('Adding…');
+  toast(tr('Adding…'));
   send('todoInsert', { text, projectId: at.projectId, sectionId: at.sectionId || '', index: at.index });
   render();
 }
@@ -667,7 +673,7 @@ function insertBlur() {
   todoKey = '';
   if (text) {
     todoLast = { kind: 'add' };
-    toast('Adding…');
+    toast(tr('Adding…'));
     send('todoInsert', { text, projectId: at.projectId, sectionId: at.sectionId || '', index: at.index });
   }
   input.closest('.task').outerHTML = `<div class="task gone" style="${text ? '' : 'visibility:hidden'}"><span class="check"></span>
@@ -722,9 +728,9 @@ function dueLabel(x) {
   if (!x.due) return '';
   const d = x.due.slice(0, 10), time = x.due.length > 10 ? ' ' + x.due.slice(11, 16) : '';
   const date = new Date(d + 'T00:00');
-  const text = d === day(0) ? 'Today' : d === day(1) ? 'Tomorrow' : d < day(0) || d > day(6)
-    ? date.toLocaleDateString([], { day: 'numeric', month: 'short', year: d.slice(0, 4) === day(0).slice(0, 4) ? undefined : 'numeric' })
-    : date.toLocaleDateString([], { weekday: 'long' });
+  const text = d === day(0) ? tr('Today') : d === day(1) ? tr('Tomorrow') : d < day(0) || d > day(6)
+    ? date.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: d.slice(0, 4) === day(0).slice(0, 4) ? undefined : 'numeric' })
+    : date.toLocaleDateString(LOCALE, { weekday: 'long' });
   return `<span class="due ${d < day(0) ? 'over' : d === day(0) ? 'today' : ''}">${icon('calendar')}${esc(text + time)}</span>`;
 }
 
@@ -733,7 +739,7 @@ function todoAdd() {
   if (!text) return;
   todoLast = { kind: 'add' };
   $('todo-add').value = '';
-  toast('Adding…');
+  toast(tr('Adding…'));
   send('todoAdd', { text });
 }
 
@@ -757,8 +763,8 @@ function todoDone(error, result) {
     return;
   }
   if (todoForm) closeTask();
-  if (todoLast?.kind === 'complete') toast(`Completed “${todoLast.name}”`, result);
-  else if (todoLast?.kind === 'add') toast('Added');
+  if (todoLast?.kind === 'complete') toast(tr('Completed “{0}”', todoLast.name), result);
+  else if (todoLast?.kind === 'add') toast(tr('Added'));
   else $('toast').innerHTML = '';
   todoLast = null;
 }
@@ -766,7 +772,7 @@ function todoDone(error, result) {
 function toast(text, undo, cls = '') {
   clearTimeout(toastTimer);
   $('toast').innerHTML = `<div class="toast ${cls}"><span>${esc(text)}</span>
-    ${undo ? `<button onclick='todoLast=null;$("toast").innerHTML="";send("todoReopen",{id:${esc(JSON.stringify(undo))}})'>Undo</button>` : ''}</div>`;
+    ${undo ? `<button onclick='todoLast=null;$("toast").innerHTML="";send("todoReopen",{id:${esc(JSON.stringify(undo))}})'>${tr('Undo')}</button>` : ''}</div>`;
   toastTimer = setTimeout(() => $('toast').innerHTML = '', cls === 'err' ? 10000 : 6000);
 }
 
@@ -784,45 +790,45 @@ function drawTask() {
   const prio = [[4, 'P1'], [3, 'P2'], [2, 'P3'], [1, 'P4']];
   $('modal').innerHTML = `<div class="overlay" onmousedown="if(event.target===this)closeTask()">
     <div class="drawer">
-      <div class="dh"><span class="badge-kind" style="color:var(--accent)">${icon('todo')}</span><h3>Edit task</h3>
-        <button class="icon" onclick="closeTask()" title="Close">${icon('close')}</button></div>
+      <div class="dh"><span class="badge-kind" style="color:var(--accent)">${icon('todo')}</span><h3>${tr('Edit task')}</h3>
+        <button class="icon" onclick="closeTask()" title="${tr('Close')}">${icon('close')}</button></div>
       <div class="db">
-        <div class="field"><label for="k-content">Task</label>
+        <div class="field"><label for="k-content">${tr('Task')}</label>
           <input id="k-content" value="${esc(f.content)}" oninput="todoForm.content=this.value" onkeydown="if(event.key==='Enter')saveTask()"></div>
-        ${t.notes ? `<div class="field"><label for="k-description">Notes</label>
+        ${t.notes ? `<div class="field"><label for="k-description">${tr('Notes')}</label>
           <textarea id="k-description" rows="4" oninput="todoForm.description=this.value">${esc(f.description)}</textarea></div>` : ''}
-        <div class="field"><label for="k-due">Date</label>
+        <div class="field"><label for="k-due">${tr('Date')}</label>
           <div class="hint">${esc(t.dateHint)}</div>
           <div class="bar"><input id="k-due" value="${esc(f.due)}" oninput="todoForm.due=this.value"></div>
-          <div class="datechips">${[['today', 'Today'], ['tomorrow', 'Tomorrow'], ['next week', 'Next week'], ['', 'No date']].map(([v, l]) =>
+          <div class="datechips">${[['today', tr('Today')], ['tomorrow', tr('Tomorrow')], ['next week', tr('Next week')], ['', tr('No date')]].map(([v, l]) =>
             `<button onclick="todoForm.due='${v}';$('k-due').value='${v}'">${l}</button>`).join('')}</div></div>
-        <div class="field"><label>Priority</label>
+        <div class="field"><label>${tr('Priority')}</label>
           <div class="prio">${prio.map(([v, l]) => `<button class="p${v} ${v === f.priority ? 'on' : ''}" onclick="todoForm.priority=${v};drawTask()">${icon('flag')}${l}</button>`).join('')}</div></div>
-        <div class="field"><label for="k-project">Project</label>
+        <div class="field"><label for="k-project">${tr('Project')}</label>
           <div class="bar"><select id="k-project" onchange="todoForm.projectId=this.value;todoForm.sectionId='';drawTask()">${L.projects.map(p =>
             `<option value="${esc(p.id)}" ${p.id === f.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
-          ${t.sections && sections.length ? `<select id="k-section" onchange="todoForm.sectionId=this.value"><option value="">No section</option>${sections.map(s =>
+          ${t.sections && sections.length ? `<select id="k-section" onchange="todoForm.sectionId=this.value"><option value="">${tr('No section')}</option>${sections.map(s =>
             `<option value="${esc(s.id)}" ${s.id === f.sectionId ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : ''}</div></div>
         <div id="k-error"></div>
       </div>
       <div class="df">
-        <button class="danger" onclick="deleteTask()">${icon('trash')}Delete</button>
+        <button class="danger" onclick="deleteTask()">${icon('trash')}${tr('Delete')}</button>
         <span class="grow"></span>
-        <button onclick="closeTask()">Cancel</button>
-        <button class="primary" onclick="saveTask()">Save</button>
+        <button onclick="closeTask()">${tr('Cancel')}</button>
+        <button class="primary" onclick="saveTask()">${tr('Save')}</button>
       </div>
     </div></div>`;
 }
 
 function saveTask() {
   const f = todoForm;
-  if (!f.content.trim()) { $('k-error').innerHTML = '<div class="error-box">The task is empty.</div>'; return; }
+  if (!f.content.trim()) { $('k-error').innerHTML = `<div class="error-box">${tr('The task is empty.')}</div>`; return; }
   todoLast = { kind: 'save' };
   send('todoSave', { id: f.task.id, content: f.content.trim(), description: f.description || '', due: f.due, priority: f.priority, projectId: f.projectId, sectionId: f.sectionId || '' });
 }
 
 function deleteTask() {
-  if (!confirm(`Delete the task “${todoForm.task.content}”? It cannot be undone.`)) return;
+  if (!confirm(tr('Delete the task “{0}”? It cannot be undone.', todoForm.task.content))) return;
   todoLast = { kind: 'delete' };
   send('todoDelete', { id: todoForm.task.id });
 }
@@ -844,52 +850,52 @@ function drawEditor() {
   const skill = (form.prompt.match(/^\/([\w:-]+)/) || [])[1] || '';
   $('modal').innerHTML = `<div class="overlay" onmousedown="if(event.target===this)closeEditor()">
     <div class="drawer">
-      <div class="dh">${kindBadge(form.on)}<h3>${form.original ? 'Edit ' + esc(form.original) : 'New trigger'}</h3>
-        <button class="icon" onclick="closeEditor()" title="Close">${icon('close')}</button></div>
+      <div class="dh">${kindBadge(form.on)}<h3>${form.original ? esc(tr('Edit {0}', form.original)) : tr('New trigger')}</h3>
+        <button class="icon" onclick="closeEditor()" title="${tr('Close')}">${icon('close')}</button></div>
       <div class="db">
-        <div class="field"><label for="t-name">Name</label>
-          <div class="hint">Letters, digits, - and _. Also the name of its scheduled task.</div>
+        <div class="field"><label for="t-name">${tr('Name')}</label>
+          <div class="hint">${tr('Letters, digits, - and _.')}</div>
           <input id="t-name" value="${esc(form.name)}" oninput="form.name=this.value" placeholder="morning-brief"></div>
-        <div class="field"><label>Runs on</label>
+        <div class="field"><label>${tr('Runs on')}</label>
           <div class="kinds">${state.kinds.map(k => `<button class="k-${k.name} ${k.name === form.on ? 'on' : ''}" onclick="form.on='${k.name}';drawEditor()">${icon(k.name)}${esc(k.label)}</button>`).join('')}</div></div>
         ${kind.form.map(fieldInput).join('')}
-        <div class="field"><label for="t-prompt">Prompt</label>
-          <div class="hint">What the agent gets. Start with /skill to call one of your skills.</div>
-          <div class="bar"><select onchange="setSkill(this.value)"><option value="">No skill</option>${state.skills.map(s =>
+        <div class="field"><label for="t-prompt">${tr('Prompt')}</label>
+          <div class="hint">${tr('What the agent gets. Start with /skill to call one of your skills.')}</div>
+          <div class="bar"><select onchange="setSkill(this.value)"><option value="">${tr('No skill')}</option>${state.skills.map(s =>
             `<option value="${esc(s.name)}" ${s.name === skill || s.folder === skill ? 'selected' : ''}>/${esc(s.name)}</option>`).join('')}</select></div>
           <textarea id="t-prompt" class="mono" rows="7" oninput="form.prompt=this.value">${esc(form.prompt)}</textarea>
-          ${kind.variables.length ? `<div class="vars"><span class="muted">Insert:</span>${kind.variables.map(v => `<span class="chip" onclick="insertVar('${v}')">\${${v}}</span>`).join('')}</div>
-            <div class="hint">Filled from the event. Without any, the event is appended.</div>` : ''}
+          ${kind.variables.length ? `<div class="vars"><span class="muted">${tr('Insert:')}</span>${kind.variables.map(v => `<span class="chip" onclick="insertVar('${v}')">\${${v}}</span>`).join('')}</div>
+            <div class="hint">${tr('Filled from the event. Without any, the event is appended.')}</div>` : ''}
         </div>
         <div id="t-error"></div>
       </div>
       <div class="df">
-        ${form.original ? `<button class="danger" onclick="deleteTrigger()">${icon('trash')}Delete</button>` : ''}
+        ${form.original ? `<button class="danger" onclick="deleteTrigger()">${icon('trash')}${tr('Delete')}</button>` : ''}
         <span class="grow"></span>
-        <button onclick="closeEditor()">Cancel</button>
-        <button class="primary" onclick="saveTrigger()">Save</button>
+        <button onclick="closeEditor()">${tr('Cancel')}</button>
+        <button class="primary" onclick="saveTrigger()">${tr('Save')}</button>
       </div>
     </div></div>`;
 }
 
-const days = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']];
+const days = [['mon', tr('Monday')], ['tue', tr('Tuesday')], ['wed', tr('Wednesday')], ['thu', tr('Thursday')], ['fri', tr('Friday')], ['sat', tr('Saturday')], ['sun', tr('Sunday')]];
 
 function fieldInput(f) {
   const v = form.values[f.name] || '';
-  const head = `<label for="f-${f.name}">${esc(f.label)}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>${f.hint ? `<div class="hint">${esc(f.hint)}</div>` : ''}`;
+  const head = `<label for="f-${f.name}">${esc(f.label)}${f.optional ? ` <span class="muted">${tr('(optional)')}</span>` : ''}</label>${f.hint ? `<div class="hint">${esc(f.hint)}</div>` : ''}`;
   const set = `oninput="form.values['${f.name}']=this.value"`;
   if (f.type === 'schedule') {
     const m = v.match(/^(daily|monthly:(\d+)|([a-z,-]+)) (\d{1,2}:\d{2})$/i) || [, 'daily', , , '08:30'];
     const on = m[3] ? expandDays(m[3]) : [];
     const freq = form.freq || (m[2] ? 'monthly' : !m[3] ? 'daily' : on.join() === 'mon,tue,wed,thu,fri' ? 'weekdays' : 'days');
     return `<div class="field">${head}<div class="bar">
-      <select id="s-freq" onchange="scheduleChanged()">${[['daily', 'Every day'], ['weekdays', 'Weekdays (Mon–Fri)'], ['days', 'Days of the week'], ['monthly', 'Every month']].map(([k, l]) => `<option value="${k}" ${k === freq ? 'selected' : ''}>${l}</option>`).join('')}</select>
-      ${freq === 'monthly' ? `<select id="s-day" onchange="scheduleChanged()">${Array.from({ length: 31 }, (_, i) => i + 1).map(d => `<option value="${d}" ${String(d) === m[2] ? 'selected' : ''}>on day ${d}</option>`).join('')}</select>` : ''}
+      <select id="s-freq" onchange="scheduleChanged()">${[['daily', tr('Every day')], ['weekdays', tr('Weekdays (Mon–Fri)')], ['days', tr('Days of the week')], ['monthly', tr('Every month')]].map(([k, l]) => `<option value="${k}" ${k === freq ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      ${freq === 'monthly' ? `<select id="s-day" onchange="scheduleChanged()">${Array.from({ length: 31 }, (_, i) => i + 1).map(d => `<option value="${d}" ${String(d) === m[2] ? 'selected' : ''}>${tr('on day {0}', d)}</option>`).join('')}</select>` : ''}
       <input id="s-time" type="time" value="${m[4].padStart(5, '0')}" onchange="scheduleChanged()" style="flex:0 0 120px"></div>
       ${freq === 'days' ? `<div class="days" id="s-days">${days.map(([k, l]) => `<label><input type="checkbox" value="${k}" ${on.includes(k) ? 'checked' : ''} onchange="scheduleChanged()">${l.slice(0, 3)}</label>`).join('')}</div>` : ''}</div>`;
   }
   if (f.type === 'list') return `<div class="field">${head}<textarea id="f-${f.name}" class="mono" rows="3" ${set}>${esc(v)}</textarea></div>`;
-  const browse = f.type === 'folder' ? `<button onclick="send('browse',{pick:'folder',title:'${esc(f.label)}',target:'f-${f.name}',value:$('f-${f.name}').value})">${icon('folder')}Browse…</button>` : '';
+  const browse = f.type === 'folder' ? `<button onclick="send('browse',{pick:'folder',title:${js(f.label)},target:'f-${f.name}',value:$('f-${f.name}').value})">${icon('folder')}${tr('Browse…')}</button>` : '';
   return `<div class="field">${head}<div class="bar"><input id="f-${f.name}" class="mono" value="${esc(v)}" ${set}>${browse}</div></div>`;
 }
 
@@ -936,7 +942,7 @@ function saveTrigger() {
 }
 
 function deleteTrigger() {
-  if (confirm(`Delete the trigger "${form.original}"? Its scheduled task is removed too.`)) send('deleteTrigger', { name: form.original });
+  if (confirm(tr('Delete the trigger “{0}”?', form.original))) send('deleteTrigger', { name: form.original });
 }
 
 // Called by C# after a save or a delete: the error, or null when the triggers file was written.
@@ -957,10 +963,10 @@ function renderSettings() {
   const s = state.settings;
   $('content').innerHTML = `<div class="settings">
     <div class="card">
-      <h3>Agent</h3>
+      <h3>${tr('Agent')}</h3>
       <div class="field">
-        <label for="s-cli">CLI that runs the triggers</label>
-        <div class="hint">Applies to the next run. A waiting run is answered with the CLI that started it.</div>
+        <label for="s-cli">${tr('CLI that runs the triggers')}</label>
+        <div class="hint">${tr('Applies to the next run. A waiting run is answered with the CLI that started it.')}</div>
         <div class="bar"><select id="s-cli" onchange="checkSettings()">${Object.keys(s.installed).map(n =>
           `<option value="${n}" ${n === s.cli ? 'selected' : ''}>${esc(cliNames[n] || n)}</option>`).join('')}</select></div>
         <div id="s-cli-status"></div>
@@ -968,86 +974,96 @@ function renderSettings() {
       </div>
     </div>
     <div class="card">
-      <h3>Triggers and skills</h3>
-      ${pathField('triggersFile', 'Triggers file', 'The list of triggers (JSON). Keep it next to the skills it calls, in their git repo.', s.triggersFile)}
-      ${pathField('skillsFolder', 'Skills folder', 'Listed on the Skills page; “Ask AI” opens there.', s.skillsFolder)}
+      <h3>${tr('Triggers and skills')}</h3>
+      ${pathField('triggersFile', tr('Triggers file'), tr('The list of triggers (JSON). Keep it next to the skills it calls, in their git repo.'), s.triggersFile)}
+      ${pathField('skillsFolder', tr('Skills folder'), tr('Listed on the Skills page; “Ask AI” opens there.'), s.skillsFolder)}
     </div>
     <div class="card">
       <h3>Azure DevOps</h3>
       <div class="field">
-        <label for="s-adoOrganization">Organization</label>
-        <div class="hint">For “Azure DevOps” triggers, read with the az CLI (logged in, azure-devops extension). Empty: no such trigger can run.</div>
+        <label for="s-adoOrganization">${tr('Organization')}</label>
+        <div class="hint">${tr('For “Azure DevOps” triggers, read with the az CLI (logged in, azure-devops extension). Empty: no such trigger can run.')}</div>
         <div class="bar"><input id="s-adoOrganization" class="mono" value="${esc(s.adoOrganization)}" placeholder="https://dev.azure.com/your-org" oninput="checkSettings()"></div>
         <div class="err" id="e-adoOrganization"></div>
       </div>
     </div>
     <div class="card">
-      <h3>To do</h3>
+      <h3>${tr('To do')}</h3>
       <div class="field">
-        <label for="s-todo">List shown on the To do page</label>
-        <div class="hint">Butler shows it and lets you edit it by hand. Agents reach the same list with their own tools (the Todoist connector, or the file).</div>
+        <label for="s-todo">${tr('List shown on the To do page')}</label>
+        <div class="hint">${tr('Butler shows it and lets you edit it by hand. Agents reach the same list with their own tools (the Todoist connector, or the file).')}</div>
         <div class="bar"><select id="s-todo" onchange="checkSettings()">${s.todos.map(b =>
           `<option value="${b.name}" ${b.name === s.todo ? 'selected' : ''}>${esc(b.label)}</option>`).join('')}</select></div>
         <div class="err" id="e-todo"></div>
       </div>
-      <div id="s-todo-txt">${pathField('todoFile', 'todo.txt file', 'One task per line, in the todo.txt format (todotxt.org): (A) Call Lena +Work due:2026-11-03. Created with the first task.', s.todoFile, 'file', 'Text (*.txt)|*.txt|All files|*.*')}</div>
+      <div id="s-todo-txt">${pathField('todoFile', tr('todo.txt file'), tr('One task per line, in the todo.txt format (todotxt.org): (A) Call Lena +Work due:2026-11-03. Created with the first task.'), s.todoFile, 'file', `${tr('Text')} (*.txt)|*.txt|${tr('All files')}|*.*`)}</div>
       <div class="field" id="s-todo-todoist">
-        <label for="s-todoistToken">Todoist API token</label>
-        <div class="hint">In Todoist: Settings → Integrations → Developer. Kept in ${esc(s.secretStore)}, not in the settings file.</div>
+        <label for="s-todoistToken">${tr('Todoist API token')}</label>
+        <div class="hint">${tr('In Todoist: Settings → Integrations → Developer. Kept in {0}, not in the settings file.', esc(s.secretStore))}</div>
         <div class="bar"><input id="s-todoistToken" type="password" class="mono" autocomplete="off" oninput="checkSettings()"
-            placeholder="${s.todoist ? 'Saved. Paste a new one to replace it' : 'Paste your token'}">
-          ${s.todoist ? `<button id="s-forget" onclick="forgetTodoist()">Forget</button>` : ''}</div>
+            placeholder="${s.todoist ? tr('Saved. Paste a new one to replace it') : tr('Paste your token')}">
+          ${s.todoist ? `<button id="s-forget" onclick="forgetTodoist()">${tr('Forget')}</button>` : ''}</div>
         <div class="err" id="e-todoistToken"></div>
       </div>
     </div>
     <div class="card">
-      <h3>Startup</h3>
+      <h3>${tr('Display')}</h3>
       <div class="field">
-        <label for="s-startPage">Start page</label>
-        <div class="hint">The page shown when the dashboard opens.</div>
+        <label for="s-language">${tr('Language')}</label>
+        <div class="hint">${tr('Of the dashboard, the tray menu and the notifications. Automatic: the system’s language.')}</div>
+        <div class="bar"><select id="s-language" onchange="checkSettings()">${[['auto', tr('Automatic')], ['en', 'English'], ['fr', 'Français']].map(([v, l]) =>
+          `<option value="${v}" ${v === s.language ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="err" id="e-language"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>${tr('Startup')}</h3>
+      <div class="field">
+        <label for="s-startPage">${tr('Start page')}</label>
+        <div class="hint">${tr('The page shown when the dashboard opens.')}</div>
         <div class="bar"><select id="s-startPage" onchange="checkSettings()">${[...document.querySelectorAll('nav a')].map(a =>
           `<option value="${a.dataset.view}" ${a.dataset.view === s.startPage ? 'selected' : ''}>${esc(a.querySelector('.label').textContent)}</option>`).join('')}</select></div>
         <div class="err" id="e-startPage"></div>
       </div>
       <div class="field">
         <label><input id="s-startup" type="checkbox" ${s.startup ? 'checked' : ''} onchange="checkSettings()"> ${esc(s.startupLabel)}</label>
-        <div class="hint">When you sign in, in the tray. Without it, triggers wait until Butler is started (a missed schedule then runs once).</div>
+        <div class="hint">${tr('When you sign in, in the tray. Without it, triggers wait until Butler is started (a missed schedule then runs once).')}</div>
         <div class="err" id="e-startup"></div>
       </div>
     </div>
     <div class="savebar">
-      <button class="primary" id="s-save" onclick="saveSettings()">Save</button>
-      <button id="s-revert" onclick="$('content').innerHTML='';renderSettings()">Revert</button>
+      <button class="primary" id="s-save" onclick="saveSettings()">${tr('Save')}</button>
+      <button id="s-revert" onclick="$('content').innerHTML='';renderSettings()">${tr('Revert')}</button>
       <span class="muted" id="s-msg"></span>
-      <span class="muted mono file" title="Butler's settings, local to this PC">${esc(s.file)}</span>
+      <span class="muted mono file" title="${tr("Butler's settings, local to this PC")}">${esc(s.file)}</span>
     </div>
   </div>`;
   checkSettings();
 }
 
 const cliNames = { claude: 'Claude Code', copilot: 'GitHub Copilot CLI' };
-const pathField = (id, label, hint, value, pick = 'file', filter = 'JSON (*.json)|*.json|All files|*.*') => `<div class="field">
+const pathField = (id, label, hint, value, pick = 'file', filter = `JSON (*.json)|*.json|${tr('All files')}|*.*`) => `<div class="field">
   <label for="s-${id}">${label}</label>
   <div class="hint">${hint}</div>
   <div class="bar"><input id="s-${id}" class="mono" value="${esc(value)}" oninput="checkSettings()">
-    <button onclick="send('browse',{pick:'${pick}',filter:'${filter}',title:'${label}',target:'s-${id}',value:$('s-${id}').value})">${icon('folder')}Browse…</button></div>
+    <button onclick="send('browse',{pick:'${pick}',filter:${js(filter)},title:${js(label)},target:'s-${id}',value:$('s-${id}').value})">${icon('folder')}${tr('Browse…')}</button></div>
   <div class="err" id="e-${id}"></div></div>`;
 const settingsDraft = () => ({ cli: $('s-cli').value, triggersFile: $('s-triggersFile').value.trim(), skillsFolder: $('s-skillsFolder').value.trim(),
   adoOrganization: $('s-adoOrganization').value.trim(), todo: $('s-todo').value, todoFile: $('s-todoFile').value.trim(), todoistToken: $('s-todoistToken').value.trim(),
-  startPage: $('s-startPage').value, startup: $('s-startup').checked });
+  startPage: $('s-startPage').value, language: $('s-language').value, startup: $('s-startup').checked });
 
 function forgetTodoist() {
-  if (!confirm('Forget the Todoist token? The To do page cannot read Todoist until a new one is saved.')) return;
+  if (!confirm(tr('Forget the Todoist token? The To do page cannot read Todoist until a new one is saved.'))) return;
   send('forgetTodoist');
   $('s-forget').remove();
-  $('s-todoistToken').placeholder = 'Paste your token';
+  $('s-todoistToken').placeholder = tr('Paste your token');
 }
 
 // Whether the chosen CLI is installed; Save only when something changed.
 function checkSettings() {
   const s = state.settings, d = settingsDraft(), path = s.installed[d.cli];
-  $('s-cli-status').innerHTML = (path ? `<span class="ok">✓ Installed: <span class="mono">${esc(path)}</span></span>` : '<span class="err">✗ Not installed: not found on the PATH</span>')
-    + (d.cli === 'copilot' ? '<div class="note" style="margin-top:6px">Copilot runs with --allow-all-tools: nothing reviews what it does, even when a mail is in the prompt. No Chrome, no cost per run.</div>' : '');
+  $('s-cli-status').innerHTML = (path ? `<span class="ok">✓ ${tr('Installed:')} <span class="mono">${esc(path)}</span></span>` : `<span class="err">✗ ${tr('Not installed: not found on the PATH')}</span>`)
+    + (d.cli === 'copilot' ? `<div class="note" style="margin-top:6px">${tr('Copilot runs with --allow-all-tools: nothing reviews what it does, even when a mail is in the prompt. No Chrome, no cost per run.')}</div>` : '');
   $('s-todo-txt').hidden = d.todo !== 'txt';
   $('s-todo-todoist').hidden = d.todo !== 'todoist';
   const dirty = d.todoistToken !== '' || Object.keys(d).some(k => k !== 'todoistToken' && d[k] !== s[k]);
@@ -1056,7 +1072,7 @@ function checkSettings() {
 }
 
 function saveSettings() {
-  $('s-msg').textContent = 'Saving…';
+  $('s-msg').textContent = tr('Saving…');
   send('saveSettings', settingsDraft());
 }
 
@@ -1064,10 +1080,10 @@ function saveSettings() {
 function settingsSaved(problems) {
   if (!$('s-cli')) return;
   for (const k of Object.keys(settingsDraft())) $('e-' + k).textContent = problems[k] || '';
-  $('s-msg').textContent = Object.keys(problems).length ? 'Not saved.' : 'Saved.';
+  $('s-msg').textContent = Object.keys(problems).length ? tr('Not saved.') : tr('Saved.');
   if (!Object.keys(problems).length && $('s-todoistToken').value) {
     $('s-todoistToken').value = '';
-    $('s-todoistToken').placeholder = 'Saved. Paste a new one to replace it';
+    $('s-todoistToken').placeholder = tr('Saved. Paste a new one to replace it');
   }
 }
 
@@ -1085,7 +1101,8 @@ let last = '';
 function receive(data) {
   const json = JSON.stringify(data);
   if (json === last) return; // pushed every few seconds; only redraw on change
-  if (!last && document.querySelector(`nav a[data-view="${data.settings.startPage}"]`)) view = data.settings.startPage; // the first push
+  const first = OPEN || data.settings.startPage; // OPEN: the page shown before a change of language reloaded this one
+  if (!last && document.querySelector(`nav a[data-view="${first}"]`)) view = first; // the first push
   last = json;
   state = data;
   render();

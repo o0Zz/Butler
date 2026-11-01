@@ -17,6 +17,7 @@ public sealed record Settings
     public string TodoFile { get; init; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "todo.txt"); // for "txt"
     public string[] TodoHidden { get; init; } = []; // ids of the lists (projects) hidden on the To do page
     public string StartPage { get; init; } = "runs"; // the dashboard's page when it opens: one of Pages
+    public string Language { get; init; } = "auto"; // of what Butler shows: "auto" (the OS's) or one of Lang.All
     public static readonly string[] Pages = ["runs", "todo", "triggers", "skills", "settings"];
 
     // Defaults when the file does not exist. Throws on an unknown CLI or to-do list (the file can be edited by hand).
@@ -41,17 +42,18 @@ public sealed record Settings
         var problems = new Dictionary<string, string>();
         try
         {
-            if (Butler.Cli.FromName(Cli).Find(shell) == null) problems["cli"] = $"{Cli} is not installed: {shell.ExecutableName(Cli)} is not on the PATH";
+            if (Butler.Cli.FromName(Cli).Find(shell) == null) problems["cli"] = T("{0} is not installed: {1} is not on the PATH", Cli, shell.ExecutableName(Cli));
         }
         catch (ArgumentException e) { problems["cli"] = e.Message; }
-        if (!File.Exists(TriggersFile)) problems["triggersFile"] = "File not found";
-        if (!Directory.Exists(SkillsFolder)) problems["skillsFolder"] = "Folder not found";
+        if (!File.Exists(TriggersFile)) problems["triggersFile"] = T("File not found");
+        if (!Directory.Exists(SkillsFolder)) problems["skillsFolder"] = T("Folder not found");
         if (AdoOrganization != "" && !AdoOrganization.StartsWith("https://"))
-            problems["adoOrganization"] = "The organization URL, like https://dev.azure.com/<org>";
-        if (!Pages.Contains(StartPage)) problems["startPage"] = $"Unknown page '{StartPage}'";
-        if (!TodoBackend.All.Any(b => b.Name == Todo)) problems["todo"] = $"Unknown to-do list '{Todo}'";
+            problems["adoOrganization"] = T("The organization URL, like https://dev.azure.com/<org>");
+        if (!Pages.Contains(StartPage)) problems["startPage"] = T("Unknown page '{0}'", StartPage);
+        if (!TodoBackend.All.Any(b => b.Name == Todo)) problems["todo"] = T("Unknown to-do list '{0}'", Todo);
         if (Todo == "txt" && !Directory.Exists(Path.GetDirectoryName(Environment.ExpandEnvironmentVariables(TodoFile))))
-            problems["todoFile"] = "Folder not found (the file itself is created with the first task)";
+            problems["todoFile"] = T("Folder not found (the file itself is created with the first task)");
+        if (Language != "auto" && !Lang.All.Contains(Language)) problems["language"] = T("Unknown language '{0}'", Language);
         return problems;
     }
 }

@@ -16,7 +16,7 @@ sealed class OsascriptNotifications : PlainNotifications
 // cannot be told apart from a hex token.
 sealed class Keychain : ISecrets
 {
-    public string Name => "the macOS Keychain";
+    public string Name => T("the macOS Keychain");
 
     public string? Read(string target) =>
         Command.Run("security", ["find-generic-password", "-s", target, "-w"]) is (0, var output, _)
@@ -70,6 +70,6 @@ sealed class WkWebView : IWebView
 // Mail triggers read Outlook classic, which only exists on Windows.
 sealed class NoMailbox : IMailbox
 {
-    public string? Unavailable => "Mail triggers read Outlook classic, which only runs on Windows";
+    public string? Unavailable => T("Mail triggers read Outlook classic, which only runs on Windows");
     public List<Mail> ReadSince(DateTime since) => throw new InvalidOperationException(Unavailable);
 }

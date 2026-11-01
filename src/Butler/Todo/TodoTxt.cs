@@ -19,8 +19,8 @@ public sealed class TodoTxt(string path, Func<DateTime>? today = null) : TodoBac
     public override string Label => "todo.txt";
     public override bool Notes => false;
     public override bool Sections => false;
-    public override string AddHint => "Add a task: (A) Call Lena +Work due:2026-11-03";
-    public override string DateHint => "today, tomorrow, next week, a weekday (monday) or 2026-11-03. Empty: no date.";
+    public override string AddHint => T("Add a task: (A) Call Lena +Work due:2026-11-03");
+    public override string DateHint => T("today, tomorrow, next week, a weekday (monday) or 2026-11-03. Empty: no date.");
 
     public override Task<TodoList> Load()
     {
