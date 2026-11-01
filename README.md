@@ -117,7 +117,7 @@ mail itself (your skills can prepare drafts).
    [release](https://github.com/o0Zz/butler/releases), put it where you like (e.g. `%LOCALAPPDATA%\Programs\Butler`)
    and run it (on macOS and Linux, `chmod +x` it first). One file.
 2. Open the dashboard from the tray icon and go to **Settings**: choose your agent CLI, your triggers file and your
-   skills folder (and your to-do list if you want one).
+   skills folder (and your to-do list if you want one). The dashboard speaks English or French, following your system by default.
 3. Add your first trigger, and press **Run now** to see it work.
 
 Requirements:
@@ -125,17 +125,16 @@ Requirements:
   macOS (Apple silicon) or Linux (x64) with the [.NET 9 Runtime](https://dotnet.microsoft.com/download/dotnet/9.0).
   On Linux, WebKitGTK 4.1 for the dashboard (`sudo apt install libwebkit2gtk-4.1-0`), and optionally `notify-send`
   (`libnotify-bin`) for notifications and `secret-tool` (`libsecret-tools`) with a running keyring for the Todoist token.
-- Mail triggers read Outlook classic: Windows only.
 - An agent CLI, logged in: [Claude Code](https://docs.claude.com/en/docs/claude-code) (`claude`) or
   [GitHub Copilot CLI](https://github.com/features/copilot/cli) (`copilot`).
-- For mail triggers: Outlook classic, running. For Azure DevOps triggers: the
+- For mail triggers: Outlook classic, running (Windows only). For Azure DevOps triggers: the
   [Azure CLI](https://learn.microsoft.com/cli/azure/) with the `azure-devops` extension, logged in (`az login`).
 
 ## How it works
 
 - A tray app (.NET 9, Avalonia) with a web dashboard in the system's web view (WebView2, WebKit).
 - Each run is a separate `Butler.exe run <trigger>` process that starts the agent headless
-  (`claude -p --output-format stream-json`), records its stream and its outcome, and shows a notification.
+  (`claude -p` or `copilot -p`), records its stream and its outcome, and shows a notification.
 - Triggers are polled by the tray from checkpoints stored in `%LOCALAPPDATA%\Butler`,
   together with the settings and the run history. Secrets (the Todoist token) go to the OS's secret store (Credential Manager, Keychain, libsecret).
 - A small protocol lets a run end with a question (`BUTLER-ASK`) or a one-line outcome (`BUTLER-SUMMARY`); an
