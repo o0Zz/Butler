@@ -242,5 +242,13 @@
   "When a file appears in {0}": "Quand un fichier apparaît dans {0}",
   "Work items where": "Work items où",
   "A WIQL condition, e.g. [System.AssignedTo] = @Me AND [System.ChangedBy] <> @Me": "Une condition WIQL, par ex. [System.AssignedTo] = @Me AND [System.ChangedBy] <> @Me",
-  "When a work item changes where {0}": "Quand un work item change où {0}"
+  "When a work item changes where {0}": "Quand un work item change où {0}",
+  "the command failed": "la commande a échoué",
+  "Command": "Commande",
+  "no agent": "sans agent",
+  "The agent runs a prompt": "L'agent exécute un prompt",
+  "The shell runs a command, no agent": "Le shell exécute une commande, sans agent",
+  "Run by cmd on Windows, sh elsewhere, from your user folder. Exit code 0 is Done, the last output line is the summary.": "Exécutée par cmd sous Windows, sh ailleurs, depuis votre dossier utilisateur. Code de sortie 0 : terminée, la dernière ligne affichée sert de résumé.",
+  "The event is in environment variables:": "L'événement est dans les variables d'environnement :",
+  "Write !BUTLER_X! with cmd (not %BUTLER_X%: a value with & would run a command), \"$BUTLER_X\" with sh.": "Écrivez !BUTLER_X! avec cmd (pas %BUTLER_X% : une valeur contenant & lancerait une commande), \"$BUTLER_X\" avec sh."
 }

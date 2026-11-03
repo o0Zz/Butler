@@ -18,6 +18,10 @@ public sealed class WindowsShell : IShell
         Process.Start(psi);
     }
 
+    // As typed in a cmd window: /s strips the outer quotes and keeps the line as is (ArgumentList would escape its quotes as \").
+    // /v:on for !VAR!, expanded after the line is parsed: a %VAR% holding "& del ..." would run it.
+    public ProcessStartInfo CommandLine(string line) => new("cmd.exe") { Arguments = $"/d /v:on /s /c \"{line}\"" };
+
     // az.cmd runs "..\python.exe -IBm azure.cli %*" through cmd.exe, which re-parses the arguments: the quotes of a WIQL
     // get lost and its "<" / ">" become redirections. So Butler starts that python itself, with each argument intact.
     public ProcessStartInfo Az()

@@ -29,6 +29,8 @@ public sealed class Runner(string home, Cli cli)
 {
     static readonly JsonSerializerOptions Json = new() { WriteIndented = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
 
+    public const string CommandCli = "command"; // the Cli of a command trigger's runs: the OS's shell, no agent
+
     public string RunsDir { get; } = Path.Combine(home, "runs");
     public Cli Cli { get; } = cli;
 
@@ -40,36 +42,78 @@ public sealed class Runner(string home, Cli cli)
 
     public async Task<RunRecord> Run(string trigger, string prompt, string? resumeSession = null)
     {
-        Directory.CreateDirectory(RunsDir);
-        var run = new RunRecord
-        {
-            Id = $"{DateTime.Now:yyyyMMdd-HHmmss-fff}-{trigger}", // sortable: Recent() orders by file name
-            Trigger = trigger,
-            SessionId = resumeSession ?? Guid.NewGuid().ToString(),
-            Prompt = prompt,
-            Cli = Cli.Name,
-            Started = DateTime.Now,
-            Status = RunStatus.Running,
-            Pid = Environment.ProcessId,
-        };
-        Save(run);
-
-        var psi = new ProcessStartInfo(Cli.Exe)
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = System.Text.Encoding.UTF8, // default is the ANSI code page: "é" came out as "Ã©"
-            StandardErrorEncoding = System.Text.Encoding.UTF8,
-            // Not the Butler repo: its CLAUDE.md is about developing Butler, not about the triggered task.
-            WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        };
+        var run = Start(trigger, prompt, resumeSession ?? Guid.NewGuid().ToString(), Cli.Name);
+        var psi = new ProcessStartInfo(Cli.Exe);
         foreach (var a in Cli.RunArguments(prompt, Protocol(trigger), run.SessionId, resumeSession != null))
             psi.ArgumentList.Add(a);
 
         string? result = null, lastText = null;
         bool isError = false;
+        var (ok, err) = await Execute(run, psi, line =>
+        {
+            foreach (var e in Events(Cli, line))
+            {
+                if (e is CliText t) lastText = t.Text;
+                else if (e is CliResult r) (result, isError, run.CostUsd) = (r.Result, r.IsError, r.CostUsd);
+            }
+        });
+        result ??= lastText; // a CLI without a final result event (copilot) ends with its last message
+        if (result == null && err.Length > 0) result = err.Trim();
+        return Finish(run, () =>
+        {
+            run.Result = result;
+            Interpret(run, isError || !ok);
+        });
+    }
+
+    // A command trigger: the command line in the OS's shell (IShell.CommandLine), no agent. Done when it exits with 0,
+    // its last output line as the summary; never waiting for an answer.
+    public async Task<RunRecord> RunCommand(string trigger, string command, ProcessStartInfo shell)
+    {
+        var run = Start(trigger, command, Guid.NewGuid().ToString(), CommandCli);
+        var output = new List<string>();
+        var (ok, err) = await Execute(run, shell, output.Add);
+        static string? Last(IEnumerable<string> lines) => lines.Select(l => l.Trim()).LastOrDefault(l => l.Length > 0);
+        var all = string.Join("\n", output.Append(err.TrimEnd())).Trim();
+        return Finish(run, () =>
+        {
+            run.Status = ok ? RunStatus.Done : RunStatus.Failed;
+            run.Summary = ok ? Last(output) ?? "" : Last(err.Split('\n')) ?? Last(output) ?? T("the command failed");
+            // As preformatted text; the whole output is in the log.
+            run.Result = all.Length == 0 ? null : "````\n" + (all.Length > 4000 ? "…" + all[^4000..] : all) + "\n````";
+        });
+    }
+
+    RunRecord Start(string trigger, string prompt, string sessionId, string cli)
+    {
+        Directory.CreateDirectory(RunsDir);
+        var run = new RunRecord
+        {
+            Id = $"{DateTime.Now:yyyyMMdd-HHmmss-fff}-{trigger}", // sortable: Recent() orders by file name
+            Trigger = trigger,
+            SessionId = sessionId,
+            Prompt = prompt,
+            Cli = cli,
+            Started = DateTime.Now,
+            Status = RunStatus.Running,
+            Pid = Environment.ProcessId,
+        };
+        Save(run);
+        return run;
+    }
+
+    // Runs the process hidden, its output line by line to the log and to `read`. Ok when it exited with 0;
+    // its stderr, or why it could not start.
+    async Task<(bool Ok, string Error)> Execute(RunRecord run, ProcessStartInfo psi, Action<string> read)
+    {
+        psi.UseShellExecute = false;
+        psi.CreateNoWindow = true;
+        psi.RedirectStandardOutput = true;
+        psi.RedirectStandardError = true;
+        psi.StandardOutputEncoding = System.Text.Encoding.UTF8; // default is the ANSI code page: "é" came out as "Ã©"
+        psi.StandardErrorEncoding = System.Text.Encoding.UTF8;
+        // Not the Butler repo: its CLAUDE.md is about developing Butler, not about the triggered task.
+        psi.WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         try
         {
             using var log = new StreamWriter(Path.Combine(RunsDir, run.Id + ".log"));
@@ -81,29 +125,22 @@ public sealed class Runner(string home, Cli cli)
             {
                 await log.WriteLineAsync(line);
                 await log.FlushAsync();
-                foreach (var e in Events(Cli, line))
-                {
-                    if (e is CliText t) lastText = t.Text;
-                    else if (e is CliResult r) (result, isError, run.CostUsd) = (r.Result, r.IsError, r.CostUsd);
-                }
+                read(line);
             }
             await p.WaitForExitAsync();
             var err = await stderr;
             if (err.Length > 0) await log.WriteLineAsync("[stderr] " + err);
-            if (p.ExitCode != 0) isError = true;
-            result ??= lastText; // a CLI without a final result event (copilot) ends with its last message
-            if (result == null && err.Length > 0) result = err.Trim();
+            return (p.ExitCode == 0, err);
         }
-        catch (Exception ex)
-        {
-            isError = true;
-            result = ex.Message;
-        }
+        catch (Exception ex) { return (false, ex.Message); }
+    }
 
-        if (Load(run.Id) is { Status: RunStatus.Stopped } stopped) return stopped; // Stop killed claude: keep its outcome
+    // Records the outcome, unless Stop killed the process meanwhile: its outcome stays.
+    RunRecord Finish(RunRecord run, Action outcome)
+    {
+        if (Load(run.Id) is { Status: RunStatus.Stopped } stopped) return stopped;
         run.Ended = DateTime.Now;
-        run.Result = result;
-        Interpret(run, isError);
+        outcome();
         Save(run);
         return run;
     }
@@ -200,8 +237,14 @@ public sealed class Runner(string home, Cli cli)
         var lines = new List<string>();
         var path = Path.Combine(RunsDir, runId + ".log");
         if (!File.Exists(path)) return lines;
-        var cli = Cli.FromName(Load(runId)?.Cli); // the log is in the format of the CLI that wrote it
+        var run = Load(runId);
         using var reader = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+        if (run?.Cli == CommandCli) // its output, while it runs (then it is the result)
+        {
+            while (run.Status == RunStatus.Running && reader.ReadLine() is { } line) lines.Add(Short(line, 300));
+            return lines;
+        }
+        var cli = Cli.FromName(run?.Cli); // the log is in the format of the CLI that wrote it
         while (reader.ReadLine() is { } line)
             foreach (var e in Events(cli, line))
             {

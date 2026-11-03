@@ -395,7 +395,7 @@ function renderRuns() {
         <div class="muted">${esc(full(r.started))}${duration(r) ? ' · ' + duration(r) : ''}${r.costUsd != null ? ' · ' + money(r.costUsd) : ''}${r.cli ? ' · ' + esc(cap(r.cli)) : ''}</div>
         <div class="actions">
           <button onclick="send('openLog',{id:'${r.id}'})">${icon('log')}${tr('Open log')}</button>
-          <button onclick="send('terminal',{session:'${r.sessionId}',cli:'${r.cli || ''}'})">${icon('terminal')}${tr('Continue in terminal')}</button>
+          ${r.cli !== 'command' ? `<button onclick="send('terminal',{session:'${r.sessionId}',cli:'${r.cli || ''}'})">${icon('terminal')}${tr('Continue in terminal')}</button>` : ''}
           ${kindOf(r.trigger) ? `<button onclick="send('run',{name:'${esc(r.trigger)}'})">${icon('play')}${tr('Run again')}</button>` : ''}
           ${r.status === 'Running' ? `<button class="danger" onclick="if(confirm(${js(tr('Stop this run? The agent is killed where it is.'))}))send('stop',{id:'${r.id}'})">${icon('stop')}${tr('Stop')}</button>` : ''}
           ${r.status === 'Waiting' ? `<button onclick="send('stop',{id:'${r.id}'})" title="${tr('Drop the question, the run ends as Stopped')}">${icon('close')}${tr('Dismiss')}</button>` : ''}
@@ -447,9 +447,9 @@ function renderTriggers() {
         <span>${tr('When')}</span><span>${esc(t.when)}</span>
         ${fieldRows(t)}
         ${t.on === 'schedule' ? `<span>${tr('Next')}</span><span title="${esc(full(t.next))}">${t.next ? esc(full(t.next)) + ' <span class="muted">(' + esc(ago(t.next)) + ')</span>' : `<span class="muted">${tr('not scheduled')}</span>`}</span>` : ''}
-        <span>${tr('Skill')}</span><span>${t.skill ? `<span class="chip ${t.skillKnown ? '' : 'bad'}" title="${t.skillKnown ? '' : tr('No such skill in your skills folder')}">/${esc(t.skill)}</span>` : `<span class="muted">${tr('none')}</span>`}</span>
+        ${t.command ? `<span>${tr('Command')}</span><span class="muted">${tr('no agent')}</span>` : `<span>${tr('Skill')}</span><span>${t.skill ?`<span class="chip ${t.skillKnown ? '' : 'bad'}" title="${t.skillKnown ? '' : tr('No such skill in your skills folder')}">/${esc(t.skill)}</span>` : `<span class="muted">${tr('none')}</span>`}</span>`}
       </div>
-      <div class="prompt mono">${esc(t.prompt)}</div>
+      <div class="prompt mono">${esc(t.command || t.prompt)}</div>
       <div class="foot">
         <span class="info">${t.recent.length ? `<span class="dots" title="${tr('Last {0} runs, newest on the right', t.recent.length)}">${[...t.recent].reverse().map(s => `<i class="${s}" title="${tr(s)}"></i>`).join('')}</span>` : ''}
           ${t.last ? esc(tr('Last run {0}', ago(t.last.started))) : tr('Never run')}${t.costMonth ? ' · ' + tr('{0} / 30 d', money(t.costMonth)) : ''}</span>
@@ -834,12 +834,12 @@ function deleteTask() {
 }
 
 // Trigger editor: a drawer over the page, outside #content, so the pushes every few seconds do not reset it.
-let form = null; // { original, name, on, prompt, values: { field: text } }
+let form = null; // { original, name, on, prompt (or the command line), command, values: { field: text } }
 
 function openEditor(name) {
   const t = name && state.triggers.find(x => x.name === name);
-  form = t ? { original: t.name, name: t.name, on: t.on, prompt: t.prompt, values: { ...t.values } }
-           : { original: null, name: '', on: 'schedule', prompt: '', values: { schedule: 'daily 08:30' } };
+  form = t ? { original: t.name, name: t.name, on: t.on, prompt: t.command || t.prompt, command: !!t.command, values: { ...t.values } }
+           : { original: null, name: '', on: 'schedule', prompt: '', command: false, values: { schedule: 'daily 08:30' } };
   drawEditor();
 }
 
@@ -859,13 +859,19 @@ function drawEditor() {
         <div class="field"><label>${tr('Runs on')}</label>
           <div class="kinds">${state.kinds.map(k => `<button class="k-${k.name} ${k.name === form.on ? 'on' : ''}" onclick="form.on='${k.name}';drawEditor()">${icon(k.name)}${esc(k.label)}</button>`).join('')}</div></div>
         ${kind.form.map(fieldInput).join('')}
-        <div class="field"><label for="t-prompt">${tr('Prompt')}</label>
-          <div class="hint">${tr('What the agent gets. Start with /skill to call one of your skills.')}</div>
+        <div class="field"><label for="t-prompt">${form.command ? tr('Command') : tr('Prompt')}</label>
+          <div class="bar"><select onchange="form.command=this.value==='command';drawEditor()">
+            <option value="prompt">${tr('The agent runs a prompt')}</option>
+            <option value="command" ${form.command ? 'selected' : ''}>${tr('The shell runs a command, no agent')}</option></select></div>
+          ${form.command ? `<div class="hint">${tr('Run by cmd on Windows, sh elsewhere, from your user folder. Exit code 0 is Done, the last output line is the summary.')}</div>
+          <textarea id="t-prompt" class="mono" rows="3" oninput="form.prompt=this.value">${esc(form.prompt)}</textarea>
+          ${kind.variables.length ? `<div class="hint">${tr('The event is in environment variables:')} ${kind.variables.map(v => `<span class="chip mono">BUTLER_${v.toUpperCase()}</span>`).join(' ')}<br>${tr('Write !BUTLER_X! with cmd (not %BUTLER_X%: a value with & would run a command), "$BUTLER_X" with sh.')}</div>` : ''}`
+          : `<div class="hint">${tr('What the agent gets. Start with /skill to call one of your skills.')}</div>
           <div class="bar"><select onchange="setSkill(this.value)"><option value="">${tr('No skill')}</option>${state.skills.map(s =>
             `<option value="${esc(s.name)}" ${s.name === skill || s.folder === skill ? 'selected' : ''}>/${esc(s.name)}</option>`).join('')}</select></div>
           <textarea id="t-prompt" class="mono" rows="7" oninput="form.prompt=this.value">${esc(form.prompt)}</textarea>
           ${kind.variables.length ? `<div class="vars"><span class="muted">${tr('Insert:')}</span>${kind.variables.map(v => `<span class="chip" onclick="insertVar('${v}')">\${${v}}</span>`).join('')}</div>
-            <div class="hint">${tr('Filled from the event. Without any, the event is appended.')}</div>` : ''}
+            <div class="hint">${tr('Filled from the event. Without any, the event is appended.')}</div>` : ''}`}
         </div>
         <div id="t-error"></div>
       </div>
@@ -938,7 +944,7 @@ function insertVar(v) {
 function saveTrigger() {
   const kind = state.kinds.find(k => k.name === form.on);
   const values = Object.fromEntries(kind.form.map(f => [f.name, form.values[f.name] || '']));
-  send('saveTrigger', { original: form.original || '', name: form.name, on: form.on, prompt: form.prompt, values });
+  send('saveTrigger', { original: form.original || '', name: form.name, on: form.on, prompt: form.prompt, command: form.command, values });
 }
 
 function deleteTrigger() {

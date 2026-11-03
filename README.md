@@ -108,8 +108,11 @@ Triggers live in a JSON file (by default `~/.claude/skills/butler.json`), edited
 | `ado` | a work item created or changed that matches the `where` WIQL condition (checked every 2 min) | `${id}` `${title}` `${state}` `${by}` |
 | `file` | a new file in `folder`, optionally matching `filter`, once fully written | `${path}` `${name}` |
 
-A prompt starting with `/skill` calls that skill. Butler only reads your mailbox: it never sends, moves or deletes a
-mail itself (your skills can prepare drafts).
+A prompt starting with `/skill` calls that skill. A trigger can run a `command` instead of a `prompt`, with no agent
+(`cmd` on Windows, `sh` elsewhere): `{ "name": "pull", "on": "schedule", "schedule": "daily 08:00", "command": "git -C %USERPROFILE%\\.claude\\skills pull" }`.
+It gets the event in environment variables (`BUTLER_PATH`, `BUTLER_SUBJECT`...): write `!BUTLER_PATH!` with cmd, `"$BUTLER_PATH"` with sh.
+
+Butler only reads your mailbox: it never sends, moves or deletes a mail itself (your skills can prepare drafts).
 
 ## Get started
 

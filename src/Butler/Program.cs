@@ -33,7 +33,7 @@ static class Program
             switch (args.FirstOrDefault())
             {
                 case null: return RunTray(platform);
-                case "run" when args.Length >= 2: return RunTrigger(platform.Notifications, args[1], args[2..]).GetAwaiter().GetResult();
+                case "run" when args.Length >= 2: return RunTrigger(platform, args[1], args[2..]).GetAwaiter().GetResult();
                 case "answer" when args.Length >= 3:
                     return Report(platform.Notifications, NewRunner(LoadSettings()).Answer(args[1], args[2]).GetAwaiter().GetResult());
                 default:
@@ -72,13 +72,18 @@ static class Program
         }
     }
 
-    static async Task<int> RunTrigger(INotifications notifications, string name, string[] variables)
+    static async Task<int> RunTrigger(Platform platform, string name, string[] variables)
     {
         var settings = LoadSettings();
         var trigger = Trigger.Load(settings.TriggersFile).FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         if (trigger == null) return 0; // removed from butler.json meanwhile: do nothing
         var values = variables.Select(v => v.Split('=', 2)).Where(kv => kv.Length == 2).ToDictionary(kv => kv[0], kv => kv[1]);
-        return Report(notifications, await NewRunner(settings).Run(trigger.Name, trigger.PromptWith(values)));
+        var runner = NewRunner(settings);
+        if (trigger.Command is not { } command)
+            return Report(platform.Notifications, await runner.Run(trigger.Name, trigger.PromptWith(values)));
+        var shell = platform.Shell.CommandLine(command);
+        foreach (var (k, v) in Trigger.Environment(values)) shell.Environment[k] = v;
+        return Report(platform.Notifications, await runner.RunCommand(trigger.Name, command, shell));
     }
 
     // For a run: its notifications and summaries in the language of the settings.

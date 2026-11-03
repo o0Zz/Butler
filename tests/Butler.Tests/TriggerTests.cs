@@ -33,6 +33,10 @@ public class TriggerTests
     [InlineData("""[{ "name": "x", "on": "mail", "from": ["a"], "prompt": "p" }, { "name": "X", "on": "mail", "from": ["a"], "prompt": "p" }]""", "declared twice")]
     [InlineData("""[{ "name": "x", "on": "mail", "from": ["a"], "prompt": "/x ${body}" }]""", "unknown variable ${body}")]
     [InlineData("""[{ "name": "x", "on": "schedule", "schedule": "daily 09:00", "prompt": "/x ${from}" }]""", "unknown variable ${from}")]
+    [InlineData("""[{ "name": "x", "on": "schedule", "schedule": "daily 09:00", "prompt": "/x", "command": "git pull" }]""", "both a prompt and a command")]
+    [InlineData("""[{ "name": "x", "on": "schedule", "schedule": "daily 09:00", "command": " " }]""", "command is empty")]
+    [InlineData("""[{ "name": "x", "on": "schedule", "schedule": "daily 09:00" }]""", "prompt is empty")]
+    [InlineData("""[{ "name": "x", "on": "mail", "from": ["a"], "command": "log.cmd ${subject}" }]""", "environment variables, not ${subject} (use BUTLER_FROM, BUTLER_SUBJECT, BUTLER_RECEIVED)")]
     public void Rejects_invalid_triggers(string json, string message) =>
         Assert.Contains(message, Assert.Throws<FormatException>(() => LoadJson(json)).Message);
 
@@ -146,6 +150,25 @@ public class TriggerTests
             Assert.Equal(["a@example.com", "b@example.com"], back[1].From!);
             Assert.Equal(@"C:\in", back[2].Field("folder"));
             Assert.Null(back[2].Field("filter"));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void Command_trigger_is_read_written_and_gets_the_event_as_environment_variables()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            Trigger.Save(path, [Trigger.FromForm("pull", "file", " git pull ", new Dictionary<string, string> { ["folder"] = @"C:\in" }, command: true)]);
+            Assert.Contains("\"command\": \"git pull\"", File.ReadAllText(path));
+            Assert.DoesNotContain("prompt", File.ReadAllText(path));
+
+            var t = Trigger.Load(path).Single();
+            Assert.Equal("git pull", t.Command);
+            Assert.Null(t.Prompt);
+            Assert.Equal(new Dictionary<string, string> { ["BUTLER_PATH"] = @"C:\in\a.txt", ["BUTLER_NAME"] = "a.txt" },
+                Trigger.Environment(new Dictionary<string, string> { ["path"] = @"C:\in\a.txt", ["name"] = "a.txt" }));
         }
         finally { File.Delete(path); }
     }

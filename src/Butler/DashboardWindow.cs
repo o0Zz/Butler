@@ -170,13 +170,13 @@ sealed class DashboardWindow : Window
             },
             triggers = tray.Triggers.Select(t => new
             {
-                t.Name, t.On, t.Prompt, t.Schedule, t.From,
+                t.Name, t.On, t.Prompt, t.Command, t.Schedule, t.From,
                 values = t.Kind.Form.ToDictionary(f => f.Name, f => f.Name == "schedule" ? t.Schedule : f.Name == "from" ? string.Join("\n", t.From ?? []) : t.Field(f.Name)),
                 when = t.Kind.Describe(t),
                 recent = history.Where(r => r.Trigger.Equals(t.Name, StringComparison.OrdinalIgnoreCase)).Take(10).Select(r => r.Status),
                 costMonth = history.Where(r => r.Started >= DateTime.Today.AddDays(-30) && r.Trigger.Equals(t.Name, StringComparison.OrdinalIgnoreCase)).Sum(r => r.CostUsd ?? 0),
-                skill = Skills.Invoked(t.Prompt),
-                skillKnown = Skills.Invoked(t.Prompt) is not { } s || s.Contains(':') || skills.Any(k => k.Name == s || k.Folder == s),
+                skill = Skills.Invoked(t.Prompt ?? ""),
+                skillKnown = Skills.Invoked(t.Prompt ?? "") is not { } s || s.Contains(':') || skills.Any(k => k.Name == s || k.Folder == s),
                 next = t.On == "schedule" ? Schedule.Parse(t.Schedule!).Next(DateTime.Now) : (DateTime?)null,
                 last = runs.FirstOrDefault(r => r.Trigger.Equals(t.Name, StringComparison.OrdinalIgnoreCase)),
             }),
@@ -185,7 +185,7 @@ sealed class DashboardWindow : Window
             skills = skills.Select(s => new
             {
                 s.Name, s.Description, s.Folder,
-                triggers = tray.Triggers.Where(t => Skills.Invoked(t.Prompt) is { } k && (k == s.Name || k == s.Folder)).Select(t => t.Name),
+                triggers = tray.Triggers.Where(t => Skills.Invoked(t.Prompt ?? "") is { } k && (k == s.Name || k == s.Folder)).Select(t => t.Name),
             }),
         };
         _ = web.InvokeScript($"receive({JsonSerializer.Serialize(state, Json)})");
@@ -277,7 +277,7 @@ sealed class DashboardWindow : Window
                 Call("triggerSaved", EditTriggers(list =>
                 {
                     var values = cmd.GetProperty("values").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString() ?? "");
-                    var t = Trigger.FromForm(Arg("name"), Arg("on"), Arg("prompt"), values);
+                    var t = Trigger.FromForm(Arg("name"), Arg("on"), Arg("prompt"), values, cmd.GetProperty("command").GetBoolean());
                     var at = list.FindIndex(x => x.Name.Equals(Arg("original"), StringComparison.OrdinalIgnoreCase));
                     if (at >= 0) list[at] = t;
                     else list.Add(t);

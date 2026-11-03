@@ -51,6 +51,7 @@ public interface IShell
     void Reveal(string file);           // its folder, with the file selected where the OS can
     void Terminal(string folder, string exe, IEnumerable<string> args); // an interactive program in a terminal window
     ProcessStartInfo Az();              // the az CLI, to add its arguments to
+    ProcessStartInfo CommandLine(string line); // a command line run by the OS's shell: cmd on Windows, sh elsewhere
 }
 
 // The dashboard's web engine (WebView2, WebKit), set up when the dashboard creates it.

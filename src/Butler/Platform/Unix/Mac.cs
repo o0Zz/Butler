@@ -59,6 +59,7 @@ sealed class MacShell : IShell
         Command.Start("osascript", ["-e", "on run argv\ntell application \"Terminal\" to do script (item 1 of argv)\nend run", Command.ShellLine(folder, exe, args)]);
 
     public ProcessStartInfo Az() => new("az");
+    public ProcessStartInfo CommandLine(string line) => new("/bin/sh") { ArgumentList = { "-c", line } };
 }
 
 // WKWebView: its data stays in the app's own WebKit store, which has no folder to choose.

@@ -68,4 +68,5 @@ sealed class LinuxShell : IShell
         Command.Start("x-terminal-emulator", ["-e", "sh", "-c", Command.ShellLine(folder, exe, args)]);
 
     public ProcessStartInfo Az() => new("az");
+    public ProcessStartInfo CommandLine(string line) => new("/bin/sh") { ArgumentList = { "-c", line } };
 }

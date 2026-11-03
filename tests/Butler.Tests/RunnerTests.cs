@@ -254,5 +254,31 @@ public class RunnerTests : IDisposable
         Assert.Throws<ArgumentException>(() => Cli.FromName("gpt"));
     }
 
+    // In the OS's real shell; these lines read the same to cmd and sh.
+    [Fact]
+    public async Task Command_runs_in_the_shell_without_an_agent()
+    {
+        var runner = new Runner(home, new ClaudeCli(fake));
+        var run = await runner.RunCommand("pull", "echo first&& echo done", Platform.Current.Shell.CommandLine("echo first&& echo done"));
+
+        Assert.Equal(RunStatus.Done, run.Status);
+        Assert.Equal("done", run.Summary);
+        Assert.Equal("command", run.Cli);
+        Assert.Null(run.CostUsd);
+        Assert.Contains("first", run.Result);
+        Assert.False(File.Exists(argsFile)); // the agent never started
+        Assert.Contains("first", File.ReadAllText(Path.Combine(runner.RunsDir, run.Id + ".log")));
+        Assert.Empty(runner.Activity(run.Id)); // once ended, the output is the result
+        await Assert.ThrowsAsync<InvalidOperationException>(() => runner.Answer(run.Id, "yes"));
+    }
+
+    [Fact]
+    public async Task Command_failing_is_a_failed_run()
+    {
+        var run = await new Runner(home, new ClaudeCli(fake)).RunCommand("x", "exit 3", Platform.Current.Shell.CommandLine("exit 3"));
+        Assert.Equal(RunStatus.Failed, run.Status);
+        Assert.Equal("the command failed", run.Summary);
+    }
+
     public void Dispose() => Directory.Delete(home, true);
 }
