@@ -32,7 +32,7 @@ public sealed class LangTests : IDisposable
         var fr = Lang.Load("fr");
         var used = Used().ToList();
         Assert.Contains("Every day at {0}", used); // the search finds them
-        Assert.Contains("Open the triggers file in your editor", used);
+        Assert.Contains("Open the folder of the triggers file", used);
         Assert.Equal([], used.Where(t => !fr.ContainsKey(t)).ToArray()); // lists the missing ones
     }
 

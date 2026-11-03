@@ -4,9 +4,8 @@
   "Triggers": "Déclencheurs",
   "Skills": "Skills",
   "Settings": "Paramètres",
-  "File": "Fichier",
   "Butler's version (and its commit)": "Version de Butler (et son commit)",
-  "Open the triggers file in your editor": "Ouvrir le fichier des déclencheurs dans votre éditeur",
+  "Open the folder of the triggers file": "Ouvrir le dossier du fichier des déclencheurs",
 
   "in {0}": "dans {0}",
   "just now": "à l'instant",

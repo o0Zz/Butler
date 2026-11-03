@@ -202,7 +202,7 @@ sealed class DashboardWindow : Window
             case "answer": Program.Start("answer", Arg("id"), Arg("text")); break;
             case "stop": runner.Stop(Arg("id")); Push(); break;
             case "clearRuns": runner.Clear(); historyRead = DateTime.MinValue; Push(); break;
-            case "editConfig": Open(tray.Settings.TriggersFile); break;
+            case "revealTriggers": platform.Shell.Reveal(tray.Settings.TriggersFile); break;
             case "openSkills": platform.Shell.OpenFolder(tray.Settings.SkillsFolder); break;
             case "openSkill": Open(Path.Combine(tray.Settings.SkillsFolder, Arg("folder"), "SKILL.md")); break;
             case "openLog": Open(Path.Combine(runner.RunsDir, Arg("id") + ".log")); break;
