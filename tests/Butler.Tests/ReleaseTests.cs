@@ -10,6 +10,7 @@ public sealed class ReleaseTests : IDisposable
     readonly HttpListener server = new();
     readonly string url;
     const string tag = "v1.3.0";
+    int requests;
 
     public ReleaseTests()
     {
@@ -26,6 +27,7 @@ public sealed class ReleaseTests : IDisposable
         {
             HttpListenerContext c;
             try { c = await server.GetContextAsync(); } catch (Exception) { return; }
+            Interlocked.Increment(ref requests);
             var ok = c.Request.UserAgent?.StartsWith("Butler") == true;
             var body = Encoding.UTF8.GetBytes($$"""{"tag_name":"{{tag}}","html_url":"https://github.com/o0Zz/butler/releases/tag/{{tag}}","assets":[]}""");
             c.Response.StatusCode = ok ? 200 : 403; // as GitHub without a User-Agent
@@ -58,8 +60,8 @@ public sealed class ReleaseTests : IDisposable
     [Fact]
     public async Task A_development_build_does_not_ask()
     {
-        server.Stop(); // a request would fail
         Assert.Null(await Release.Newer("0.0.0.12 (abc1234)", url));
+        Assert.Equal(0, requests); // GitHub not even asked
     }
 
     public void Dispose() => server.Close();

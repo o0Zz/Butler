@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Butler;
 
 // The tray icon as Avalonia draws it (Skia, headless), on the session's UI thread.
@@ -37,12 +38,15 @@ public class AppIconTests
         return 0;
     });
 
-    static (byte B, byte G, byte R, byte A)[] Pixels(RenderTargetBitmap bmp)
+    // In the bitmap's own byte order: BGRA on Windows, RGBA on macOS.
+    static (byte R, byte G, byte B, byte A)[] Pixels(RenderTargetBitmap bmp)
     {
         var bytes = new byte[32 * 32 * 4];
         var handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
         try { bmp.CopyPixels(new PixelRect(0, 0, 32, 32), handle.AddrOfPinnedObject(), bytes.Length, 32 * 4); }
         finally { handle.Free(); }
-        return Enumerable.Range(0, 32 * 32).Select(i => (bytes[i * 4], bytes[i * 4 + 1], bytes[i * 4 + 2], bytes[i * 4 + 3])).ToArray();
+        var (r, b) = bmp.Format == PixelFormat.Rgba8888 ? (0, 2) : bmp.Format == PixelFormat.Bgra8888 ? (2, 0)
+            : throw new NotSupportedException($"Pixel format {bmp.Format}");
+        return Enumerable.Range(0, 32 * 32).Select(i => (bytes[i * 4 + r], bytes[i * 4 + 1], bytes[i * 4 + b], bytes[i * 4 + 3])).ToArray();
     }
 }
