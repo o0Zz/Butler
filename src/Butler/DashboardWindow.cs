@@ -137,6 +137,7 @@ sealed class DashboardWindow : Window
         var state = new
         {
             error = tray.LastError,
+            newVersion = tray.NewVersion,
             cli = settings.Cli,
             stats = new
             {

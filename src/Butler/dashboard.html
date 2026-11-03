@@ -224,7 +224,7 @@
 </head>
 <body>
 <nav>
-  <h1><span class="logo"><!--logo--></span><span>Butler<small data-tr-title title="Butler's version (and its commit)"><!--version--></small></span></h1>
+  <h1><span class="logo"><!--logo--></span><span>Butler<small data-tr-title title="Butler's version (and its commit)"><!--version--></small><small id="new-version"></small></span></h1>
   <a data-view="runs"><i data-ic="runs"></i><span class="label" data-tr>Runs</span><span class="count" id="c-runs"></span></a>
   <a data-view="todo"><i data-ic="todo"></i><span class="label" data-tr>To do</span><span class="count" id="c-todo"></span></a>
   <a data-view="triggers"><i data-ic="triggers"></i><span class="label" data-tr>Triggers</span><span class="count" id="c-triggers"></span></a>
@@ -1111,6 +1111,7 @@ function receive(data) {
   if (!last && document.querySelector(`nav a[data-view="${first}"]`)) view = first; // the first push
   last = json;
   state = data;
+  $('new-version').innerHTML = data.newVersion ? `<a href="${esc(data.newVersion.url)}">${esc(tr('Version {0} is available', data.newVersion.version))}</a>` : '';
   render();
 }
 </script>

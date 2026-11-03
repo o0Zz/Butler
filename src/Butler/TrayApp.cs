@@ -39,6 +39,18 @@ sealed class TrayApp
         poller.Start(); // its first poll catches up what came while Butler was not running
         statusTimer.Start();
         UpdateStatus();
+        _ = CheckForNewVersion();
+    }
+
+    // At start, then once a day. Offline or rate-limited: no news, tried again tomorrow.
+    async Task CheckForNewVersion()
+    {
+        while (true)
+        {
+            try { NewVersion = await Release.Newer(Program.Version); }
+            catch (Exception e) when (e is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or KeyNotFoundException) { }
+            await Task.Delay(TimeSpan.FromDays(1));
+        }
     }
 
     public Platform Platform { get; }
@@ -47,6 +59,7 @@ sealed class TrayApp
     public IReadOnlyDictionary<string, SourceStatus> Sources => sources;
     public Runner Runner => Program.NewRunner(settings);
     public string? LastError { get; private set; }
+    public Release? NewVersion { get; private set; } // a newer release on GitHub
 
     // Re-reads the settings and the triggers file.
     public void Reload()

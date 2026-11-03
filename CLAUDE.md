@@ -56,5 +56,5 @@ Single user, single machine: triggers live in the user's own skills folder and c
 
 ## Commands
 - `dotnet build`, `dotnet test` (repo root). `Butler.exe` (tray), `Butler.exe run <trigger> [var=value ...]`, `Butler.exe answer <runId> <text>`.
-- Version `X.Y.Z.<commit count>` (csproj `GitVersion`; `VersionBase` 0.0.0, CI passes the tag's), shown under the dashboard's title with its commit.
+- Version `X.Y.Z.<commit count>` (csproj `GitVersion`; `VersionBase` 0.0.0, CI passes the tag's), shown under the dashboard's title with its commit. The tray checks GitHub's latest release at start and daily (`Release.Newer`, not for 0.0.0 builds) and links a newer one there; it never downloads or installs it.
 - CI (`.github/workflows/ci.yml`) builds and tests on Windows, Linux, macOS; a `v*` tag publishes `Butler-<version>.exe`, `-linux-x64`, `-osx-arm64` (single file, needs the .NET 9 runtime, Desktop Runtime on Windows). The Windows target builds only on Windows.
