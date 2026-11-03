@@ -36,7 +36,8 @@ public sealed class Runner(string home, Cli cli)
 
     public static string Protocol(string trigger) =>
         $"You are running unattended, launched by Butler (trigger: {trigger}). Nobody can answer you during this run. " +
-        "If you need a decision or a confirmation from the user before going further, stop there and end your final message " +
+        "If you need a decision or a confirmation from the user before going further, or you leave the user something to do " +
+        "(a draft to send, a page to finish), stop there and end your final message " +
         "with one line: `BUTLER-ASK: <short question>`. The user will answer later in this same session. " +
         "Otherwise end your final message with one line: `BUTLER-SUMMARY: <one-line outcome>`.";
 

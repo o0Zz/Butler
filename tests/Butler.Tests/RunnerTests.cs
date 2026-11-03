@@ -58,6 +58,7 @@ public class RunnerTests : IDisposable
         Assert.Contains("--session-id " + first.SessionId, args);
         Assert.Contains("--output-format stream-json", args);
         Assert.Contains("BUTLER-ASK", args); // the protocol is appended to the system prompt
+        Assert.Contains("leave the user something to do", args); // a skill only says "ask Thierry": a draft left to send waits too
         Assert.Contains("\"type\":\"result\"", File.ReadAllText(Path.Combine(runner.RunsDir, first.Id + ".log")));
 
         ClaudeReplies("Done.\nBUTLER-SUMMARY: 20 days written");
