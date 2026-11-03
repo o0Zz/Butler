@@ -144,7 +144,7 @@ sealed class TrayApp
     {
         var waiting = Runner.Recent(50).Count(r => r.Status == RunStatus.Waiting);
         var problem = LastError ?? sources.Where(s => s.Value.Error != null).Select(s => T("{0} triggers: {1}", s.Key, s.Value.Error)).FirstOrDefault();
-        icon.Icon = problem != null ? AppIcon.TrayError : waiting > 0 ? AppIcon.TrayWaiting : AppIcon.Tray;
+        icon.Icon = problem != null ? AppIcon.TrayError : waiting > 0 ? AppIcon.TrayWaiting(waiting) : AppIcon.Tray;
         var text = problem ?? (waiting > 0 ? T("Butler: {0} waiting for you", waiting) : "Butler");
         icon.ToolTipText = text.Length > 63 ? text[..63] : text; // Windows' tray tooltip limit
         dashboard?.RefreshRuns();
