@@ -834,49 +834,49 @@ function deleteTask() {
 }
 
 // Trigger editor: a drawer over the page, outside #content, so the pushes every few seconds do not reset it.
-let form = null; // { original, name, on, prompt (or the command line), command, values: { field: text } }
+let editing = null; // { original, name, on, prompt (or the command line), command, values: { field: text } }
 
 function openEditor(name) {
   const t = name && state.triggers.find(x => x.name === name);
-  form = t ? { original: t.name, name: t.name, on: t.on, prompt: t.command || t.prompt, command: !!t.command, values: { ...t.values } }
+  editing = t ? { original: t.name, name: t.name, on: t.on, prompt: t.command || t.prompt, command: !!t.command, values: { ...t.values } }
            : { original: null, name: '', on: 'schedule', prompt: '', command: false, values: { schedule: 'daily 08:30' } };
   drawEditor();
 }
 
-function closeEditor() { form = null; $('modal').innerHTML = ''; }
+function closeEditor() { editing = null; $('modal').innerHTML = ''; }
 
 function drawEditor() {
-  const kind = state.kinds.find(k => k.name === form.on);
-  const skill = (form.prompt.match(/^\/([\w:-]+)/) || [])[1] || '';
+  const kind = state.kinds.find(k => k.name === editing.on);
+  const skill = (editing.prompt.match(/^\/([\w:-]+)/) || [])[1] || '';
   $('modal').innerHTML = `<div class="overlay" onmousedown="if(event.target===this)closeEditor()">
     <div class="drawer">
-      <div class="dh">${kindBadge(form.on)}<h3>${form.original ? esc(tr('Edit {0}', form.original)) : tr('New trigger')}</h3>
+      <div class="dh">${kindBadge(editing.on)}<h3>${editing.original ? esc(tr('Edit {0}', editing.original)) : tr('New trigger')}</h3>
         <button class="icon" onclick="closeEditor()" title="${tr('Close')}">${icon('close')}</button></div>
       <div class="db">
         <div class="field"><label for="t-name">${tr('Name')}</label>
           <div class="hint">${tr('Letters, digits, - and _.')}</div>
-          <input id="t-name" value="${esc(form.name)}" oninput="form.name=this.value" placeholder="morning-brief"></div>
+          <input id="t-name" value="${esc(editing.name)}" oninput="editing.name=this.value" placeholder="morning-brief"></div>
         <div class="field"><label>${tr('Runs on')}</label>
-          <div class="kinds">${state.kinds.map(k => `<button class="k-${k.name} ${k.name === form.on ? 'on' : ''}" onclick="form.on='${k.name}';drawEditor()">${icon(k.name)}${esc(k.label)}</button>`).join('')}</div></div>
+          <div class="kinds">${state.kinds.map(k => `<button class="k-${k.name} ${k.name === editing.on ? 'on' : ''}" onclick="editing.on='${k.name}';drawEditor()">${icon(k.name)}${esc(k.label)}</button>`).join('')}</div></div>
         ${kind.form.map(fieldInput).join('')}
-        <div class="field"><label for="t-prompt">${form.command ? tr('Command') : tr('Prompt')}</label>
-          <div class="bar"><select onchange="form.command=this.value==='command';drawEditor()">
+        <div class="field"><label for="t-prompt">${editing.command ? tr('Command') : tr('Prompt')}</label>
+          <div class="bar"><select onchange="editing.command=this.value==='command';drawEditor()">
             <option value="prompt">${tr('The agent runs a prompt')}</option>
-            <option value="command" ${form.command ? 'selected' : ''}>${tr('The shell runs a command, no agent')}</option></select></div>
-          ${form.command ? `<div class="hint">${tr('Run by cmd on Windows, sh elsewhere, from your user folder. Exit code 0 is Done, the last output line is the summary.')}</div>
-          <textarea id="t-prompt" class="mono" rows="3" oninput="form.prompt=this.value">${esc(form.prompt)}</textarea>
+            <option value="command" ${editing.command ? 'selected' : ''}>${tr('The shell runs a command, no agent')}</option></select></div>
+          ${editing.command ? `<div class="hint">${tr('Run by cmd on Windows, sh elsewhere, from your user folder. Exit code 0 is Done, the last output line is the summary.')}</div>
+          <textarea id="t-prompt" class="mono" rows="3" oninput="editing.prompt=this.value">${esc(editing.prompt)}</textarea>
           ${kind.variables.length ? `<div class="hint">${tr('The event is in environment variables:')} ${kind.variables.map(v => `<span class="chip mono">BUTLER_${v.toUpperCase()}</span>`).join(' ')}<br>${tr('Write !BUTLER_X! with cmd (not %BUTLER_X%: a value with & would run a command), "$BUTLER_X" with sh.')}</div>` : ''}`
           : `<div class="hint">${tr('What the agent gets. Start with /skill to call one of your skills.')}</div>
           <div class="bar"><select onchange="setSkill(this.value)"><option value="">${tr('No skill')}</option>${state.skills.map(s =>
             `<option value="${esc(s.name)}" ${s.name === skill || s.folder === skill ? 'selected' : ''}>/${esc(s.name)}</option>`).join('')}</select></div>
-          <textarea id="t-prompt" class="mono" rows="7" oninput="form.prompt=this.value">${esc(form.prompt)}</textarea>
+          <textarea id="t-prompt" class="mono" rows="7" oninput="editing.prompt=this.value">${esc(editing.prompt)}</textarea>
           ${kind.variables.length ? `<div class="vars"><span class="muted">${tr('Insert:')}</span>${kind.variables.map(v => `<span class="chip" onclick="insertVar('${v}')">\${${v}}</span>`).join('')}</div>
             <div class="hint">${tr('Filled from the event. Without any, the event is appended.')}</div>` : ''}`}
         </div>
         <div id="t-error"></div>
       </div>
       <div class="df">
-        ${form.original ? `<button class="danger" onclick="deleteTrigger()">${icon('trash')}${tr('Delete')}</button>` : ''}
+        ${editing.original ? `<button class="danger" onclick="deleteTrigger()">${icon('trash')}${tr('Delete')}</button>` : ''}
         <span class="grow"></span>
         <button onclick="closeEditor()">${tr('Cancel')}</button>
         <button class="primary" onclick="saveTrigger()">${tr('Save')}</button>
@@ -887,13 +887,13 @@ function drawEditor() {
 const days = [['mon', tr('Monday')], ['tue', tr('Tuesday')], ['wed', tr('Wednesday')], ['thu', tr('Thursday')], ['fri', tr('Friday')], ['sat', tr('Saturday')], ['sun', tr('Sunday')]];
 
 function fieldInput(f) {
-  const v = form.values[f.name] || '';
+  const v = editing.values[f.name] || '';
   const head = `<label for="f-${f.name}">${esc(f.label)}${f.optional ? ` <span class="muted">${tr('(optional)')}</span>` : ''}</label>${f.hint ? `<div class="hint">${esc(f.hint)}</div>` : ''}`;
-  const set = `oninput="form.values['${f.name}']=this.value"`;
+  const set = `oninput="editing.values['${f.name}']=this.value"`;
   if (f.type === 'schedule') {
     const m = v.match(/^(daily|monthly:(\d+)|([a-z,-]+)) (\d{1,2}:\d{2})$/i) || [, 'daily', , , '08:30'];
     const on = m[3] ? expandDays(m[3]) : [];
-    const freq = form.freq || (m[2] ? 'monthly' : !m[3] ? 'daily' : on.join() === 'mon,tue,wed,thu,fri' ? 'weekdays' : 'days');
+    const freq = editing.freq || (m[2] ? 'monthly' : !m[3] ? 'daily' : on.join() === 'mon,tue,wed,thu,fri' ? 'weekdays' : 'days');
     return `<div class="field">${head}<div class="bar">
       <select id="s-freq" onchange="scheduleChanged()">${[['daily', tr('Every day')], ['weekdays', tr('Weekdays (Mon–Fri)')], ['days', tr('Days of the week')], ['monthly', tr('Every month')]].map(([k, l]) => `<option value="${k}" ${k === freq ? 'selected' : ''}>${l}</option>`).join('')}</select>
       ${freq === 'monthly' ? `<select id="s-day" onchange="scheduleChanged()">${Array.from({ length: 31 }, (_, i) => i + 1).map(d => `<option value="${d}" ${String(d) === m[2] ? 'selected' : ''}>${tr('on day {0}', d)}</option>`).join('')}</select>` : ''}
@@ -920,46 +920,46 @@ function scheduleChanged() {
   const freq = $('s-freq').value, day = $('s-day')?.value, time = $('s-time').value || '08:30';
   // Days of the week: the boxes ticked, or (just switched to it) the days of the current schedule.
   const ticked = $('s-days') ? [...document.querySelectorAll('#s-days input:checked')].map(i => i.value)
-    : expandDays(form.values.schedule?.split(' ')[0] || '');
-  form.freq = freq; // "Days of the week" with mon..fri ticked stays that, not "Weekdays"
-  form.values.schedule = freq === 'daily' ? `daily ${time}` : freq === 'weekdays' ? `mon-fri ${time}`
+    : expandDays(editing.values.schedule?.split(' ')[0] || '');
+  editing.freq = freq; // "Days of the week" with mon..fri ticked stays that, not "Weekdays"
+  editing.values.schedule = freq === 'daily' ? `daily ${time}` : freq === 'weekdays' ? `mon-fri ${time}`
     : freq === 'monthly' ? `monthly:${/^\d+$/.test(day || '') ? day : 1} ${time}` : `${(ticked.length ? ticked : ['mon']).join(',')} ${time}`;
   drawEditor();
 }
 
 function setSkill(name) {
-  const rest = form.prompt.replace(/^\/[\w:-]+\s*/, '');
-  form.prompt = name ? `/${name}${rest ? ' ' + rest : ''}` : rest;
-  $('t-prompt').value = form.prompt;
+  const rest = editing.prompt.replace(/^\/[\w:-]+\s*/, '');
+  editing.prompt = name ? `/${name}${rest ? ' ' + rest : ''}` : rest;
+  $('t-prompt').value = editing.prompt;
 }
 
 function insertVar(v) {
   const ta = $('t-prompt'), at = ta.selectionStart ?? ta.value.length, text = '${' + v + '}';
   ta.value = ta.value.slice(0, at) + text + ta.value.slice(ta.selectionEnd ?? at);
-  form.prompt = ta.value;
+  editing.prompt = ta.value;
   ta.focus();
   ta.selectionStart = ta.selectionEnd = at + text.length;
 }
 
 function saveTrigger() {
-  const kind = state.kinds.find(k => k.name === form.on);
-  const values = Object.fromEntries(kind.form.map(f => [f.name, form.values[f.name] || '']));
-  send('saveTrigger', { original: form.original || '', name: form.name, on: form.on, prompt: form.prompt, command: form.command, values });
+  const kind = state.kinds.find(k => k.name === editing.on);
+  const values = Object.fromEntries(kind.form.map(f => [f.name, editing.values[f.name] || '']));
+  send('saveTrigger', { original: editing.original || '', name: editing.name, on: editing.on, prompt: editing.prompt, command: editing.command, values });
 }
 
 function deleteTrigger() {
-  if (confirm(tr('Delete the trigger “{0}”?', form.original))) send('deleteTrigger', { name: form.original });
+  if (confirm(tr('Delete the trigger “{0}”?', editing.original))) send('deleteTrigger', { name: editing.original });
 }
 
 // Called by C# after a save or a delete: the error, or null when the triggers file was written.
 function triggerSaved(error) {
-  if (!form) return;
+  if (!editing) return;
   if (error) $('t-error').innerHTML = `<div class="error-box">${esc(error)}</div>`;
   else closeEditor();
 }
 
 addEventListener('keydown', e => {
-  if (e.key === 'Escape') { if (form) closeEditor(); if (todoForm) closeTask(); }
+  if (e.key === 'Escape') { if (editing) closeEditor(); if (todoForm) closeTask(); }
   if (e.key === 'F5' && view === 'todo' && state.todo) { e.preventDefault(); send('todoRefresh'); } // as the Refresh button, not a page reload
 });
 
