@@ -47,6 +47,7 @@ public interface IStartAtLogin
 public interface IShell
 {
     string ExecutableName(string name); // as found on the PATH: claude.exe on Windows
+    string ReleaseSuffix { get; }       // the end of this OS's file in a GitHub release: .exe, -linux-x64, -osx-arm64
     void OpenFolder(string folder);
     void Reveal(string file);           // its folder, with the file selected where the OS can
     void Terminal(string folder, string exe, IEnumerable<string> args); // an interactive program in a terminal window

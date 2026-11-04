@@ -52,6 +52,7 @@ sealed class LaunchAgent(string name = "Butler") : StartupFile
 sealed class MacShell : IShell
 {
     public string ExecutableName(string name) => name;
+    public string ReleaseSuffix => "-osx-arm64";
     public void OpenFolder(string folder) => Command.Start("open", [folder]);
     public void Reveal(string file) => Command.Start("open", ["-R", file]);
 

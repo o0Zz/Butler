@@ -61,6 +61,7 @@ sealed class WebKitLinux : IWebView
 sealed class LinuxShell : IShell
 {
     public string ExecutableName(string name) => name;
+    public string ReleaseSuffix => "-linux-x64";
     public void OpenFolder(string folder) => Command.Start("xdg-open", [folder]);
     public void Reveal(string file) => OpenFolder(Path.GetDirectoryName(file)!); // no standard way to select it
 

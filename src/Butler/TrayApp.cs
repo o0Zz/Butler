@@ -47,10 +47,23 @@ sealed class TrayApp
     {
         while (true)
         {
-            try { NewVersion = await Release.Newer(Program.Version); }
-            catch (Exception e) when (e is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or KeyNotFoundException) { }
+            try { await CheckNow(); }
+            catch (Exception e) when (Unreachable(e)) { }
             await Task.Delay(TimeSpan.FromDays(1));
         }
+    }
+
+    // Asks GitHub now (also the Settings page's button).
+    public async Task<Release?> CheckNow() => NewVersion = await Release.Newer(Program.Version, Platform.Shell.ReleaseSuffix);
+
+    public static bool Unreachable(Exception e) => e is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or KeyNotFoundException;
+
+    // Puts the new version in place of this exe, starts it and exits; it waits for this tray to be gone (Program "updated").
+    public async Task Update()
+    {
+        await NewVersion!.Install(Program.Exe);
+        Program.Start("updated");
+        Exit();
     }
 
     public Platform Platform { get; }

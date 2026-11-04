@@ -138,6 +138,7 @@ sealed class DashboardWindow : Window
         {
             error = tray.LastError,
             newVersion = tray.NewVersion,
+            version = Program.Version,
             cli = settings.Cli,
             stats = new
             {
@@ -284,11 +285,32 @@ sealed class DashboardWindow : Window
                     else list.Add(t);
                 }));
                 break;
+            case "checkUpdate": _ = CheckUpdate(); break;
+            case "update": _ = Update(); break;
             case "deleteTrigger":
                 Call("triggerSaved", EditTriggers(list => list.RemoveAll(x => x.Name.Equals(Arg("name"), StringComparison.OrdinalIgnoreCase))));
                 break;
         }
         Push();
+    }
+
+    // The Settings page's "Check for updates": updateChecked(the newer release or null, the error).
+    async Task CheckUpdate()
+    {
+        if (Program.Version.StartsWith("0.0.0")) { Call("updateChecked", null, T("A development build (0.0.0) is not compared with the releases")); return; }
+        try { Call("updateChecked", await tray.CheckNow(), null); }
+        catch (Exception e) when (TrayApp.Unreachable(e)) { Call("updateChecked", null, e.Message); }
+        Push();
+    }
+
+    // "Install and restart": on success this process exits.
+    async Task Update()
+    {
+        try { await tray.Update(); }
+        catch (Exception e) when (TrayApp.Unreachable(e) || e is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            Call("updateChecked", tray.NewVersion, e.Message);
+        }
     }
 
     // Changes the triggers file as it is on disk (not the tray's copy: a hand edit is not lost), then reloads.

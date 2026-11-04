@@ -6,6 +6,7 @@ namespace Butler;
 public sealed class WindowsShell : IShell
 {
     public string ExecutableName(string name) => name + ".exe"; // all Process.Start finds without a shell
+    public string ReleaseSuffix => ".exe";
 
     public void OpenFolder(string folder) => Process.Start("explorer.exe", folder);
 

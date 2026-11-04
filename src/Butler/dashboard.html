@@ -229,12 +229,12 @@
   <a data-view="todo"><i data-ic="todo"></i><span class="label" data-tr>To do</span><span class="count" id="c-todo"></span></a>
   <a data-view="triggers"><i data-ic="triggers"></i><span class="label" data-tr>Triggers</span><span class="count" id="c-triggers"></span></a>
   <a data-view="skills"><i data-ic="skills"></i><span class="label" data-tr>Skills</span><span class="count" id="c-skills"></span></a>
-  <a data-view="settings"><i data-ic="settings"></i><span class="label" data-tr>Settings</span></a>
   <div class="bottom">
     <div class="sources" id="sources"></div>
     <div class="row2">
       <button onclick="send('revealTriggers')" data-tr-title title="Open the folder of the triggers file"><i data-ic="folder"></i><span data-tr>Folder</span></button>
     </div>
+    <a data-view="settings"><i data-ic="settings"></i><span class="label" data-tr>Settings</span></a>
   </div>
 </nav>
 <main>
@@ -1027,7 +1027,7 @@ function renderSettings() {
       <div class="field">
         <label for="s-startPage">${tr('Start page')}</label>
         <div class="hint">${tr('The page shown when the dashboard opens.')}</div>
-        <div class="bar"><select id="s-startPage" onchange="checkSettings()">${[...document.querySelectorAll('nav a')].map(a =>
+        <div class="bar"><select id="s-startPage" onchange="checkSettings()">${[...document.querySelectorAll('nav a[data-view]')].map(a =>
           `<option value="${a.dataset.view}" ${a.dataset.view === s.startPage ? 'selected' : ''}>${esc(a.querySelector('.label').textContent)}</option>`).join('')}</select></div>
         <div class="err" id="e-startPage"></div>
       </div>
@@ -1035,6 +1035,14 @@ function renderSettings() {
         <label><input id="s-startup" type="checkbox" ${s.startup ? 'checked' : ''} onchange="checkSettings()"> ${esc(s.startupLabel)}</label>
         <div class="hint">${tr('When you sign in, in the tray. Without it, triggers wait until Butler is started (a missed schedule then runs once).')}</div>
         <div class="err" id="e-startup"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>${tr('Updates')}</h3>
+      <div class="field">
+        <div class="hint">${esc(tr('Installed: {0}. Butler also looks for a new version on GitHub once a day.', state.version))}</div>
+        <div class="bar"><button id="u-check" onclick="checkUpdate()">${tr('Check for updates')}</button></div>
+        <div id="u-result"></div>
       </div>
     </div>
     <div class="savebar">
@@ -1045,6 +1053,29 @@ function renderSettings() {
     </div>
   </div>`;
   checkSettings();
+  if (state.newVersion) updateChecked(state.newVersion, null);
+}
+
+function checkUpdate() {
+  $('u-check').disabled = true;
+  $('u-result').innerHTML = `<span class="muted">${tr('Checking…')}</span>`;
+  send('checkUpdate');
+}
+
+// Called by C# with the newer release (or null) and the error.
+function updateChecked(release, error) {
+  if (!$('u-result')) return;
+  $('u-check').disabled = false;
+  $('u-result').innerHTML = error ? `<div class="err">${esc(error)}</div>`
+    : !release ? `<span class="ok">${tr('Butler is up to date.')}</span>`
+    : `<div class="bar"><span>${esc(tr('Version {0} is available', release.version))} · <a href="${esc(release.url)}">${tr('What’s new')}</a></span>
+      ${release.download ? `<button class="primary" id="u-install" onclick="installUpdate()">${tr('Install and restart')}</button>` : ''}</div>`;
+}
+
+function installUpdate() {
+  $('u-install').disabled = $('u-check').disabled = true;
+  $('u-result').insertAdjacentHTML('beforeend', `<span class="muted">${tr('Downloading…')}</span>`);
+  send('update');
 }
 
 const cliNames = { claude: 'Claude Code', copilot: 'GitHub Copilot CLI' };

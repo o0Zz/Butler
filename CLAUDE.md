@@ -41,13 +41,13 @@ Single user, single machine: triggers live in the user's own skills folder and c
 ## Dashboard
 - `dashboard.html` (embedded, plain JS, `marked.min.js` inlined) in Avalonia's `NativeWebView` (WebView2 / WebKit). C# pushes the whole state as JSON (`receive`); the page answers with `invokeCSharpAction` (`DashboardWindow.OnCommand`). Loaded once the engine exists (`AdapterCreated`); WebView2 needs the STA main thread and the manifest's supported OS list.
 - Agent output can quote mail content: raw HTML is escaped, only http(s) links kept, the view never navigates away (links open in the browser).
-- Runs: header with waiting, running, today, failures over 7 days, cost this month (last 1000 runs, read at most once a minute). Triggers: cards with the last 10 runs and 30-day cost, the editor drawer. Sidebar "Watching": each event kind's last poll and error (`TrayApp.Sources`). Skills: folders with a `SKILL.md` and the triggers calling them (`/skill` at the start of the prompt).
+- Runs: header with waiting, running, today, failures over 7 days, cost this month (last 1000 runs, read at most once a minute). Triggers: cards with the last 10 runs and 30-day cost, the editor drawer. Sidebar "Watching": each event kind's last poll and error (`TrayApp.Sources`); Settings at the bottom, with Folder (occasional). Skills: folders with a `SKILL.md` and the triggers calling them (`/skill` at the start of the prompt).
 - "Ask AI" opens the interactive CLI in a terminal (`IShell.Terminal`) in the skills folder, whose CLAUDE.md explains butler.json. No chat inside Butler.
 - To do (`src/Butler/Todo/`, one `TodoBackend` per `todo` value): Todoist API v1, or todo.txt (project = first `+tag`, id = the line). Add, insert, drag and drop (`Place` → `MoveTo` + `Reorder`; Todoist `/move` + Sync `item_reorder`), edit, complete with undo, delete, hide lists. Loaded off the UI thread, every minute and after each edit. An edit never overwrites a concurrent change: todo.txt refuses when the line is gone; Todoist sends a date only when it changed (resending a recurring one resets it).
 - Notifications (`INotifications`): Windows toasts with buttons (`ToastNotifications.OnToast` starts `Butler answer` or opens the dashboard); macOS (osascript) and Linux (notify-send) without buttons.
 
 ## Platform
-- `Platform/` holds one implementation per OS of notifications, secrets, start at login, shell actions (open, reveal, terminal, exe name, `az`) and the mailbox. `Platform/Windows` builds for the Windows target, `Platform/Unix` for `net9.0`. `Program` builds it once (`Platform.Current`) and injects it.
+- `Platform/` holds one implementation per OS of notifications, secrets, start at login, shell actions (open, reveal, terminal, exe name, release file suffix, `az`) and the mailbox. `Platform/Windows` builds for the Windows target, `Platform/Unix` for `net9.0`. `Program` builds it once (`Platform.Current`) and injects it.
 - A second start reaches the running tray through a named pipe (`ShowSignal`).
 
 ## Languages
@@ -55,6 +55,6 @@ Single user, single machine: triggers live in the user's own skills folder and c
 - Set per process (`Lang.Use`: the tray at each reload, rebuilding its menu; a run when it starts). The page gets `LANG` and `LOCALE` when it loads and is reloaded when the language changes.
 
 ## Commands
-- `dotnet build`, `dotnet test` (repo root). `Butler.exe` (tray), `Butler.exe run <trigger> [var=value ...]`, `Butler.exe answer <runId> <text>`.
-- Version `X.Y.Z.<commit count>` (csproj `GitVersion`; `VersionBase` 0.0.0, CI passes the tag's), shown under the dashboard's title with its commit. The tray checks GitHub's latest release at start and daily (`Release.Newer`, not for 0.0.0 builds) and links a newer one there; it never downloads or installs it.
+- `dotnet build`, `dotnet test` (repo root). `Butler.exe` (tray), `Butler.exe run <trigger> [var=value ...]`, `Butler.exe answer <runId> <text>`, `Butler.exe updated` (the tray after an update).
+- Version `X.Y.Z.<commit count>` (csproj `GitVersion`; `VersionBase` 0.0.0, CI passes the tag's), shown under the dashboard's title with its commit. The tray checks GitHub's latest release at start and daily (`Release.Newer`, not for 0.0.0 builds) and links a newer one there; Settings > Updates checks on demand. "Install and restart" (only when asked) downloads this OS's file (`IShell.ReleaseSuffix`), renames the running exe to `.old` (deleted at the next start), moves the new one in, starts it with `updated` (it waits for the old tray's mutex) and exits.
 - CI (`.github/workflows/ci.yml`) builds and tests on Windows, Linux, macOS; a `v*` tag publishes `Butler-<version>.exe`, `-linux-x64`, `-osx-arm64` (single file, needs the .NET 9 runtime, Desktop Runtime on Windows). The Windows target builds only on Windows.

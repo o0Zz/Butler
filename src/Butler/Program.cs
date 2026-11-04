@@ -9,6 +9,7 @@ namespace Butler;
 // Butler                              tray app + dashboard + trigger polling (single instance)
 // Butler run <trigger> [var=value ...]  one headless run (what the tray starts for a trigger)
 // Butler answer <runId> <text>        resume a run waiting for an answer
+// Butler updated                      the tray, once the previous version's tray has exited (after an update)
 static class Program
 {
     // Local data: settings, runs, state. The triggers file is wherever the settings say (by default with the skills).
@@ -33,6 +34,7 @@ static class Program
             switch (args.FirstOrDefault())
             {
                 case null: return RunTray(platform);
+                case "updated": return RunTray(platform, updated: true);
                 case "run" when args.Length >= 2: return RunTrigger(platform, args[1], args[2..]).GetAwaiter().GetResult();
                 case "answer" when args.Length >= 3:
                     return Report(platform.Notifications, NewRunner(LoadSettings()).Answer(args[1], args[2]).GetAwaiter().GetResult());
@@ -48,14 +50,26 @@ static class Program
         }
     }
 
-    static int RunTray(Platform platform)
+    // updated: started by the previous version's tray (TrayApp.Update), which is exiting.
+    static int RunTray(Platform platform, bool updated = false)
     {
         using var mutex = new Mutex(true, "Butler.Tray", out var first);
+        if (!first && updated)
+        {
+            try { first = mutex.WaitOne(TimeSpan.FromSeconds(30)); }
+            catch (AbandonedMutexException) { first = true; } // its process ended without releasing it: ours now
+        }
         if (!first)
         {
             ShowSignal.Send();
             return 0;
         }
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10)); // the previous version's file is freed a moment after its process
+            try { File.Delete(Exe + ".old"); } // left by an update; a run of the old version still going keeps it until the next start
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        });
         AppBuilder.Configure(() => new App(platform)).UsePlatformDetect().StartWithClassicDesktopLifetime([], ShutdownMode.OnExplicitShutdown);
         return 0;
     }
