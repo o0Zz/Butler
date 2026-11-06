@@ -80,8 +80,9 @@ public interface IHotkeys
     void ToClipboard(string text);
 }
 
-// A selected text and where it was (the window, opaque outside Platform), with the clipboard's text before the copy.
-public sealed record Selection(string Text, nint Window, string? Clipboard);
+// A selected text and where it was (the window, opaque outside Platform), with the clipboard's text before the copy
+// and the mouse pointer then (screen pixels), where Butler shows that it is working.
+public sealed record Selection(string Text, nint Window, string? Clipboard, int X, int Y);
 
 // The mailbox the mail triggers read.
 public interface IMailbox

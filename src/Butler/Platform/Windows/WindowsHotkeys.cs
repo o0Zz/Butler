@@ -75,7 +75,8 @@ public sealed class WindowsHotkeys : IHotkeys
         if (GetClipboardSequenceNumber() == seq) return null; // nothing selected: the app copied nothing
         var text = ReadText();
         if (before != null) WriteText(before);
-        return string.IsNullOrEmpty(text) ? null : new Selection(text, window, before);
+        GetCursorPos(out var pointer);
+        return string.IsNullOrEmpty(text) ? null : new Selection(text, window, before, pointer.X, pointer.Y);
     }
 
     public bool Paste(Selection selection, string text)
@@ -159,6 +160,9 @@ public sealed class WindowsHotkeys : IHotkeys
     struct MSG { public nint hwnd; public uint message; public nuint wParam; public nint lParam; public uint time; public int x, y; public uint lPrivate; }
 
     [StructLayout(LayoutKind.Sequential)]
+    struct POINT { public int X, Y; }
+
+    [StructLayout(LayoutKind.Sequential)]
     struct KEYBDINPUT { public ushort wVk, wScan; public uint dwFlags, time; public nint dwExtraInfo; }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -179,6 +183,7 @@ public sealed class WindowsHotkeys : IHotkeys
     [DllImport("user32.dll")] static extern bool PostThreadMessage(uint threadId, uint msg, nuint wParam, nint lParam);
     [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
     [DllImport("user32.dll")] static extern nint GetForegroundWindow();
+    [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT point);
     [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vKey);
     [DllImport("user32.dll")] static extern uint SendInput(uint count, INPUT[] inputs, int size);
     [DllImport("user32.dll")] static extern uint GetClipboardSequenceNumber();

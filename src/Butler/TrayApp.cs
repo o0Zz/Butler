@@ -172,8 +172,11 @@ sealed class TrayApp
                 Platform.Notifications.Error(t.Name, T("The selection is too long ({0} characters, at most 20000)", selection.Text.Length));
                 return;
             }
+            WorkingLabel? label = null;
+            Dispatcher.UIThread.Post(() => (label = new WorkingLabel(T("{0}: working", t.Name), selection.X, selection.Y)).Show());
             using var process = Program.Start("run", t.Name, "text=" + selection.Text);
-            await process.WaitForExitAsync();
+            try { await process.WaitForExitAsync(); }
+            finally { Dispatcher.UIThread.Post(() => label?.Close()); } // posted after the Show: closes it
             // Not done: the run's own notification says why.
             if (Runner.Recent(20).FirstOrDefault(r => r.Pid == process.Id) is not { Status: RunStatus.Done, Result: { } answer } run) return;
             if (HotkeyTrigger.Pastes(t) && Platform.Hotkeys.Paste(selection, answer)) return;
