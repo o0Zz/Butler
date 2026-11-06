@@ -970,6 +970,14 @@ function renderSettings() {
   const s = state.settings;
   $('content').innerHTML = `<div class="settings">
     <div class="card">
+      <h3>${tr('Updates')}</h3>
+      <div class="field">
+        <div class="hint">${esc(tr('Installed: {0}. Butler also looks for a new version on GitHub once a day.', state.version))}</div>
+        <div class="bar"><button id="u-check" onclick="checkUpdate()">${tr('Check for updates')}</button></div>
+        <div id="u-result"></div>
+      </div>
+    </div>
+    <div class="card">
       <h3>${tr('Agent')}</h3>
       <div class="field">
         <label for="s-cli">${tr('CLI that runs the triggers')}</label>
@@ -1036,14 +1044,6 @@ function renderSettings() {
         <label><input id="s-startup" type="checkbox" ${s.startup ? 'checked' : ''} onchange="checkSettings()"> ${esc(s.startupLabel)}</label>
         <div class="hint">${tr('When you sign in, in the tray. Without it, triggers wait until Butler is started (a missed schedule then runs once).')}</div>
         <div class="err" id="e-startup"></div>
-      </div>
-    </div>
-    <div class="card">
-      <h3>${tr('Updates')}</h3>
-      <div class="field">
-        <div class="hint">${esc(tr('Installed: {0}. Butler also looks for a new version on GitHub once a day.', state.version))}</div>
-        <div class="bar"><button id="u-check" onclick="checkUpdate()">${tr('Check for updates')}</button></div>
-        <div id="u-result"></div>
       </div>
     </div>
     <div class="savebar">
