@@ -206,7 +206,7 @@ sealed class DashboardWindow : Window
             case "clearRuns": runner.Clear(); historyRead = DateTime.MinValue; Push(); break;
             case "revealTriggers": platform.Shell.Reveal(tray.Settings.TriggersFile); break;
             case "openSkills": platform.Shell.OpenFolder(tray.Settings.SkillsFolder); break;
-            case "openSkill": Open(Path.Combine(tray.Settings.SkillsFolder, Arg("folder"), "SKILL.md")); break;
+            case "openSkill": platform.Shell.Reveal(Path.Combine(tray.Settings.SkillsFolder, Arg("folder"), "SKILL.md")); break;
             case "openLog": Open(Path.Combine(runner.RunsDir, Arg("id") + ".log")); break;
             // Edits the triggers and skills; the file watcher then syncs and refreshes this page.
             case "chat": platform.Shell.Terminal(tray.Settings.SkillsFolder, runner.Cli.Exe, runner.Cli.TerminalArguments(null)); break;

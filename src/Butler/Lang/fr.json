@@ -252,6 +252,7 @@
   "The event is in environment variables:": "L'événement est dans les variables d'environnement :",
   "Write !BUTLER_X! with cmd (not %BUTLER_X%: a value with & would run a command), \"$BUTLER_X\" with sh.": "Écrivez !BUTLER_X! avec cmd (pas %BUTLER_X% : une valeur contenant & lancerait une commande), \"$BUTLER_X\" avec sh.",
   "Updates": "Mises à jour",
+  "Opens the skill’s folder, its SKILL.md selected": "Ouvre le dossier du skill, son SKILL.md sélectionné",
   "Installed: {0}. Butler also looks for a new version on GitHub once a day.": "Installée : {0}. Butler cherche aussi une nouvelle version sur GitHub une fois par jour.",
   "Check for updates": "Rechercher des mises à jour",
   "Checking…": "Recherche…",
