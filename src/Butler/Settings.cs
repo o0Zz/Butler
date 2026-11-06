@@ -22,11 +22,11 @@ public sealed record Settings
 
     // A trigger's model is a level (Levels), turned into a model name of the CLI here (CLI -> level -> name; empty: the CLI's default),
     // so the triggers do not change with the CLI. Any other value is a model name, passed as is.
-    public static readonly string[] Levels = ["light", "mid", "strong"];
+    public static readonly string[] Levels = ["fast", "balanced", "powerful"];
     public Dictionary<string, Dictionary<string, string>> Models { get; init; } = new()
     {
-        ["claude"] = new() { ["light"] = "haiku", ["mid"] = "sonnet", ["strong"] = "opus" },
-        ["copilot"] = new() { ["light"] = "", ["mid"] = "", ["strong"] = "" },
+        ["claude"] = new() { ["fast"] = "haiku", ["balanced"] = "sonnet", ["powerful"] = "opus" },
+        ["copilot"] = new() { ["fast"] = "", ["balanced"] = "", ["powerful"] = "" },
     };
 
     // The --model of a trigger's run with the CLI of these settings; null: the CLI's default.

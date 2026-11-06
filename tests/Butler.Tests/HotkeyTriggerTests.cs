@@ -60,9 +60,9 @@ public sealed class HotkeyTriggerTests : IDisposable
     {
         var path = Path.Combine(dir, "butler.json");
         Trigger.Save(path, [Trigger.FromForm("fix", "hotkey", "Fix: ${text}",
-            new Dictionary<string, string> { ["keys"] = "ctrl+shift+space", ["output"] = "" }, model: "light")]);
+            new Dictionary<string, string> { ["keys"] = "ctrl+shift+space", ["output"] = "" }, model: "fast")]);
         var t = Trigger.Load(path).Single();
-        Assert.Equal(("ctrl+shift+space", null, "light"), (t.Field("keys"), t.Field("output"), t.Model));
+        Assert.Equal(("ctrl+shift+space", null, "fast"), (t.Field("keys"), t.Field("output"), t.Model));
     }
 
     public void Dispose() => Directory.Delete(dir, recursive: true);

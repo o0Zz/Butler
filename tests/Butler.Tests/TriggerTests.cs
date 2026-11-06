@@ -17,14 +17,14 @@ public class TriggerTests
         var path = Path.GetTempFileName();
         try
         {
-            Trigger.Save(path, [Trigger.FromForm("brief", "schedule", "/morning-brief", new Dictionary<string, string> { ["schedule"] = "daily 08:30" }, model: "strong")]);
-            Assert.Contains("\"model\": \"strong\",\n    \"prompt\"", File.ReadAllText(path).Replace("\r\n", "\n")); // just before the prompt
-            Assert.Equal("strong", Trigger.Load(path).Single().Model);
-            Assert.Null(Trigger.FromForm("pull", "schedule", "git pull", new Dictionary<string, string> { ["schedule"] = "daily 08:30" }, command: true, model: "light").Model);
+            Trigger.Save(path, [Trigger.FromForm("brief", "schedule", "/morning-brief", new Dictionary<string, string> { ["schedule"] = "daily 08:30" }, model: "powerful")]);
+            Assert.Contains("\"model\": \"powerful\",\n    \"prompt\"", File.ReadAllText(path).Replace("\r\n", "\n")); // just before the prompt
+            Assert.Equal("powerful", Trigger.Load(path).Single().Model);
+            Assert.Null(Trigger.FromForm("pull", "schedule", "git pull", new Dictionary<string, string> { ["schedule"] = "daily 08:30" }, command: true, model: "fast").Model);
         }
         finally { File.Delete(path); }
         Assert.Contains("a command runs no agent, it has no model", Assert.Throws<FormatException>(() => LoadJson(
-            """[{ "name": "pull", "on": "schedule", "schedule": "daily 08:30", "model": "light", "command": "git pull" }]""")).Message);
+            """[{ "name": "pull", "on": "schedule", "schedule": "daily 08:30", "model": "fast", "command": "git pull" }]""")).Message);
     }
 
     [Fact]

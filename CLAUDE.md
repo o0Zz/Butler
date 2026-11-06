@@ -13,7 +13,7 @@ Single user, single machine: triggers live in the user's own skills folder and c
 - Nothing may rely on files next to the exe (released as a single file).
 
 ## Settings
-- `%LOCALAPPDATA%\Butler\settings.json` (`Settings`), edited on the Settings page or by hand: `cli` (`claude`, `copilot`), `triggersFile`, `skillsFolder`, `adoOrganization`, `todo` (`none`, `todoist`, `txt`), `todoFile`, `todoHidden`, `startPage` (`runs` by default), `language` (`auto`, `en`, `fr`), `models` (per CLI, the model name of each level `light`, `mid`, `strong`; empty: the CLI's default). Missing file: claude and `~/.claude/skills`. New options go there, with a field on the Settings page.
+- `%LOCALAPPDATA%\Butler\settings.json` (`Settings`), edited on the Settings page or by hand: `cli` (`claude`, `copilot`), `triggersFile`, `skillsFolder`, `adoOrganization`, `todo` (`none`, `todoist`, `txt`), `todoFile`, `todoHidden`, `startPage` (`runs` by default), `language` (`auto`, `en`, `fr`), `models` (per CLI, the model name of each level `fast`, `balanced`, `powerful`; empty: the CLI's default). Missing file: claude and `~/.claude/skills`. New options go there, with a field on the Settings page.
 - Saving refuses invalid values (`Settings.Problems`: unknown value, CLI not installed, missing file or folder), shown next to the fields.
 - Each process reads the settings when it starts (a change applies to the next run). The tray watches `settings.json` and the triggers file and reloads.
 - Start at login is not a setting: it is the OS's own entry (`IStartAtLogin`: `Run` registry key, LaunchAgent, XDG autostart), on only when it starts this exe.

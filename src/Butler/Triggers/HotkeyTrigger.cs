@@ -1,7 +1,7 @@
 namespace Butler;
 
 // "hotkey": a key combination pressed in any app (keys: "ctrl+shift+space") runs the prompt on the selected text (${text}).
-// The run is quick (Runner.Quick: no tools, no MCP servers; a light model fits) and its answer replaces the selection
+// The run is quick (Runner.Quick: no tools, no MCP servers; a fast model fits) and its answer replaces the selection
 // (output "paste", the default: when its window is still in front, else the clipboard) or goes to the clipboard ("clipboard").
 // The tray listens (IHotkeys); Poll starts nothing, it only reports keys the system cannot give.
 public sealed class HotkeyTrigger : TriggerKind

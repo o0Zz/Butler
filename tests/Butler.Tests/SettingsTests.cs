@@ -29,20 +29,20 @@ public class SettingsTests : IDisposable
     public void A_level_is_the_model_set_for_the_cli_and_any_other_value_a_model_name()
     {
         var claude = new Settings();
-        Assert.Equal(("haiku", "sonnet", "opus"), (claude.ModelFor("light"), claude.ModelFor("mid"), claude.ModelFor("strong")));
+        Assert.Equal(("haiku", "sonnet", "opus"), (claude.ModelFor("fast"), claude.ModelFor("balanced"), claude.ModelFor("powerful")));
         Assert.Equal("claude-fable-5-1", claude.ModelFor("claude-fable-5-1")); // a name, as is
         Assert.Null(claude.ModelFor(null)); // the CLI's default
         Assert.Null(claude.ModelFor(" "));
 
         var copilot = new Settings { Cli = "copilot" };
-        Assert.Null(copilot.ModelFor("strong")); // not set for copilot: its default
+        Assert.Null(copilot.ModelFor("powerful")); // not set for copilot: its default
 
-        File.WriteAllText(File_, """{ "cli": "claude", "models": { "claude": { "light": "sonnet", "strong": "claude-fable-5-1" }, "copilot": { "light": "gpt-5" } } }""");
+        File.WriteAllText(File_, """{ "cli": "claude", "models": { "claude": { "fast": "sonnet", "powerful": "claude-fable-5-1" }, "copilot": { "fast": "gpt-5" } } }""");
         var mine = Settings.Load(File_);
-        Assert.Equal(("sonnet", null, "claude-fable-5-1"), (mine.ModelFor("light"), mine.ModelFor("mid"), mine.ModelFor("strong")));
-        Assert.Equal("gpt-5", (mine with { Cli = "copilot" }).ModelFor("light"));
+        Assert.Equal(("sonnet", null, "claude-fable-5-1"), (mine.ModelFor("fast"), mine.ModelFor("balanced"), mine.ModelFor("powerful")));
+        Assert.Equal("gpt-5", (mine with { Cli = "copilot" }).ModelFor("fast"));
         mine.Save(File_);
-        Assert.Equal("claude-fable-5-1", Settings.Load(File_).Models["claude"]["strong"]);
+        Assert.Equal("claude-fable-5-1", Settings.Load(File_).Models["claude"]["powerful"]);
     }
 
     [Fact]
