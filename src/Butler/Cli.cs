@@ -36,6 +36,10 @@ public abstract class Cli(string name, string exe)
     // A headless run in a new session with that id, or resuming it. `protocol` is Butler's instructions to the agent.
     public abstract IEnumerable<string> RunArguments(string prompt, string protocol, string sessionId, bool resume);
 
+    // A quick headless run (a hotkey trigger): the prompt alone, without tools nor MCP servers, `model` when given.
+    // `protocol` says the answer is used as is.
+    public abstract IEnumerable<string> QuickArguments(string prompt, string protocol, string sessionId, string? model);
+
     // An interactive session in a terminal, resuming that session when given.
     public abstract IEnumerable<string> TerminalArguments(string? sessionId);
 
@@ -49,6 +53,10 @@ public sealed class ClaudeCli(string exe = "claude") : Cli("claude", exe)
     public override IEnumerable<string> RunArguments(string prompt, string protocol, string sessionId, bool resume) =>
         ["-p", prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "auto", "--chrome",
          "--append-system-prompt", protocol, resume ? "--resume" : "--session-id", sessionId];
+
+    public override IEnumerable<string> QuickArguments(string prompt, string protocol, string sessionId, string? model) =>
+        ["-p", prompt, "--output-format", "stream-json", "--verbose", "--strict-mcp-config", "--tools", "",
+         "--append-system-prompt", protocol, "--session-id", sessionId, .. model == null ? Array.Empty<string>() : ["--model", model]];
 
     public override IEnumerable<string> TerminalArguments(string? sessionId) => sessionId == null ? [] : ["--resume", sessionId];
 
@@ -81,6 +89,11 @@ public sealed class CopilotCli(string exe = "copilot") : Cli("copilot", exe)
 {
     public override IEnumerable<string> RunArguments(string prompt, string protocol, string sessionId, bool resume) =>
         ["-p", prompt + "\n\n" + protocol, "--output-format", "json", "--allow-all-tools", "--no-ask-user", "--session-id", sessionId];
+
+    // Without --allow-all-tools, a tool it would want is refused.
+    public override IEnumerable<string> QuickArguments(string prompt, string protocol, string sessionId, string? model) =>
+        ["-p", prompt + "\n\n" + protocol, "--output-format", "json", "--no-ask-user", "--session-id", sessionId,
+         .. model == null ? Array.Empty<string>() : ["--model", model]];
 
     public override IEnumerable<string> TerminalArguments(string? sessionId) => sessionId == null ? [] : ["--resume=" + sessionId];
 

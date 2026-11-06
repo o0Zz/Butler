@@ -47,6 +47,17 @@ static class Command
 }
 
 // macOS and Linux: a plain notification, without buttons: a waiting run is answered on the dashboard.
+// Hotkeys need an Accessibility permission on macOS to read and replace a selection, and Wayland has no global keys.
+sealed class NoHotkeys : IHotkeys
+{
+    public string? Unavailable => T("Hotkey triggers only work on Windows for now");
+    public IReadOnlyList<Hotkey> Refused => [];
+    public void Listen(IReadOnlyList<Hotkey> keys, Action<Hotkey> pressed) { }
+    public Selection? Copy() => null;
+    public bool Paste(Selection selection, string text) => false;
+    public void ToClipboard(string text) { }
+}
+
 abstract class PlainNotifications : INotifications
 {
     public void Show(RunRecord run) => Notify($"{run.Trigger}: {T(run.Status.ToString())}", run.Question ?? run.Summary ?? "");

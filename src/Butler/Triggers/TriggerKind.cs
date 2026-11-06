@@ -4,7 +4,7 @@ namespace Butler;
 // The tray polls each kind (Poll, every Interval).
 public abstract class TriggerKind
 {
-    public static readonly TriggerKind[] All = [new ScheduleTrigger(), new MailTrigger(), new AdoTrigger(), new FileTrigger()];
+    public static readonly TriggerKind[] All = [new ScheduleTrigger(), new MailTrigger(), new AdoTrigger(), new FileTrigger(), new HotkeyTrigger()];
 
     public static TriggerKind? Find(string? on) => All.FirstOrDefault(k => k.Name == on);
 

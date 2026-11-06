@@ -6,7 +6,7 @@ namespace Butler;
 // What differs between operating systems: one implementation of each service per OS. The project compiles
 // Platform/Windows for Windows and Platform/Unix for macOS and Linux, each with its own Create.
 // Program builds it once and hands it to what needs it.
-public sealed partial record Platform(INotifications Notifications, ISecrets Secrets, IStartAtLogin StartAtLogin, IShell Shell, IMailbox Mailbox, IWebView WebView)
+public sealed partial record Platform(INotifications Notifications, ISecrets Secrets, IStartAtLogin StartAtLogin, IShell Shell, IMailbox Mailbox, IWebView WebView, IHotkeys Hotkeys)
 {
     public static Platform Current { get; } = Create();
 
@@ -60,6 +60,28 @@ public interface IWebView
 {
     void Configure(WebViewEnvironmentRequestedEventArgs engine, string dataFolder); // its profile goes in dataFolder
 }
+
+// Key combinations pressed in any app, and the selected text of the app in front (hotkey triggers).
+public interface IHotkeys
+{
+    string? Unavailable { get; }          // why this system has none, null when it has
+    IReadOnlyList<Hotkey> Refused { get; } // of the last Listen: taken by another app
+
+    // Reports these keys from now on, instead of the previous ones; `pressed` runs on a thread of its own.
+    void Listen(IReadOnlyList<Hotkey> keys, Action<Hotkey> pressed);
+
+    // The text selected in the window in front (copied as Ctrl+C does), null when none. The clipboard is put back.
+    Selection? Copy();
+
+    // The text in place of the selection, when its window is still in front (pasted as Ctrl+V does, then the clipboard
+    // put back); false when it is not.
+    bool Paste(Selection selection, string text);
+
+    void ToClipboard(string text);
+}
+
+// A selected text and where it was (the window, opaque outside Platform), with the clipboard's text before the copy.
+public sealed record Selection(string Text, nint Window, string? Clipboard);
 
 // The mailbox the mail triggers read.
 public interface IMailbox

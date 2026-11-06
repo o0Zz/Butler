@@ -95,6 +95,7 @@ sealed class TrayApp
             LastError = null;
         }
         catch (Exception ex) { Fail(Path.GetFileName(settings.TriggersFile), ex); return; }
+        Platform.Hotkeys.Listen([.. triggers.Where(t => t.Kind is HotkeyTrigger).Select(t => Hotkey.Parse(t.Field("keys"))!)], key => _ = OnHotkey(key));
         dashboard?.RefreshAll();
     }
 
@@ -151,6 +152,36 @@ sealed class TrayApp
         sources[kind.Name] = new SourceStatus(DateTime.Now, error);
         if (error != null && before?.Error == null) // once, not every poll
             Platform.Notifications.Error(T("Butler: {0} triggers failed", kind.Label), error);
+    }
+
+    // A hotkey trigger: its run gets the selected text, then its answer replaces the selection, or goes to the clipboard.
+    // The run is a Butler process like any other; the tray keeps the selection, as only it knows the window.
+    async Task OnHotkey(Hotkey key)
+    {
+        var t = triggers.FirstOrDefault(x => x.Kind is HotkeyTrigger && Hotkey.Parse(x.Field("keys")) == key);
+        if (t == null) return;
+        try
+        {
+            if (Platform.Hotkeys.Copy() is not { } selection)
+            {
+                Platform.Notifications.Error(t.Name, T("Select a text first: nothing was copied"));
+                return;
+            }
+            if (selection.Text.Length > 20_000) // passed on the run's command line
+            {
+                Platform.Notifications.Error(t.Name, T("The selection is too long ({0} characters, at most 20000)", selection.Text.Length));
+                return;
+            }
+            using var process = Program.Start("run", t.Name, "text=" + selection.Text);
+            await process.WaitForExitAsync();
+            // Not done: the run's own notification says why.
+            if (Runner.Recent(20).FirstOrDefault(r => r.Pid == process.Id) is not { Status: RunStatus.Done, Result: { } answer } run) return;
+            if (HotkeyTrigger.Pastes(t) && Platform.Hotkeys.Paste(selection, answer)) return;
+            Platform.Hotkeys.ToClipboard(answer);
+            run.Summary = T("In the clipboard: {0}", run.Summary);
+            Platform.Notifications.Show(run);
+        }
+        catch (Exception ex) { Platform.Notifications.Error(t.Name, ex.Message); }
     }
 
     void UpdateStatus()

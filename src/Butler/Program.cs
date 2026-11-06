@@ -93,6 +93,12 @@ static class Program
         if (trigger == null) return 0; // removed from butler.json meanwhile: do nothing
         var values = variables.Select(v => v.Split('=', 2)).Where(kv => kv.Length == 2).ToDictionary(kv => kv[0], kv => kv[1]);
         var runner = NewRunner(settings);
+        if (trigger.Kind is HotkeyTrigger)
+        {
+            // When it works, the tray puts the answer in place of the selection: no notification.
+            var quick = await runner.Quick(trigger.Name, trigger.PromptWith(values), trigger.Field("model"));
+            return quick.Status == RunStatus.Done ? 0 : Report(platform.Notifications, quick);
+        }
         if (trigger.Command is not { } command)
             return Report(platform.Notifications, await runner.Run(trigger.Name, trigger.PromptWith(values)));
         var shell = platform.Shell.CommandLine(command);
@@ -117,10 +123,10 @@ static class Program
     }
 
     // Starts another Butler process (runs never live inside the tray process, so closing it kills nothing).
-    public static void Start(params string[] args)
+    public static Process Start(params string[] args)
     {
         var psi = new ProcessStartInfo(Exe) { UseShellExecute = false };
         foreach (var a in args) psi.ArgumentList.Add(a);
-        Process.Start(psi);
+        return Process.Start(psi)!;
     }
 }

@@ -28,6 +28,7 @@ Single user, single machine: triggers live in the user's own skills folder and c
 - `mail` (`from`): every folder of the default Outlook classic mailbox through COM every 30 s (rules move mails; Deleted, Outbox, Sent, Drafts, Junk skipped). `${from}` `${subject}` `${received}`.
 - `ado` (`where`, WIQL): `az boards query` on `adoOrganization` every 2 min, through az's own `python.exe` (az.cmd's cmd.exe breaks the WIQL quoting). `${id}` `${title}` `${state}` `${by}`.
 - `file` (`folder`, optional `filter`): new files, not subfolders, once unchanged for 10 s. `${path}` `${name}`.
+- `hotkey` (`keys` like `ctrl+shift+space`, optional `output` `paste`/`clipboard`, optional `model`): a key combination in any app (`IHotkeys`, Windows only: `RegisterHotKey`) runs the prompt on the selected text, `${text}`. The tray copies the selection (Ctrl+C sent once the keys are released), starts `run <trigger> text=...`, waits for it, then pastes the answer in place (Ctrl+V, only if the same window is still in front, else the clipboard and a notification) and puts the clipboard's text back. The run is quick (`Runner.Quick`: no tools, no MCP servers, no protocol, its answer as is; ~4 s with sonnet) and only notifies when it fails. Its `Poll` starts nothing: it reports keys taken by another app.
 - Teams is not a kind: az's Graph token has no chat scopes (needs an Entra app registration).
 - Saving from the editor reads the file from disk, applies the change, validates everything (`Trigger.Save` writes nothing when a trigger is wrong) and keeps its layout and line endings.
 
@@ -47,7 +48,7 @@ Single user, single machine: triggers live in the user's own skills folder and c
 - Notifications (`INotifications`): Windows toasts with buttons (`ToastNotifications.OnToast` starts `Butler answer` or opens the dashboard); macOS (osascript) and Linux (notify-send) without buttons.
 
 ## Platform
-- `Platform/` holds one implementation per OS of notifications, secrets, start at login, shell actions (open, reveal, terminal, exe name, release file suffix, `az`) and the mailbox. `Platform/Windows` builds for the Windows target, `Platform/Unix` for `net9.0`. `Program` builds it once (`Platform.Current`) and injects it.
+- `Platform/` holds one implementation per OS of notifications, secrets, start at login, shell actions (open, reveal, terminal, exe name, release file suffix, `az`), the mailbox and hotkeys. `Platform/Windows` builds for the Windows target, `Platform/Unix` for `net9.0`. `Program` builds it once (`Platform.Current`) and injects it.
 - A second start reaches the running tray through a named pipe (`ShowSignal`).
 
 ## Languages

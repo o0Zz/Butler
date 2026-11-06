@@ -41,12 +41,29 @@ public sealed class Runner(string home, Cli cli)
         "with one line: `BUTLER-ASK: <short question>`. The user will answer later in this same session. " +
         "Otherwise end your final message with one line: `BUTLER-SUMMARY: <one-line outcome>`.";
 
-    public async Task<RunRecord> Run(string trigger, string prompt, string? resumeSession = null)
+    public const string QuickProtocol =
+        "Your answer replaces the text the user selected, as is: give only the resulting text, " +
+        "without any introduction, comment, quotes or code fences.";
+
+    public Task<RunRecord> Run(string trigger, string prompt, string? resumeSession = null)
     {
-        var run = Start(trigger, prompt, resumeSession ?? Guid.NewGuid().ToString(), Cli.Name);
+        var session = resumeSession ?? Guid.NewGuid().ToString();
+        return Agent(trigger, prompt, session, Cli.RunArguments(prompt, Protocol(trigger), session, resumeSession != null), quick: false);
+    }
+
+    // A hotkey trigger's run: no tools nor MCP servers (seconds, not tens of them), the answer is the result as is.
+    // Done unless the CLI failed; never waiting.
+    public Task<RunRecord> Quick(string trigger, string prompt, string? model)
+    {
+        var session = Guid.NewGuid().ToString();
+        return Agent(trigger, prompt, session, Cli.QuickArguments(prompt, QuickProtocol, session, model), quick: true);
+    }
+
+    async Task<RunRecord> Agent(string trigger, string prompt, string sessionId, IEnumerable<string> arguments, bool quick)
+    {
+        var run = Start(trigger, prompt, sessionId, Cli.Name);
         var psi = new ProcessStartInfo(Cli.Exe);
-        foreach (var a in Cli.RunArguments(prompt, Protocol(trigger), run.SessionId, resumeSession != null))
-            psi.ArgumentList.Add(a);
+        foreach (var a in arguments) psi.ArgumentList.Add(a);
 
         string? result = null, lastText = null;
         bool isError = false;
@@ -63,7 +80,9 @@ public sealed class Runner(string home, Cli cli)
         return Finish(run, () =>
         {
             run.Result = result;
-            Interpret(run, isError || !ok);
+            if (!quick) Interpret(run, isError || !ok);
+            else if (isError || !ok || string.IsNullOrWhiteSpace(result)) Interpret(run, isError: true);
+            else (run.Status, run.Summary, run.Result) = (RunStatus.Done, Short(result, 120), result.Trim());
         });
     }
 

@@ -260,5 +260,18 @@
   "What’s new": "Nouveautés",
   "Install and restart": "Installer et redémarrer",
   "Downloading…": "Téléchargement…",
-  "A development build (0.0.0) is not compared with the releases": "Une version de développement (0.0.0) n'est pas comparée aux publications"
+  "A development build (0.0.0) is not compared with the releases": "Une version de développement (0.0.0) n'est pas comparée aux publications",
+  "Hotkey": "Raccourci clavier",
+  "Keys": "Touches",
+  "Like ctrl+shift+space: ctrl, alt, shift or win, and a letter, a digit, F1 to F24 or space. Avoid ctrl+alt+letter on keyboards with AltGr.": "Comme ctrl+shift+space : ctrl, alt, shift ou win, puis une lettre, un chiffre, F1 à F24 ou space. Évitez ctrl+alt+lettre sur les claviers avec AltGr.",
+  "Answer": "Réponse",
+  "paste: replaces the selection (the clipboard when you switched windows); clipboard: only copied": "paste : remplace la sélection (le presse-papiers si vous avez changé de fenêtre) ; clipboard : seulement copiée",
+  "Model": "Modèle",
+  "sonnet or haiku for a quick answer; empty: the CLI's default": "sonnet ou haiku pour une réponse rapide ; vide : celui du CLI par défaut",
+  "When you press {0} on a selected text": "Quand vous appuyez sur {0} sur un texte sélectionné",
+  "Taken by another app: {0}": "Déjà pris par une autre application : {0}",
+  "Hotkey triggers only work on Windows for now": "Les déclencheurs par raccourci clavier ne marchent que sous Windows pour l'instant",
+  "Select a text first: nothing was copied": "Sélectionnez d'abord un texte : rien n'a été copié",
+  "The selection is too long ({0} characters, at most 20000)": "La sélection est trop longue ({0} caractères, 20000 au plus)",
+  "In the clipboard: {0}": "Dans le presse-papiers : {0}"
 }

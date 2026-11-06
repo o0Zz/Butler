@@ -8,7 +8,7 @@
     --hover: #f1f3f6; --sel: #e8effd; --accent: #2f6fe4; --accent-text: #fff;
     --ok: #1f9d55; --ok-bg: #e5f6ec; --warn: #b7791f; --warn-bg: #fdf3dc; --err: #d64545; --err-bg: #fde8e8;
     --run: #2f6fe4; --run-bg: #e8effd; --idle: #6b7280; --idle-bg: #eef0f3;
-    --k-schedule: #2f6fe4; --k-mail: #7c4ddb; --k-ado: #0f8a7e; --k-file: #c46a12;
+    --k-schedule: #2f6fe4; --k-mail: #7c4ddb; --k-ado: #0f8a7e; --k-file: #c46a12; --k-hotkey: #c2306b;
     --shadow: 0 1px 2px rgb(0 0 0 / .05), 0 4px 14px rgb(0 0 0 / .04);
   }
   @media (prefers-color-scheme: dark) {
@@ -17,7 +17,7 @@
       --hover: #252932; --sel: #23324f; --accent: #5b8def;
       --ok: #4cc38a; --ok-bg: #1d3328; --warn: #e3b341; --warn-bg: #3a3020; --err: #f07171; --err-bg: #3b2224;
       --run: #7aa5f5; --run-bg: #23324f; --idle: #9097a3; --idle-bg: #2a2e37;
-      --k-schedule: #7aa5f5; --k-mail: #a98bf0; --k-ado: #4cc3b5; --k-file: #e8a25a;
+      --k-schedule: #7aa5f5; --k-mail: #a98bf0; --k-ado: #4cc3b5; --k-file: #e8a25a; --k-hotkey: #f0789f;
       --shadow: none;
     }
   }
@@ -116,7 +116,7 @@
   .card .title { display: flex; align-items: center; gap: 10px; }
   .card .title b { font-size: 15px; flex: 1; }
   .badge-kind { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex-shrink: 0; background: color-mix(in srgb, currentColor 13%, transparent); }
-  .k-schedule { color: var(--k-schedule); } .k-mail { color: var(--k-mail); } .k-ado { color: var(--k-ado); } .k-file { color: var(--k-file); }
+  .k-schedule { color: var(--k-schedule); } .k-mail { color: var(--k-mail); } .k-ado { color: var(--k-ado); } .k-file { color: var(--k-file); } .k-hotkey { color: var(--k-hotkey); }
   .kv { display: grid; grid-template-columns: 74px 1fr; gap: 4px 10px; font-size: 13px; }
   .kv > span:nth-child(odd) { color: var(--muted); }
   .chip { display: inline-block; font-size: 12px; padding: 1px 8px; margin: 0 4px 2px 0; border-radius: 10px; background: var(--idle-bg); }
@@ -274,6 +274,7 @@ const IC = {
   mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
   ado: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9a7 7 0 0 1-7 7H8"/>',
   file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  hotkey: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
   sync: '<path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4"/>',
   code: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/>',

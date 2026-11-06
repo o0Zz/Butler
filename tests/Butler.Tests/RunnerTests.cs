@@ -281,5 +281,36 @@ public class RunnerTests : IDisposable
         Assert.Equal("the command failed", run.Summary);
     }
 
+    [Fact]
+    public async Task A_quick_run_has_no_tools_nor_protocol_and_its_answer_is_the_result()
+    {
+        var runner = new Runner(home, new ClaudeCli(fake));
+        ClaudeReplies("I went to the meeting.\n");
+
+        var run = await runner.Quick("fix", "Fix: i has went", "sonnet");
+
+        Assert.Equal(RunStatus.Done, run.Status);
+        Assert.Equal("I went to the meeting.", run.Result); // as is, for the selection
+        Assert.Equal("I went to the meeting.", run.Summary);
+        var args = File.ReadAllText(argsFile);
+        Assert.Contains("--strict-mcp-config --tools \"\"", args); // no MCP servers, no tools: seconds
+        Assert.Contains("--model sonnet", args);
+        Assert.Contains("--session-id " + run.SessionId, args);
+        Assert.DoesNotContain("BUTLER-", args);
+    }
+
+    [Fact]
+    public async Task A_quick_run_without_an_answer_fails()
+    {
+        var runner = new Runner(home, new ClaudeCli(fake));
+        ClaudeReplies("  ");
+        Assert.Equal(RunStatus.Failed, (await runner.Quick("fix", "Fix: x", null)).Status);
+        Assert.DoesNotContain("--model", File.ReadAllText(argsFile)); // the CLI's default model
+
+        ClaudeReplies("Credit balance is too low", isError: true);
+        var failed = await runner.Quick("fix", "Fix: x", null);
+        Assert.Equal((RunStatus.Failed, "Credit balance is too low"), (failed.Status, failed.Summary));
+    }
+
     public void Dispose() => Directory.Delete(home, true);
 }
