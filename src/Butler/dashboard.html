@@ -49,8 +49,6 @@
   nav .count { font-size: 12px; color: var(--muted); }
   nav .count.badge { background: var(--err); color: #fff; border-radius: 10px; padding: 0 7px; font-weight: 600; }
   nav .bottom { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding: 0 4px; }
-  nav .bottom .row2 { display: flex; gap: 6px; }
-  nav .bottom .row2 button { flex: 1; justify-content: center; }
   .sources h4 { margin: 0 6px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
   .source { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; font-size: 12.5px; }
   .source .what { flex: 1; min-width: 0; }
@@ -231,9 +229,6 @@
   <a data-view="skills"><i data-ic="skills"></i><span class="label" data-tr>Skills</span><span class="count" id="c-skills"></span></a>
   <div class="bottom">
     <div class="sources" id="sources"></div>
-    <div class="row2">
-      <button onclick="send('revealTriggers')" data-tr-title title="Open the folder of the triggers file"><i data-ic="folder"></i><span data-tr>Folder</span></button>
-    </div>
     <a data-view="settings"><i data-ic="settings"></i><span class="label" data-tr>Settings</span></a>
   </div>
 </nav>
@@ -990,7 +985,8 @@ function renderSettings() {
     </div>
     <div class="card">
       <h3>${tr('Triggers and skills')}</h3>
-      ${pathField('triggersFile', tr('Triggers file'), tr('The list of triggers (JSON). Keep it next to the skills it calls, in their git repo.'), s.triggersFile)}
+      ${pathField('triggersFile', tr('Triggers file'), tr('The list of triggers (JSON). Keep it next to the skills it calls, in their git repo.'), s.triggersFile, undefined, undefined,
+        `<button onclick="send('revealTriggers')" title="${tr('Open the folder of the triggers file')}">${icon('open')}${tr('Open folder')}</button>`)}
       ${pathField('skillsFolder', tr('Skills folder'), tr('Listed on the Skills page; “Ask AI” opens there.'), s.skillsFolder)}
     </div>
     <div class="card">
@@ -1080,11 +1076,11 @@ function installUpdate() {
 }
 
 const cliNames = { claude: 'Claude Code', copilot: 'GitHub Copilot CLI' };
-const pathField = (id, label, hint, value, pick = 'file', filter = `JSON (*.json)|*.json|${tr('All files')}|*.*`) => `<div class="field">
+const pathField = (id, label, hint, value, pick = 'file', filter = `JSON (*.json)|*.json|${tr('All files')}|*.*`, more = '') => `<div class="field">
   <label for="s-${id}">${label}</label>
   <div class="hint">${hint}</div>
   <div class="bar"><input id="s-${id}" class="mono" value="${esc(value)}" oninput="checkSettings()">
-    <button onclick="send('browse',{pick:'${pick}',filter:${js(filter)},title:${js(label)},target:'s-${id}',value:$('s-${id}').value})">${icon('folder')}${tr('Browse…')}</button></div>
+    <button onclick="send('browse',{pick:'${pick}',filter:${js(filter)},title:${js(label)},target:'s-${id}',value:$('s-${id}').value})">${icon('folder')}${tr('Browse…')}</button>${more}</div>
   <div class="err" id="e-${id}"></div></div>`;
 const settingsDraft = () => ({ cli: $('s-cli').value, triggersFile: $('s-triggersFile').value.trim(), skillsFolder: $('s-skillsFolder').value.trim(),
   adoOrganization: $('s-adoOrganization').value.trim(), todo: $('s-todo').value, todoFile: $('s-todoFile').value.trim(), todoistToken: $('s-todoistToken').value.trim(),
