@@ -119,6 +119,7 @@ sealed class TrayApp
 
     FileSystemWatcher Watch(string file)
     {
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!); // the triggers file is created by its first load
         var w = new FileSystemWatcher(Path.GetDirectoryName(file)!, Path.GetFileName(file)) { EnableRaisingEvents = true };
         // Editors write in bursts, and many save by renaming a temp file over it (Created/Renamed, not Changed).
         FileSystemEventHandler later = (_, _) => Dispatcher.UIThread.Post(() => { reloadDelay.Stop(); reloadDelay.Start(); });

@@ -67,7 +67,7 @@ public sealed class ButlerSkillTests : IDisposable
         File.WriteAllText(triggers, "[{ \"name\": ");
         Assert.False(Program.Check(settings).Ok); // not even JSON
         File.Delete(triggers);
-        Assert.False(Program.Check(settings).Ok);
+        Assert.Equal((true, $"OK: 0 triggers in {triggers}"), Program.Check(settings)); // created empty, as the tray would
     }
 
     public void Dispose()

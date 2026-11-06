@@ -77,7 +77,7 @@ public class SettingsTests : IDisposable
         var triggers = Path.Combine(dir, "butler.json");
         File.WriteAllText(triggers, "[]");
 
-        var bad = new Settings { Cli = "gpt", TriggersFile = Path.Combine(dir, "nope.json"), SkillsFolder = Path.Combine(dir, "nope") }.Problems(Platform.Current.Shell);
+        var bad = new Settings { Cli = "gpt", TriggersFile = Path.Combine(dir, "nope", "butler.json"), SkillsFolder = Path.Combine(dir, "nope") }.Problems(Platform.Current.Shell);
         Assert.Equal(["cli", "skillsFolder", "triggersFile"], bad.Keys.Order());
 
         var good = new Settings { Cli = "claude", TriggersFile = triggers, SkillsFolder = dir }.Problems(Platform.Current.Shell);

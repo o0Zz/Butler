@@ -51,8 +51,14 @@ public sealed record Trigger(string Name, string On, string? Prompt, string? Sch
     public static Dictionary<string, string> Environment(IReadOnlyDictionary<string, string> values) =>
         values.ToDictionary(v => EnvironmentName(v.Key), v => v.Value);
 
+    // Creates the file, empty, with its folder, when it does not exist yet (the first start on a machine).
     public static List<Trigger> Load(string path)
     {
+        if (!File.Exists(path))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, "[]" + System.Environment.NewLine);
+        }
         var triggers = JsonSerializer.Deserialize<List<Trigger>>(File.ReadAllText(path), Json) ?? [];
         Check(triggers);
         return triggers;

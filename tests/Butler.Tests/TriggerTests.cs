@@ -28,6 +28,19 @@ public class TriggerTests
     }
 
     [Fact]
+    public void Creates_an_empty_file_with_its_folder_when_missing()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        var path = Path.Combine(dir, "skills", "butler.json");
+        try
+        {
+            Assert.Empty(Trigger.Load(path));
+            Assert.Equal("[]" + Environment.NewLine, File.ReadAllText(path));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     public void Loads_schedule_and_mail_triggers()
     {
         var triggers = LoadJson("""

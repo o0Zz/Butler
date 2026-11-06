@@ -188,11 +188,11 @@
   "Saved.": "Enregistré.",
 
   "{0} is not installed: {1} is not on the PATH": "{0} n'est pas installé : {1} n'est pas dans le PATH",
-  "File not found": "Fichier introuvable",
   "Folder not found": "Dossier introuvable",
   "The organization URL, like https://dev.azure.com/<org>": "L'URL de l'organisation, comme https://dev.azure.com/<org>",
   "Unknown page '{0}'": "Page inconnue '{0}'",
   "Unknown to-do list '{0}'": "Liste de tâches inconnue '{0}'",
+  "Folder not found (the file itself is created empty)": "Dossier introuvable (le fichier lui-même est créé vide)",
   "Folder not found (the file itself is created with the first task)": "Dossier introuvable (le fichier lui-même est créé avec la première tâche)",
   "Unknown language '{0}'": "Langue inconnue '{0}'",
   "Paste your Todoist API token": "Collez votre jeton d'API Todoist",

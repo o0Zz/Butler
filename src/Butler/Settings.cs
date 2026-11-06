@@ -59,7 +59,8 @@ public sealed record Settings
             if (Butler.Cli.FromName(Cli).Find(shell) == null) problems["cli"] = T("{0} is not installed: {1} is not on the PATH", Cli, shell.ExecutableName(Cli));
         }
         catch (ArgumentException e) { problems["cli"] = e.Message; }
-        if (!File.Exists(TriggersFile)) problems["triggersFile"] = T("File not found");
+        if (!File.Exists(TriggersFile) && !Directory.Exists(Path.GetDirectoryName(TriggersFile)))
+            problems["triggersFile"] = T("Folder not found (the file itself is created empty)");
         if (!Directory.Exists(SkillsFolder)) problems["skillsFolder"] = T("Folder not found");
         if (AdoOrganization != "" && !AdoOrganization.StartsWith("https://"))
             problems["adoOrganization"] = T("The organization URL, like https://dev.azure.com/<org>");
