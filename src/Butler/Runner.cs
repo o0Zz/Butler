@@ -10,9 +10,9 @@ public sealed class RunRecord
 {
     public required string Id { get; init; }
     public required string Trigger { get; init; }
-    public required string SessionId { get; init; }
+    public required string SessionId { get; init; } // empty: no session to continue (command and hotkey runs)
     public required string Prompt { get; init; }
-    public string? Cli { get; init; }   // the CLI that owns the session (null: runs from before the CLI setting, claude)
+    public required string Cli { get; init; } // the CLI that owns the session, or CommandCli
     public string? Model { get; init; } // its --model (null: the CLI's default); an answer continues with it
     public DateTime Started { get; init; }
     public DateTime? Ended { get; set; }
@@ -22,7 +22,7 @@ public sealed class RunRecord
     public string? Result { get; set; }
     public decimal? CostUsd { get; set; }
     public int? Pid { get; init; }      // the process that runs it and records the outcome: if it is gone, the run is dead
-    public int? ClaudePid { get; set; } // the CLI process: what Stop kills
+    public int? CliPid { get; set; }    // the CLI process: what Stop kills
 }
 
 // Runs the CLI (claude or copilot) hidden, records the run in <home>/runs, and reports the outcome.
@@ -55,13 +55,13 @@ public sealed class Runner(string home, Cli cli)
     // A hotkey trigger's run: no tools nor MCP servers (seconds, not tens of them), the answer is the result as is.
     // Done unless the CLI failed; never waiting. Started for this prompt only (Run now, or a CLI that cannot stay running).
     public Task<RunRecord> Quick(string trigger, string prompt, string? model, bool mine) =>
-        Agent(trigger, prompt, Guid.NewGuid().ToString(), model, Cli.QuickArguments(prompt, QuickProtocol, model, mine), quick: true,
+        Agent(trigger, prompt, "", model, Cli.QuickArguments(prompt, QuickProtocol, model, mine), quick: true,
             QuickAgent.Folder(mine, home));
 
     // The same through the CLI kept running (QuickAgent): about a second instead of four. Recorded like any run.
     public async Task<RunRecord> Quick(string trigger, string prompt, QuickAgent agent)
     {
-        var run = Start(trigger, prompt, Guid.NewGuid().ToString(), Cli.Name, agent.Model);
+        var run = Start(trigger, prompt, "", Cli.Name, agent.Model);
         CliResult? answer = null;
         string? error = null;
         using (var log = new StreamWriter(Path.Combine(RunsDir, run.Id + ".log")))
@@ -112,7 +112,7 @@ public sealed class Runner(string home, Cli cli)
     // its last output line as the summary; never waiting for an answer.
     public async Task<RunRecord> RunCommand(string trigger, string command, ProcessStartInfo shell)
     {
-        var run = Start(trigger, command, Guid.NewGuid().ToString(), CommandCli, null);
+        var run = Start(trigger, command, "", CommandCli, null);
         var output = new List<string>();
         var (ok, err) = await Execute(run, shell, output.Add);
         static string? Last(IEnumerable<string> lines) => lines.Select(l => l.Trim()).LastOrDefault(l => l.Length > 0);
@@ -161,7 +161,7 @@ public sealed class Runner(string home, Cli cli)
         {
             using var log = new StreamWriter(Path.Combine(RunsDir, run.Id + ".log"));
             using var p = Process.Start(psi)!;
-            run.ClaudePid = p.Id;
+            run.CliPid = p.Id;
             Save(run);
             var stderr = p.StandardError.ReadToEndAsync();
             while (await p.StandardOutput.ReadLineAsync() is { } line)
@@ -193,8 +193,8 @@ public sealed class Runner(string home, Cli cli)
     {
         var waiting = Load(runId) ?? throw new ArgumentException($"Unknown run {runId}");
         if (waiting.Status != RunStatus.Waiting) throw new InvalidOperationException($"Run {runId} is not waiting for an answer");
-        if ((waiting.Cli ?? "claude") != Cli.Name)
-            throw new InvalidOperationException($"Run {runId} is a {waiting.Cli ?? "claude"} session and the CLI setting is {Cli.Name}: switch back to answer it");
+        if (waiting.Cli != Cli.Name)
+            throw new InvalidOperationException($"Run {runId} is a {waiting.Cli} session and the CLI setting is {Cli.Name}: switch back to answer it");
         waiting.Status = RunStatus.Answered;
         waiting.Summary = T("Answered: {0}", answer);
         Save(waiting);
@@ -206,7 +206,7 @@ public sealed class Runner(string home, Cli cli)
     {
         var run = Load(runId) ?? throw new ArgumentException($"Unknown run {runId}");
         if (run.Status is not (RunStatus.Running or RunStatus.Waiting)) return run;
-        var claude = run.Status == RunStatus.Running ? Live(run.ClaudePid, p => p.StartTime >= run.Started.AddSeconds(-2)) : null;
+        var claude = run.Status == RunStatus.Running ? Live(run.CliPid, p => p.StartTime >= run.Started.AddSeconds(-2)) : null;
         run.Status = RunStatus.Stopped;
         run.Ended = DateTime.Now;
         run.Summary = T("Stopped from the dashboard");
@@ -280,14 +280,14 @@ public sealed class Runner(string home, Cli cli)
         var lines = new List<string>();
         var path = Path.Combine(RunsDir, runId + ".log");
         if (!File.Exists(path)) return lines;
-        var run = Load(runId);
+        if (Load(runId) is not { } run) return lines;
         using var reader = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
-        if (run?.Cli == CommandCli) // its output, while it runs (then it is the result)
+        if (run.Cli == CommandCli) // its output, while it runs (then it is the result)
         {
             while (run.Status == RunStatus.Running && reader.ReadLine() is { } line) lines.Add(Short(line, 300));
             return lines;
         }
-        var cli = Cli.FromName(run?.Cli); // the log is in the format of the CLI that wrote it
+        var cli = Cli.FromName(run.Cli); // the log is in the format of the CLI that wrote it
         while (reader.ReadLine() is { } line)
             foreach (var e in Events(cli, line))
             {

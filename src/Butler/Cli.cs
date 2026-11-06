@@ -17,9 +17,9 @@ public abstract class Cli(string name, string exe)
 
     public static readonly string[] Names = ["claude", "copilot"];
 
-    public static Cli FromName(string? name) => (name ?? "").ToLowerInvariant() switch
+    public static Cli FromName(string name) => name.ToLowerInvariant() switch
     {
-        "" or "claude" => new ClaudeCli(),
+        "claude" => new ClaudeCli(),
         "copilot" => new CopilotCli(),
         _ => throw new ArgumentException($"Unknown CLI \"{name}\": use claude or copilot"),
     };

@@ -272,7 +272,6 @@ const IC = {
   file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
   hotkey: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
   sync: '<path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4"/>',
-  code: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
@@ -389,10 +388,10 @@ function renderRuns() {
     <div class="detail">
       <div class="head">
         <h3>${kindOf(r.trigger) ? kindBadge(kindOf(r.trigger)) : ''}${esc(r.trigger)} <span class="pill ${r.status}">${tr(r.status)}</span></h3>
-        <div class="muted">${esc(full(r.started))}${duration(r) ? ' · ' + duration(r) : ''}${r.costUsd != null ? ' · ' + money(r.costUsd) : ''}${r.cli ? ' · ' + esc(cap(r.cli)) : ''}</div>
+        <div class="muted">${esc(full(r.started))}${duration(r) ? ' · ' + duration(r) : ''}${r.costUsd != null ? ' · ' + money(r.costUsd) : ''} · ${esc(cap(r.cli))}</div>
         <div class="actions">
           <button onclick="send('openLog',{id:'${r.id}'})">${icon('log')}${tr('Open log')}</button>
-          ${r.cli !== 'command' ? `<button onclick="send('terminal',{session:'${r.sessionId}',cli:'${r.cli || ''}'})">${icon('terminal')}${tr('Continue in terminal')}</button>` : ''}
+          ${r.sessionId ? `<button onclick="send('terminal',{session:'${r.sessionId}',cli:'${r.cli}'})">${icon('terminal')}${tr('Continue in terminal')}</button>` : ''}
           ${kindOf(r.trigger) ? `<button onclick="send('run',{name:'${esc(r.trigger)}'})">${icon('play')}${tr('Run again')}</button>` : ''}
           ${r.status === 'Running' ? `<button class="danger" onclick="if(confirm(${js(tr('Stop this run? The agent is killed where it is.'))}))send('stop',{id:'${r.id}'})">${icon('stop')}${tr('Stop')}</button>` : ''}
           ${r.status === 'Waiting' ? `<button onclick="send('stop',{id:'${r.id}'})" title="${tr('Drop the question, the run ends as Stopped')}">${icon('close')}${tr('Dismiss')}</button>` : ''}

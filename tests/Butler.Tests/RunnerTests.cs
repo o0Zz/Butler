@@ -131,7 +131,7 @@ public class RunnerTests : IDisposable
         var hanging = Fake.Hanging(home);
         var runner = new Runner(home, new ClaudeCli(hanging));
         var task = runner.Run("x", "/x");
-        var running = await Until(() => runner.Recent(1).FirstOrDefault(r => r.ClaudePid != null));
+        var running = await Until(() => runner.Recent(1).FirstOrDefault(r => r.CliPid != null));
         Assert.Equal(RunStatus.Running, running.Status);
 
         runner.Stop(running.Id);
@@ -139,7 +139,7 @@ public class RunnerTests : IDisposable
         var run = await task.WaitAsync(TimeSpan.FromSeconds(10)); // returns once claude is killed, not after its minute
         Assert.Equal(RunStatus.Stopped, run.Status);
         Assert.Equal(RunStatus.Stopped, runner.Load(running.Id)!.Status);
-        Assert.Throws<ArgumentException>(() => Process.GetProcessById(running.ClaudePid!.Value));
+        Assert.Throws<ArgumentException>(() => Process.GetProcessById(running.CliPid!.Value));
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public class RunnerTests : IDisposable
         Directory.CreateDirectory(runner.RunsDir);
         File.WriteAllText(Path.Combine(runner.RunsDir, "20260101-000000-000-x.json"), JsonSerializer.Serialize(new
         {
-            Id = "20260101-000000-000-x", Trigger = "x", SessionId = "s", Prompt = "/x", Started = DateTime.Now, Status = "Running", Pid = gone.Id,
+            Id = "20260101-000000-000-x", Trigger = "x", SessionId = "s", Prompt = "/x", Cli = "claude", Started = DateTime.Now, Status = "Running", Pid = gone.Id,
         }));
 
         var run = runner.Recent(10).Single();
@@ -251,9 +251,10 @@ public class RunnerTests : IDisposable
     }
 
     [Fact]
-    public void Cli_is_chosen_by_name_and_defaults_to_claude()
+    public void Cli_is_chosen_by_name()
     {
-        Assert.IsType<ClaudeCli>(Cli.FromName(null));
+        Assert.IsType<ClaudeCli>(Cli.FromName("claude"));
+        Assert.Throws<ArgumentException>(() => Cli.FromName(""));
         Assert.IsType<CopilotCli>(Cli.FromName("Copilot"));
         Assert.Throws<ArgumentException>(() => Cli.FromName("gpt"));
     }
@@ -361,7 +362,7 @@ public class RunnerTests : IDisposable
     {
         using var agent = new QuickAgent(new ClaudeCli(Fake.Hanging(home)), null, mine: false, home);
         await Assert.ThrowsAsync<TimeoutException>(() => agent.Ask("Fix: x", _ => { }, TimeSpan.FromSeconds(2)));
-        Assert.Null(agent.Pid); // killed: the next prompt starts a new one
+        await Assert.ThrowsAsync<TimeoutException>(() => agent.Ask("Fix: y", _ => { }, TimeSpan.FromSeconds(2))); // killed: a new one
     }
 
     // The real Claude Code, kept running: a second prompt in about a second, and /clear forgets the first.

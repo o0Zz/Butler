@@ -267,7 +267,6 @@
   "Answer": "Réponse",
   "paste: replaces the selection (the clipboard when you switched windows); clipboard: only copied": "paste : remplace la sélection (le presse-papiers si vous avez changé de fenêtre) ; clipboard : seulement copiée",
   "Model": "Modèle",
-  "sonnet or haiku for a quick answer; empty: the CLI's default": "sonnet ou haiku pour une réponse rapide ; vide : celui du CLI par défaut",
   "When you press {0} on a selected text": "Quand vous appuyez sur {0} sur un texte sélectionné",
   "Taken by another app: {0}": "Déjà pris par une autre application : {0}",
   "Hotkey triggers only work on Windows for now": "Les déclencheurs par raccourci clavier ne marchent que sous Windows pour l'instant",

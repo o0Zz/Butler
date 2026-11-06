@@ -15,7 +15,6 @@ public sealed class QuickAgent(Cli cli, string? model, bool mine, string home) :
     Process? process;
 
     public string? Model => model;
-    public int? Pid => process?.Id;
 
     // Where it starts: the user folder with the user's config, else Butler's (no "project" settings there).
     public static string Folder(bool mine, string home) => mine ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : home;

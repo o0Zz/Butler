@@ -38,7 +38,7 @@ Single user, single machine: triggers live in the user's own skills folder and c
 - `Runner` starts the CLI from the user profile folder (not this repo: this CLAUDE.md must not leak into runs). Claude: `claude -p --output-format stream-json --verbose --permission-mode auto --session-id <guid>`, the protocol appended to the system prompt.
 - Protocol: end with `BUTLER-ASK: <question>` (run Waiting) or `BUTLER-SUMMARY: <outcome>`. An answer resumes the same session.
 - `Cli` holds what differs per CLI (arguments, parsing its JSON lines into text / tool / result events). A run records its `Cli`; answers and "Continue in terminal" use that one. Copilot: no system prompt option (protocol in the prompt), no result event (the last message is the result, failure is the exit code), no cost, `--allow-all-tools` (no classifier like auto mode); claude-in-chrome is claude only.
-- A run records its process (`Pid`) and the CLI's (`ClaudePid`): `Stop` kills the CLI's tree; a Running run whose process is gone is listed as Stopped.
+- A run records its process (`Pid`) and the CLI's (`CliPid`): `Stop` kills the CLI's tree; a Running run whose process is gone is listed as Stopped.
 - Data (`%LOCALAPPDATA%\Butler`, the OS's local app data elsewhere, `BUTLER_DATA` overrides): `settings.json`, `runs/<id>.json` + `.log` (raw stream), `state/`, `webview/`.
 
 ## Dashboard
