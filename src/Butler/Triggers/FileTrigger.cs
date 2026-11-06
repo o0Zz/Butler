@@ -11,6 +11,9 @@ public sealed class FileTrigger : TriggerKind
     public override string Label => T("New file");
     public override FormField[] Form =>
         [new("folder", T("Folder"), "folder", T("Not its subfolders; %VARIABLES% allowed")), new("filter", T("Filter"), "text", T("A file pattern like *.pdf"), Optional: true)];
+    public override string Help =>
+        "`folder` (not its subfolders; `%VARIABLES%` allowed) and an optional `filter` like `*.pdf`: a run per new file, " +
+        "once it has not changed for 10 s.";
     public override string[] Variables => ["path", "name"];
     public override string? Context => "Triggered by this new file: ${path}";
 

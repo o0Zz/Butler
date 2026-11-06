@@ -18,6 +18,9 @@ public abstract class TriggerKind
     // The fields that land in Trigger.Fields (schedule and from are typed on Trigger).
     public string[] Fields => [.. Form.Select(f => f.Name).Except(Trigger.Typed)];
 
+    // What it does and how to write its fields, for an agent editing butler.json (ButlerSkill). English, not translated.
+    public abstract string Help { get; }
+
     // The ${...} its prompts can use (lower case), and what a prompt using none of them gets appended.
     public virtual string[] Variables => [];
     public virtual string? Context => null;

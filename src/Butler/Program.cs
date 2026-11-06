@@ -10,6 +10,7 @@ namespace Butler;
 // Butler run <trigger> [var=value ...]  one headless run (what the tray starts for a trigger)
 // Butler answer <runId> <text>        resume a run waiting for an answer
 // Butler updated                      the tray, once the previous version's tray has exited (after an update)
+// Butler check                        checks settings.json and the triggers file, prints what is wrong (for an agent)
 static class Program
 {
     // Local data: settings, runs, state. The triggers file is wherever the settings say (by default with the skills).
@@ -35,11 +36,15 @@ static class Program
             {
                 case null: return RunTray(platform);
                 case "updated": return RunTray(platform, updated: true);
+                case "check":
+                    var (ok, message) = Check(SettingsFile);
+                    Console.WriteLine(message);
+                    return ok ? 0 : 1;
                 case "run" when args.Length >= 2: return RunTrigger(platform, args[1], args[2..]).GetAwaiter().GetResult();
                 case "answer" when args.Length >= 3:
                     return Report(platform.Notifications, NewRunner(LoadSettings()).Answer(args[1], args[2]).GetAwaiter().GetResult());
                 default:
-                    platform.Notifications.Error("Butler", "Usage: Butler [run <trigger> [var=value ...] | answer <runId> <text>]");
+                    platform.Notifications.Error("Butler", "Usage: Butler [run <trigger> [var=value ...] | answer <runId> <text> | check]");
                     return 2;
             }
         }
@@ -104,6 +109,21 @@ static class Program
         var shell = platform.Shell.CommandLine(command);
         foreach (var (k, v) in Trigger.Environment(values)) shell.Environment[k] = v;
         return Report(platform.Notifications, await runner.RunCommand(trigger.Name, command, shell));
+    }
+
+    // What the tray would say of these settings and their triggers file: an agent runs it after editing butler.json.
+    public static (bool Ok, string Message) Check(string settingsFile)
+    {
+        try
+        {
+            var settings = Settings.Load(settingsFile);
+            var triggers = Trigger.Load(settings.TriggersFile);
+            return (true, $"OK: {triggers.Count} triggers in {settings.TriggersFile}");
+        }
+        catch (Exception e) when (e is FormatException or System.Text.Json.JsonException or IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            return (false, "Error: " + e.Message);
+        }
     }
 
     // For a run: its notifications and summaries in the language of the settings.

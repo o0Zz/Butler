@@ -9,6 +9,9 @@ public sealed class ScheduleTrigger : TriggerKind
     public override string Name => "schedule";
     public override string Label => T("Schedule");
     public override FormField[] Form => [new("schedule", T("When"), "schedule")];
+    public override string Help =>
+        "`schedule`: `daily HH:mm`, one day `fri HH:mm`, days `mon-fri HH:mm` or `mon,wed,fri HH:mm`, or a day of the month `monthly:28 HH:mm` (no cron). " +
+        "Checked every 30 s while Butler runs; a time missed while it was not running runs once when it starts.";
 
     public override void Validate(Trigger t) =>
         Schedule.Parse(t.Schedule ?? throw new FormatException($"Trigger '{t.Name}': schedule is missing"));

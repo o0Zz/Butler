@@ -81,6 +81,7 @@ sealed class TrayApp
         {
             settings = Settings.Load(Program.SettingsFile);
             Lang.Use(settings.Language);
+            WriteSkill();
             icon.Menu = Menu();
             if (triggersWatcher == null || Path.Combine(triggersWatcher.Path, triggersWatcher.Filter) != settings.TriggersFile)
             {
@@ -98,6 +99,15 @@ sealed class TrayApp
         Platform.Hotkeys.Listen([.. triggers.Where(t => t.Kind is HotkeyTrigger).Select(t => Hotkey.Parse(t.Field("keys"))!)], key => _ = OnHotkey(key));
         CloseUnusedAgents();
         dashboard?.RefreshAll();
+    }
+
+    // The "butler" skill in the skills folder, so that any agent session can configure Butler. Not in a missing folder
+    // (the Settings page says so); a write that fails is tried again at the next reload.
+    void WriteSkill()
+    {
+        if (!Directory.Exists(settings.SkillsFolder)) return;
+        try { ButlerSkill.Write(settings.SkillsFolder, settings, Program.Exe); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
     }
 
     void Fail(string file, Exception ex)

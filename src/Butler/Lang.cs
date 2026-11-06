@@ -27,6 +27,15 @@ public static class Lang
         return s == null ? [] : JsonSerializer.Deserialize<Dictionary<string, string>>(s)!;
     }
 
+    // What `make` builds, in English whatever the language: text for an agent (ButlerSkill).
+    public static TResult English<TResult>(Func<TResult> make)
+    {
+        var (code, texts) = (Code, Texts);
+        (Code, Texts) = ("en", new Dictionary<string, string>());
+        try { return make(); }
+        finally { (Code, Texts) = (code, texts); }
+    }
+
     // The text in the current language; with args, "{0}" and the like are filled.
     public static string T(string english, params object?[] args)
     {

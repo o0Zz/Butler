@@ -11,6 +11,10 @@ public sealed class MailTrigger : TriggerKind
     public override string Name => "mail";
     public override string Label => T("Mail");
     public override FormField[] Form => [new("from", T("From"), "list", T("Sender addresses, one per line (exact match, any case)"))];
+    public override string Help =>
+        "`from`: the sender addresses (exact match, any case). Every folder of the default Outlook classic mailbox is checked every 30 s " +
+        "(Deleted, Sent, Drafts, Junk and Outbox skipped); a run per new mail from one of them. Windows with Outlook classic only; " +
+        "Butler only reads mails, it never sends, moves or flags one.";
     public override string[] Variables => ["from", "subject", "received"];
     public override string? Context => "Triggered by this mail: from ${from}, subject \"${subject}\", received ${received}.";
 

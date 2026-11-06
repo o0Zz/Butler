@@ -17,6 +17,11 @@ public sealed class HotkeyTrigger : TriggerKind
         new("myConfig", T("Use my Claude config"), "check", T("Your CLAUDE.md, settings and hooks apply too: a slower first use, a few more tokens each time."), Optional: true),
     ];
     public override string[] Variables => ["text"];
+    public override string Help =>
+        "`keys` like `ctrl+shift+space` (ctrl, alt, shift or win, then a letter, a digit, F1-F24 or space; ctrl+alt+letter is AltGr " +
+        "on some keyboards), pressed in any app on a selected text. The answer replaces the selection as is (`output`: `paste` by default, " +
+        "`clipboard` to only copy it), so the prompt says what to do with the text and nothing else. The run has no tools: it can only " +
+        "transform the text. Use the `fast` model. `myConfig`: true to load the user's Claude config (CLAUDE.md, hooks). Windows only.";
     public override string? Context => "The selected text:\n${text}";
 
     public override void Validate(Trigger t)

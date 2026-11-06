@@ -15,6 +15,9 @@ public sealed class AdoTrigger : TriggerKind
     public override string Label => "Azure DevOps";
     public override FormField[] Form =>
         [new("where", T("Work items where"), "text", T("A WIQL condition, e.g. [System.AssignedTo] = @Me AND [System.ChangedBy] <> @Me"))];
+    public override string Help =>
+        "`where`: a WIQL condition; a run per work item created or changed that matches it, checked every 2 min with the az CLI " +
+        "on the organization of Butler's settings (`adoOrganization`). Add `[System.ChangedBy] <> @Me` to skip the user's own changes.";
     public override string[] Variables => ["id", "title", "state", "by"];
     public override string? Context => "Triggered by this Azure DevOps work item change: #${id} \"${title}\" (${state}), changed by ${by}.";
     public override TimeSpan Interval => TimeSpan.FromMinutes(2); // az takes seconds per call
