@@ -293,7 +293,9 @@ public class RunnerTests : IDisposable
         Assert.Equal("I went to the meeting.", run.Result); // as is, for the selection
         Assert.Equal("I went to the meeting.", run.Summary);
         var args = File.ReadAllText(argsFile);
-        Assert.Contains("--strict-mcp-config --tools \"\"", args); // no MCP servers, no tools: seconds
+        Assert.Contains("--strict-mcp-config --tools", args); // no MCP servers, no tools: seconds
+        var list = new ClaudeCli().QuickArguments("p", "q", "s", null).ToList();
+        Assert.Equal("", list[list.IndexOf("--tools") + 1]); // the empty list (the scripts echo it differently per OS)
         Assert.Contains("--model sonnet", args);
         Assert.Contains("--session-id " + run.SessionId, args);
         Assert.DoesNotContain("BUTLER-", args);
