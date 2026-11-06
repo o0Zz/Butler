@@ -20,6 +20,9 @@ public sealed record Trigger(string Name, string On, string? Prompt, string? Sch
     // A command line run instead of the agent; the event's values reach it as environment variables (Environment).
     public string? Command { get; init; }
 
+    // The agent's model: a level of Settings.Levels (the Settings page maps it per CLI) or a model name; null: the CLI's default.
+    public string? Model { get; init; }
+
     [JsonIgnore] public TriggerKind Kind => TriggerKind.Find(On)!; // checked by Load
 
     // A text field of its kind, by name (any case); null when absent.
@@ -64,7 +67,7 @@ public sealed record Trigger(string Name, string On, string? Prompt, string? Sch
 
     // A trigger from the dashboard's editor: the values of its kind's form, by field name (a list field has one value per line).
     // The text is its prompt, or its command line.
-    public static Trigger FromForm(string name, string on, string text, IReadOnlyDictionary<string, string> values, bool command = false)
+    public static Trigger FromForm(string name, string on, string text, IReadOnlyDictionary<string, string> values, bool command = false, string? model = null)
     {
         var kind = TriggerKind.Find(on) ?? throw new FormatException($"Unknown kind '{on}'");
         string? Text(string field) => values.TryGetValue(field, out var v) && v.Trim() is { Length: > 0 } t ? t : null;
@@ -74,6 +77,7 @@ public sealed record Trigger(string Name, string On, string? Prompt, string? Sch
         return new Trigger(name.Trim(), on, command ? null : text.Trim(), on == "schedule" ? Text("schedule") : null, on == "mail" ? List("from") : null)
         {
             Command = command ? text.Trim() : null,
+            Model = command || string.IsNullOrWhiteSpace(model) ? null : model.Trim(),
             Fields = fields.Count > 0 ? fields : null,
         };
     }
@@ -97,6 +101,7 @@ public sealed record Trigger(string Name, string On, string? Prompt, string? Sch
                 : Fields?.FirstOrDefault(x => x.Key.Equals(f.Name, StringComparison.OrdinalIgnoreCase)) is { Key: not null } x ? x.Value : null;
             if (v != null) lines.Add($"{JsonSerializer.Serialize(f.Name)}: {Value(v)}");
         }
+        if (Model != null) lines.Add($"\"model\": {Value(Model)}");
         lines.Add(Command != null ? $"\"command\": {Value(Command)}" : $"\"prompt\": {Value(Prompt!)}");
         return "  {" + nl + string.Join("," + nl, lines.Select(l => "    " + l)) + nl + "  }";
     }
@@ -108,6 +113,7 @@ public sealed record Trigger(string Name, string On, string? Prompt, string? Sch
         if (Command != null && Prompt != null) throw new FormatException($"Trigger '{Name}': has both a prompt and a command, keep one");
         if (Command == null && string.IsNullOrWhiteSpace(Prompt)) throw new FormatException($"Trigger '{Name}': prompt is empty (or give a command instead)");
         if (Command != null && string.IsNullOrWhiteSpace(Command)) throw new FormatException($"Trigger '{Name}': command is empty");
+        if (Command != null && Model != null) throw new FormatException($"Trigger '{Name}': a command runs no agent, it has no model");
         var kind = TriggerKind.Find(On)
             ?? throw new FormatException($"Trigger '{Name}': on must be {string.Join(", ", TriggerKind.All.Select(k => $"'{k.Name}'"))}, not '{On}'");
         kind.Validate(this);

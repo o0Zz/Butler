@@ -130,6 +130,7 @@
   /* Forms: settings, trigger editor */
   .settings { max-width: 780px; display: flex; flex-direction: column; gap: 14px; }
   .settings .card { gap: 14px; }
+  .models { border-collapse: collapse; } .models th { text-align: left; font-weight: 600; padding: 0 8px 4px 0; } .models td { padding: 3px 8px 3px 0; }
   .settings h3 { margin: 0; font-size: 15px; }
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field label { font-weight: 600; }
@@ -834,8 +835,8 @@ let editing = null; // { original, name, on, prompt (or the command line), comma
 
 function openEditor(name) {
   const t = name && state.triggers.find(x => x.name === name);
-  editing = t ? { original: t.name, name: t.name, on: t.on, prompt: t.command || t.prompt, command: !!t.command, values: { ...t.values } }
-           : { original: null, name: '', on: 'schedule', prompt: '', command: false, values: { schedule: 'daily 08:30' } };
+  editing = t ? { original: t.name, name: t.name, on: t.on, prompt: t.command || t.prompt, command: !!t.command, model: t.model || '', values: { ...t.values } }
+           : { original: null, name: '', on: 'schedule', prompt: '', command: false, model: '', values: { schedule: 'daily 08:30' } };
   drawEditor();
 }
 
@@ -869,6 +870,9 @@ function drawEditor() {
           ${kind.variables.length ? `<div class="vars"><span class="muted">${tr('Insert:')}</span>${kind.variables.map(v => `<span class="chip" onclick="insertVar('${v}')">\${${v}}</span>`).join('')}</div>
             <div class="hint">${tr('Filled from the event. Without any, the event is appended.')}</div>` : ''}`}
         </div>
+        ${editing.command ? '' : `<div class="field"><label for="t-model">${tr('Model')}</label>
+          <div class="hint">${tr('A level, set to a model of each CLI in Settings.')}</div>
+          <div class="bar"><select id="t-model" onchange="editing.model=this.value">${modelOptions(editing.model)}</select></div></div>`}
         <div id="t-error"></div>
       </div>
       <div class="df">
@@ -937,10 +941,20 @@ function insertVar(v) {
   ta.selectionStart = ta.selectionEnd = at + text.length;
 }
 
+const levelNames = { light: tr('Light'), mid: tr('Mid'), strong: tr('Strong') };
+
+// The CLI's default, the levels with the model each is set to for the current CLI, and a model name written by hand.
+function modelOptions(value) {
+  const s = state.settings, named = l => s.models[s.cli]?.[l] || tr('the CLI’s default');
+  const options = [['', tr('The CLI’s default')], ...s.levels.map(l => [l, `${levelNames[l]} (${named(l)})`])];
+  if (value && !s.levels.includes(value)) options.push([value, value]);
+  return options.map(([v, l]) => `<option value="${esc(v)}" ${v === value ? 'selected' : ''}>${esc(l)}</option>`).join('');
+}
+
 function saveTrigger() {
   const kind = state.kinds.find(k => k.name === editing.on);
   const values = Object.fromEntries(kind.form.map(f => [f.name, editing.values[f.name] || '']));
-  send('saveTrigger', { original: editing.original || '', name: editing.name, on: editing.on, prompt: editing.prompt, command: editing.command, values });
+  send('saveTrigger', { original: editing.original || '', name: editing.name, on: editing.on, prompt: editing.prompt, command: editing.command, model: editing.model, values });
 }
 
 function deleteTrigger() {
@@ -982,6 +996,15 @@ function renderSettings() {
         <div id="s-cli-status"></div>
         <div class="err" id="e-cli"></div>
       </div>
+    </div>
+    <div class="card">
+      <h3>${tr('Models')}</h3>
+      <div class="hint">${tr('A trigger picks a level; here each level is a model of each CLI (sonnet, opus, a full model id…). Empty: the CLI’s default.')}</div>
+      <table class="models"><tr><th></th>${Object.keys(cliNames).map(c => `<th>${esc(cliNames[c])}</th>`).join('')}</tr>
+        ${s.levels.map(l => `<tr><td>${levelNames[l]}</td>${Object.keys(cliNames).map(c =>
+          `<td><input id="m-${c}-${l}" class="mono" value="${esc(s.models[c]?.[l] || '')}" oninput="checkSettings()"></td>`).join('')}</tr>`).join('')}
+      </table>
+      <div class="err" id="e-models"></div>
     </div>
     <div class="card">
       <h3>${tr('Triggers and skills')}</h3>
@@ -1084,7 +1107,10 @@ const pathField = (id, label, hint, value, pick = 'file', filter = `JSON (*.json
   <div class="err" id="e-${id}"></div></div>`;
 const settingsDraft = () => ({ cli: $('s-cli').value, triggersFile: $('s-triggersFile').value.trim(), skillsFolder: $('s-skillsFolder').value.trim(),
   adoOrganization: $('s-adoOrganization').value.trim(), todo: $('s-todo').value, todoFile: $('s-todoFile').value.trim(), todoistToken: $('s-todoistToken').value.trim(),
-  startPage: $('s-startPage').value, language: $('s-language').value, startup: $('s-startup').checked });
+  startPage: $('s-startPage').value, language: $('s-language').value, startup: $('s-startup').checked,
+  models: Object.fromEntries(Object.keys(cliNames).map(c => [c, Object.fromEntries(state.settings.levels.map(l => [l, $(`m-${c}-${l}`).value.trim()]))])) });
+// The models table as one comparable value (a level missing from settings.json is empty).
+const modelsKey = m => JSON.stringify(Object.keys(cliNames).map(c => state.settings.levels.map(l => (m?.[c]?.[l] || '').trim())));
 
 function forgetTodoist() {
   if (!confirm(tr('Forget the Todoist token? The To do page cannot read Todoist until a new one is saved.'))) return;
@@ -1100,7 +1126,7 @@ function checkSettings() {
     + (d.cli === 'copilot' ? `<div class="note" style="margin-top:6px">${tr('Copilot runs with --allow-all-tools: nothing reviews what it does, even when a mail is in the prompt. No Chrome, no cost per run.')}</div>` : '');
   $('s-todo-txt').hidden = d.todo !== 'txt';
   $('s-todo-todoist').hidden = d.todo !== 'todoist';
-  const dirty = d.todoistToken !== '' || Object.keys(d).some(k => k !== 'todoistToken' && d[k] !== s[k]);
+  const dirty = d.todoistToken !== '' || Object.keys(d).some(k => k !== 'todoistToken' && (k === 'models' ? modelsKey(d.models) !== modelsKey(s.models) : d[k] !== s[k]));
   $('s-save').disabled = !dirty;
   $('s-revert').hidden = !dirty;
 }

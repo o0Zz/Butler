@@ -1,7 +1,7 @@
 namespace Butler;
 
 // "hotkey": a key combination pressed in any app (keys: "ctrl+shift+space") runs the prompt on the selected text (${text}).
-// The run is quick (Runner.Quick: no tools, no MCP servers, model if given) and its answer replaces the selection
+// The run is quick (Runner.Quick: no tools, no MCP servers; a light model fits) and its answer replaces the selection
 // (output "paste", the default: when its window is still in front, else the clipboard) or goes to the clipboard ("clipboard").
 // The tray listens (IHotkeys); Poll starts nothing, it only reports keys the system cannot give.
 public sealed class HotkeyTrigger : TriggerKind
@@ -14,7 +14,6 @@ public sealed class HotkeyTrigger : TriggerKind
     [
         new("keys", T("Keys"), "text", T("Like ctrl+shift+space: ctrl, alt, shift or win, and a letter, a digit, F1 to F24 or space. Avoid ctrl+alt+letter on keyboards with AltGr.")),
         new("output", T("Answer"), "text", T("paste: replaces the selection (the clipboard when you switched windows); clipboard: only copied"), Optional: true),
-        new("model", T("Model"), "text", T("sonnet or haiku for a quick answer; empty: the CLI's default"), Optional: true),
     ];
     public override string[] Variables => ["text"];
     public override string? Context => "The selected text:\n${text}";

@@ -49,9 +49,10 @@ public class RunnerTests : IDisposable
         var runner = new Runner(home, new ClaudeCli(fake));
         ClaudeReplies("Here is the split.\n\nBUTLER-ASK: Write it to the timesheet?");
 
-        var first = await runner.Run("timesheet", "/timesheet month");
+        var first = await runner.Run("timesheet", "/timesheet month", "opus");
 
         Assert.Equal(RunStatus.Waiting, first.Status);
+        Assert.Equal("opus", first.Model);
         Assert.Equal("Write it to the timesheet?", first.Question);
         Assert.Equal(0.12m, first.CostUsd);
         var args = File.ReadAllText(argsFile);
@@ -68,6 +69,7 @@ public class RunnerTests : IDisposable
         Assert.Equal("20 days written", second.Summary);
         Assert.Equal(first.SessionId, second.SessionId);
         Assert.Contains("--resume " + first.SessionId, File.ReadAllText(argsFile));
+        Assert.Contains("--model opus", File.ReadAllText(argsFile)); // the answer continues with the run's model
         Assert.Equal(RunStatus.Answered, runner.Load(first.Id)!.Status);
         Assert.Equal([second.Id, first.Id], runner.Recent(10).Select(r => r.Id).Order().Reverse());
         await Assert.ThrowsAsync<InvalidOperationException>(() => runner.Answer(first.Id, "yes"));
@@ -233,8 +235,9 @@ public class RunnerTests : IDisposable
         // Checked here, not through the fake: a .cmd cannot echo an argument with a newline.
         var cli = new CopilotCli();
         Assert.Equal(["-p", "/x\n\nPROTOCOL", "--output-format", "json", "--allow-all-tools", "--no-ask-user", "--session-id", "s1"],
-            cli.RunArguments("/x", "PROTOCOL", "s1", resume: false));
-        Assert.Equal(cli.RunArguments("yes", "PROTOCOL", "s1", resume: false), cli.RunArguments("yes", "PROTOCOL", "s1", resume: true));
+            cli.RunArguments("/x", "PROTOCOL", "s1", resume: false, model: null));
+        Assert.Equal(cli.RunArguments("yes", "PROTOCOL", "s1", resume: false, null), cli.RunArguments("yes", "PROTOCOL", "s1", resume: true, null));
+        Assert.Equal(["--model", "gpt-5"], cli.RunArguments("/x", "PROTOCOL", "s1", resume: false, model: "gpt-5").TakeLast(2));
         Assert.Equal(["--resume=s1"], cli.TerminalArguments("s1"));
     }
 

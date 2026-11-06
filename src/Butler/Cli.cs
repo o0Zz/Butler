@@ -34,7 +34,10 @@ public abstract class Cli(string name, string exe)
     }
 
     // A headless run in a new session with that id, or resuming it. `protocol` is Butler's instructions to the agent.
-    public abstract IEnumerable<string> RunArguments(string prompt, string protocol, string sessionId, bool resume);
+    // model: --model, null for the CLI's default.
+    public abstract IEnumerable<string> RunArguments(string prompt, string protocol, string sessionId, bool resume, string? model);
+
+    protected static string[] ModelArguments(string? model) => model == null ? [] : ["--model", model];
 
     // A quick headless run (a hotkey trigger): the prompt alone, without tools nor MCP servers, `model` when given.
     // `protocol` says the answer is used as is.
@@ -50,13 +53,13 @@ public abstract class Cli(string name, string exe)
 // Claude Code: stream-json, the protocol appended to the system prompt, a final "result" event with the cost.
 public sealed class ClaudeCli(string exe = "claude") : Cli("claude", exe)
 {
-    public override IEnumerable<string> RunArguments(string prompt, string protocol, string sessionId, bool resume) =>
+    public override IEnumerable<string> RunArguments(string prompt, string protocol, string sessionId, bool resume, string? model) =>
         ["-p", prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "auto", "--chrome",
-         "--append-system-prompt", protocol, resume ? "--resume" : "--session-id", sessionId];
+         "--append-system-prompt", protocol, resume ? "--resume" : "--session-id", sessionId, .. ModelArguments(model)];
 
     public override IEnumerable<string> QuickArguments(string prompt, string protocol, string sessionId, string? model) =>
         ["-p", prompt, "--output-format", "stream-json", "--verbose", "--strict-mcp-config", "--tools", "",
-         "--append-system-prompt", protocol, "--session-id", sessionId, .. model == null ? Array.Empty<string>() : ["--model", model]];
+         "--append-system-prompt", protocol, "--session-id", sessionId, .. ModelArguments(model)];
 
     public override IEnumerable<string> TerminalArguments(string? sessionId) => sessionId == null ? [] : ["--resume", sessionId];
 
@@ -87,13 +90,12 @@ public sealed class ClaudeCli(string exe = "claude") : Cli("claude", exe)
 // Non-interactive runs need --allow-all-tools: unlike claude's auto mode, no classifier reviews what it does.
 public sealed class CopilotCli(string exe = "copilot") : Cli("copilot", exe)
 {
-    public override IEnumerable<string> RunArguments(string prompt, string protocol, string sessionId, bool resume) =>
-        ["-p", prompt + "\n\n" + protocol, "--output-format", "json", "--allow-all-tools", "--no-ask-user", "--session-id", sessionId];
+    public override IEnumerable<string> RunArguments(string prompt, string protocol, string sessionId, bool resume, string? model) =>
+        ["-p", prompt + "\n\n" + protocol, "--output-format", "json", "--allow-all-tools", "--no-ask-user", "--session-id", sessionId, .. ModelArguments(model)];
 
     // Without --allow-all-tools, a tool it would want is refused.
     public override IEnumerable<string> QuickArguments(string prompt, string protocol, string sessionId, string? model) =>
-        ["-p", prompt + "\n\n" + protocol, "--output-format", "json", "--no-ask-user", "--session-id", sessionId,
-         .. model == null ? Array.Empty<string>() : ["--model", model]];
+        ["-p", prompt + "\n\n" + protocol, "--output-format", "json", "--no-ask-user", "--session-id", sessionId, .. ModelArguments(model)];
 
     public override IEnumerable<string> TerminalArguments(string? sessionId) => sessionId == null ? [] : ["--resume=" + sessionId];
 

@@ -13,7 +13,7 @@ Single user, single machine: triggers live in the user's own skills folder and c
 - Nothing may rely on files next to the exe (released as a single file).
 
 ## Settings
-- `%LOCALAPPDATA%\Butler\settings.json` (`Settings`), edited on the Settings page or by hand: `cli` (`claude`, `copilot`), `triggersFile`, `skillsFolder`, `adoOrganization`, `todo` (`none`, `todoist`, `txt`), `todoFile`, `todoHidden`, `startPage` (`runs` by default), `language` (`auto`, `en`, `fr`). Missing file: claude and `~/.claude/skills`. New options go there, with a field on the Settings page.
+- `%LOCALAPPDATA%\Butler\settings.json` (`Settings`), edited on the Settings page or by hand: `cli` (`claude`, `copilot`), `triggersFile`, `skillsFolder`, `adoOrganization`, `todo` (`none`, `todoist`, `txt`), `todoFile`, `todoHidden`, `startPage` (`runs` by default), `language` (`auto`, `en`, `fr`), `models` (per CLI, the model name of each level `light`, `mid`, `strong`; empty: the CLI's default). Missing file: claude and `~/.claude/skills`. New options go there, with a field on the Settings page.
 - Saving refuses invalid values (`Settings.Problems`: unknown value, CLI not installed, missing file or folder), shown next to the fields.
 - Each process reads the settings when it starts (a change applies to the next run). The tray watches `settings.json` and the triggers file and reloads.
 - Start at login is not a setting: it is the OS's own entry (`IStartAtLogin`: `Run` registry key, LaunchAgent, XDG autostart), on only when it starts this exe.
@@ -21,6 +21,7 @@ Single user, single machine: triggers live in the user's own skills folder and c
 
 ## Triggers
 - The triggers file (default `~/.claude/skills/butler.json`, in the skills git repo, not this one) is the source of truth. `on` is the kind; event prompts use the kind's `${variables}` (`Trigger.PromptWith`; without variables the event is appended; run by hand they stay unfilled with a note).
+- A prompt trigger can have a `model`: a level (`Settings.ModelFor` turns it into the CLI's model name, so triggers do not change with the CLI) or a model name passed as is; none: the CLI's default. The run records it (`RunRecord.Model`) and an answer continues with it. A command has no model.
 - A trigger has a `prompt` (the agent) or a `command` (no agent): `IShell.CommandLine` (`cmd /d /v:on /s /c` on Windows, `sh -c` elsewhere), `Runner.RunCommand`, run `Cli` `command`. Done on exit 0, the last output line is the summary, the output (last 4000 chars) the result; never waiting. The event goes in environment variables (`BUTLER_SUBJECT`...), never pasted into the line (`${...}` refused): `!VAR!` with cmd, as `%VAR%` is expanded before the line is parsed.
 - Kinds: `src/Butler/Triggers/`, one `TriggerKind` per `on` value, listed in `TriggerKind.All`. A kind declares its fields (unknown ones rejected; read with `Field`), variables, context, description, form, and for event kinds `Poll` + `Interval`. To add one: the class, its tests, its doc in the skills folder's CLAUDE.md. No UI work: the editor is built from `Form` (`text`, `list`, `folder`, `schedule`).
 - The tray polls every kind (schedules included: no OS scheduler) on one STA thread. A poll completes or moves no checkpoint (`state/<kind>.json`); a new trigger, schedule, folder or filter starts from now.

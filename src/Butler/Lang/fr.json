@@ -274,5 +274,13 @@
   "Select a text first: nothing was copied": "Sélectionnez d'abord un texte : rien n'a été copié",
   "The selection is too long ({0} characters, at most 20000)": "La sélection est trop longue ({0} caractères, 20000 au plus)",
   "In the clipboard: {0}": "Dans le presse-papiers : {0}",
-  "{0}: working": "{0} : en cours"
+  "{0}: working": "{0} : en cours",
+  "Models": "Modèles",
+  "Light": "Léger",
+  "Mid": "Moyen",
+  "Strong": "Puissant",
+  "A level, set to a model of each CLI in Settings.": "Un niveau, associé à un modèle de chaque CLI dans les Paramètres.",
+  "The CLI’s default": "Celui du CLI par défaut",
+  "the CLI’s default": "celui du CLI par défaut",
+  "A trigger picks a level; here each level is a model of each CLI (sonnet, opus, a full model id…). Empty: the CLI’s default.": "Un déclencheur choisit un niveau ; ici chaque niveau est un modèle de chaque CLI (sonnet, opus, un identifiant complet…). Vide : celui du CLI par défaut."
 }

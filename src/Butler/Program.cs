@@ -96,11 +96,11 @@ static class Program
         if (trigger.Kind is HotkeyTrigger)
         {
             // When it works, the tray puts the answer in place of the selection: no notification.
-            var quick = await runner.Quick(trigger.Name, trigger.PromptWith(values), trigger.Field("model"));
+            var quick = await runner.Quick(trigger.Name, trigger.PromptWith(values), settings.ModelFor(trigger.Model));
             return quick.Status == RunStatus.Done ? 0 : Report(platform.Notifications, quick);
         }
         if (trigger.Command is not { } command)
-            return Report(platform.Notifications, await runner.Run(trigger.Name, trigger.PromptWith(values)));
+            return Report(platform.Notifications, await runner.Run(trigger.Name, trigger.PromptWith(values), settings.ModelFor(trigger.Model)));
         var shell = platform.Shell.CommandLine(command);
         foreach (var (k, v) in Trigger.Environment(values)) shell.Environment[k] = v;
         return Report(platform.Notifications, await runner.RunCommand(trigger.Name, command, shell));

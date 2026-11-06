@@ -20,6 +20,20 @@ public sealed record Settings
     public string Language { get; init; } = "auto"; // of what Butler shows: "auto" (the OS's) or one of Lang.All
     public static readonly string[] Pages = ["runs", "todo", "triggers", "skills", "settings"];
 
+    // A trigger's model is a level (Levels), turned into a model name of the CLI here (CLI -> level -> name; empty: the CLI's default),
+    // so the triggers do not change with the CLI. Any other value is a model name, passed as is.
+    public static readonly string[] Levels = ["light", "mid", "strong"];
+    public Dictionary<string, Dictionary<string, string>> Models { get; init; } = new()
+    {
+        ["claude"] = new() { ["light"] = "haiku", ["mid"] = "sonnet", ["strong"] = "opus" },
+        ["copilot"] = new() { ["light"] = "", ["mid"] = "", ["strong"] = "" },
+    };
+
+    // The --model of a trigger's run with the CLI of these settings; null: the CLI's default.
+    public string? ModelFor(string? model) => string.IsNullOrWhiteSpace(model) ? null
+        : !Levels.Contains(model) ? model
+        : Models.GetValueOrDefault(Cli)?.GetValueOrDefault(model) is { Length: > 0 } name ? name.Trim() : null;
+
     // Defaults when the file does not exist. Throws on an unknown CLI or to-do list (the file can be edited by hand).
     public static Settings Load(string path)
     {

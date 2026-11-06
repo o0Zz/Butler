@@ -13,6 +13,7 @@ public sealed class RunRecord
     public required string SessionId { get; init; }
     public required string Prompt { get; init; }
     public string? Cli { get; init; }   // the CLI that owns the session (null: runs from before the CLI setting, claude)
+    public string? Model { get; init; } // its --model (null: the CLI's default); an answer continues with it
     public DateTime Started { get; init; }
     public DateTime? Ended { get; set; }
     public RunStatus Status { get; set; }
@@ -45,10 +46,10 @@ public sealed class Runner(string home, Cli cli)
         "Your answer replaces the text the user selected, as is: give only the resulting text, " +
         "without any introduction, comment, quotes or code fences.";
 
-    public Task<RunRecord> Run(string trigger, string prompt, string? resumeSession = null)
+    public Task<RunRecord> Run(string trigger, string prompt, string? model = null, string? resumeSession = null)
     {
         var session = resumeSession ?? Guid.NewGuid().ToString();
-        return Agent(trigger, prompt, session, Cli.RunArguments(prompt, Protocol(trigger), session, resumeSession != null), quick: false);
+        return Agent(trigger, prompt, session, model, Cli.RunArguments(prompt, Protocol(trigger), session, resumeSession != null, model), quick: false);
     }
 
     // A hotkey trigger's run: no tools nor MCP servers (seconds, not tens of them), the answer is the result as is.
@@ -56,12 +57,12 @@ public sealed class Runner(string home, Cli cli)
     public Task<RunRecord> Quick(string trigger, string prompt, string? model)
     {
         var session = Guid.NewGuid().ToString();
-        return Agent(trigger, prompt, session, Cli.QuickArguments(prompt, QuickProtocol, session, model), quick: true);
+        return Agent(trigger, prompt, session, model, Cli.QuickArguments(prompt, QuickProtocol, session, model), quick: true);
     }
 
-    async Task<RunRecord> Agent(string trigger, string prompt, string sessionId, IEnumerable<string> arguments, bool quick)
+    async Task<RunRecord> Agent(string trigger, string prompt, string sessionId, string? model, IEnumerable<string> arguments, bool quick)
     {
-        var run = Start(trigger, prompt, sessionId, Cli.Name);
+        var run = Start(trigger, prompt, sessionId, Cli.Name, model);
         var psi = new ProcessStartInfo(Cli.Exe);
         foreach (var a in arguments) psi.ArgumentList.Add(a);
 
@@ -90,7 +91,7 @@ public sealed class Runner(string home, Cli cli)
     // its last output line as the summary; never waiting for an answer.
     public async Task<RunRecord> RunCommand(string trigger, string command, ProcessStartInfo shell)
     {
-        var run = Start(trigger, command, Guid.NewGuid().ToString(), CommandCli);
+        var run = Start(trigger, command, Guid.NewGuid().ToString(), CommandCli, null);
         var output = new List<string>();
         var (ok, err) = await Execute(run, shell, output.Add);
         static string? Last(IEnumerable<string> lines) => lines.Select(l => l.Trim()).LastOrDefault(l => l.Length > 0);
@@ -104,7 +105,7 @@ public sealed class Runner(string home, Cli cli)
         });
     }
 
-    RunRecord Start(string trigger, string prompt, string sessionId, string cli)
+    RunRecord Start(string trigger, string prompt, string sessionId, string cli, string? model)
     {
         Directory.CreateDirectory(RunsDir);
         var run = new RunRecord
@@ -114,6 +115,7 @@ public sealed class Runner(string home, Cli cli)
             SessionId = sessionId,
             Prompt = prompt,
             Cli = cli,
+            Model = model,
             Started = DateTime.Now,
             Status = RunStatus.Running,
             Pid = Environment.ProcessId,
@@ -175,7 +177,7 @@ public sealed class Runner(string home, Cli cli)
         waiting.Status = RunStatus.Answered;
         waiting.Summary = T("Answered: {0}", answer);
         Save(waiting);
-        return Run(waiting.Trigger, answer, waiting.SessionId);
+        return Run(waiting.Trigger, answer, waiting.Model, waiting.SessionId);
     }
 
     // Kills claude and what it started (the log is kept). A waiting run is only dismissed.

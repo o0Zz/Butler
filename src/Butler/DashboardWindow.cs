@@ -159,6 +159,7 @@ sealed class DashboardWindow : Window
             settings = new
             {
                 settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, settings.Todo, settings.TodoFile, settings.StartPage, settings.Language,
+                settings.Models, levels = Settings.Levels,
                 file = Program.SettingsFile, installed, todoist = platform.Secrets.Read(ISecrets.Todoist) != null, startup = platform.StartAtLogin.IsOn(Program.Exe),
                 secretStore = platform.Secrets.Name, startupLabel = platform.StartAtLogin.Label,
                 todos = TodoBackend.All.Select(b => new { b.Name, b.Label }),
@@ -172,7 +173,7 @@ sealed class DashboardWindow : Window
             },
             triggers = tray.Triggers.Select(t => new
             {
-                t.Name, t.On, t.Prompt, t.Command, t.Schedule, t.From,
+                t.Name, t.On, t.Prompt, t.Command, t.Schedule, t.From, t.Model,
                 values = t.Kind.Form.ToDictionary(f => f.Name, f => f.Name == "schedule" ? t.Schedule : f.Name == "from" ? string.Join("\n", t.From ?? []) : t.Field(f.Name)),
                 when = t.Kind.Describe(t),
                 recent = history.Where(r => r.Trigger.Equals(t.Name, StringComparison.OrdinalIgnoreCase)).Take(10).Select(r => r.Status),
@@ -220,6 +221,7 @@ sealed class DashboardWindow : Window
                     Cli = Arg("cli"), TriggersFile = Arg("triggersFile").Trim(), SkillsFolder = Arg("skillsFolder").Trim(),
                     AdoOrganization = Arg("adoOrganization").Trim(), Todo = Arg("todo"), TodoFile = Arg("todoFile").Trim(), StartPage = Arg("startPage"),
                     Language = Arg("language"),
+                    Models = cmd.GetProperty("models").Deserialize<Dictionary<string, Dictionary<string, string>>>()!,
                 };
                 var language = Lang.Code;
                 var problems = settings.Problems(platform.Shell);
@@ -279,7 +281,7 @@ sealed class DashboardWindow : Window
                 Call("triggerSaved", EditTriggers(list =>
                 {
                     var values = cmd.GetProperty("values").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString() ?? "");
-                    var t = Trigger.FromForm(Arg("name"), Arg("on"), Arg("prompt"), values, cmd.GetProperty("command").GetBoolean());
+                    var t = Trigger.FromForm(Arg("name"), Arg("on"), Arg("prompt"), values, cmd.GetProperty("command").GetBoolean(), Arg("model"));
                     var at = list.FindIndex(x => x.Name.Equals(Arg("original"), StringComparison.OrdinalIgnoreCase));
                     if (at >= 0) list[at] = t;
                     else list.Add(t);
