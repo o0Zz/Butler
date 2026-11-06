@@ -900,6 +900,8 @@ function fieldInput(f) {
       <input id="s-time" type="time" value="${m[4].padStart(5, '0')}" onchange="scheduleChanged()" style="flex:0 0 120px"></div>
       ${freq === 'days' ? `<div class="days" id="s-days">${days.map(([k, l]) => `<label><input type="checkbox" value="${k}" ${on.includes(k) ? 'checked' : ''} onchange="scheduleChanged()">${l.slice(0, 3)}</label>`).join('')}</div>` : ''}</div>`;
   }
+  if (f.type === 'check') return `<div class="field"><label><input id="f-${f.name}" type="checkbox" ${v === 'true' ? 'checked' : ''}
+    onchange="editing.values['${f.name}']=this.checked?'true':''"> ${esc(f.label)}</label>${f.hint ? `<div class="hint">${esc(f.hint)}</div>` : ''}</div>`;
   if (f.type === 'list') return `<div class="field">${head}<textarea id="f-${f.name}" class="mono" rows="3" ${set}>${esc(v)}</textarea></div>`;
   const browse = f.type === 'folder' ? `<button onclick="send('browse',{pick:'folder',title:${js(f.label)},target:'f-${f.name}',value:$('f-${f.name}').value})">${icon('folder')}${tr('Browse…')}</button>` : '';
   return `<div class="field">${head}<div class="bar"><input id="f-${f.name}" class="mono" value="${esc(v)}" ${set}>${browse}</div></div>`;

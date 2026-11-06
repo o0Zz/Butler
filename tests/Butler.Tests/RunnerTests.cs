@@ -290,18 +290,32 @@ public class RunnerTests : IDisposable
         var runner = new Runner(home, new ClaudeCli(fake));
         ClaudeReplies("I went to the meeting.\n");
 
-        var run = await runner.Quick("fix", "Fix: i has went", "sonnet");
+        var run = await runner.Quick("fix", "Fix: i has went", "sonnet", mine: false);
 
         Assert.Equal(RunStatus.Done, run.Status);
         Assert.Equal("I went to the meeting.", run.Result); // as is, for the selection
         Assert.Equal("I went to the meeting.", run.Summary);
         var args = File.ReadAllText(argsFile);
         Assert.Contains("--strict-mcp-config --tools", args); // no MCP servers, no tools: seconds
-        var list = new ClaudeCli().QuickArguments("p", "q", "s", null).ToList();
-        Assert.Equal("", list[list.IndexOf("--tools") + 1]); // the empty list (the scripts echo it differently per OS)
         Assert.Contains("--model sonnet", args);
-        Assert.Contains("--session-id " + run.SessionId, args);
         Assert.DoesNotContain("BUTLER-", args);
+    }
+
+    [Fact]
+    public void A_quick_run_skips_the_users_config_unless_asked()
+    {
+        var cli = new ClaudeCli();
+        var light = cli.QuickArguments("Fix: x", "PROTOCOL", null, mine: false).ToList();
+        Assert.Equal("", light[light.IndexOf("--tools") + 1]); // the empty list (the scripts echo it differently per OS)
+        Assert.Equal(["--system-prompt", "PROTOCOL", "--setting-sources", "project"], light.Skip(light.IndexOf("--system-prompt")).Take(4));
+        Assert.Contains("--no-session-persistence", light);
+        var mine = cli.QuickArguments("Fix: x", "PROTOCOL", null, mine: true).ToList();
+        Assert.DoesNotContain("--setting-sources", mine);
+        Assert.Equal(["--append-system-prompt", "PROTOCOL"], mine.Skip(mine.IndexOf("--append-system-prompt")).Take(2));
+        var staying = cli.QuickArguments(null, "PROTOCOL", "haiku", mine: false).ToList();
+        Assert.Equal(["-p", "--input-format", "stream-json"], staying.Take(3));
+        Assert.Equal(["--model", "haiku"], staying.TakeLast(2));
+        Assert.Equal(QuickAgent.Folder(false, home), home); // where the "project" settings are none
     }
 
     [Fact]
@@ -309,12 +323,60 @@ public class RunnerTests : IDisposable
     {
         var runner = new Runner(home, new ClaudeCli(fake));
         ClaudeReplies("  ");
-        Assert.Equal(RunStatus.Failed, (await runner.Quick("fix", "Fix: x", null)).Status);
+        Assert.Equal(RunStatus.Failed, (await runner.Quick("fix", "Fix: x", null, mine: false)).Status);
         Assert.DoesNotContain("--model", File.ReadAllText(argsFile)); // the CLI's default model
 
         ClaudeReplies("Credit balance is too low", isError: true);
-        var failed = await runner.Quick("fix", "Fix: x", null);
+        var failed = await runner.Quick("fix", "Fix: x", null, mine: false);
         Assert.Equal((RunStatus.Failed, "Credit balance is too low"), (failed.Status, failed.Summary));
+    }
+
+    [Fact]
+    public async Task The_cli_kept_running_answers_prompt_after_prompt_and_clears_between()
+    {
+        var input = Path.Combine(home, "in.txt");
+        Environment.SetEnvironmentVariable("FAKE_IN", input);
+        var runner = new Runner(home, new ClaudeCli(Fake.Serving(home)));
+        using var agent = new QuickAgent(runner.Cli, "sonnet", mine: false, home);
+
+        var first = await runner.Quick("fix", "Fix: one", agent);
+        var second = await runner.Quick("fix", "Fix: two", agent);
+
+        Assert.Equal((RunStatus.Done, "answer 1", "sonnet"), (first.Status, first.Result, first.Model));
+        Assert.Equal("answer 3", second.Result); // answer 2 was the /clear's
+        Assert.Equal(0.01m, second.CostUsd);
+        var sent = File.ReadAllLines(input).Select(l => JsonDocument.Parse(l).RootElement.GetProperty("message").GetProperty("content").GetString());
+        Assert.Equal(["Fix: one", "/clear", "Fix: two", "/clear"], sent);
+        Assert.Single(File.ReadAllLines(argsFile)); // one process for both
+        Assert.Contains("--input-format stream-json", File.ReadAllText(argsFile));
+        Assert.Contains("\"result\":\"answer 1\"", File.ReadAllText(Path.Combine(runner.RunsDir, first.Id + ".log")));
+
+        agent.Dispose(); // as when Butler exits; the next use starts another
+        Assert.Equal("answer 1", (await runner.Quick("fix", "Fix: three", agent)).Result);
+        Assert.Equal(2, File.ReadAllLines(argsFile).Length);
+    }
+
+    [Fact]
+    public async Task A_cli_kept_running_that_hangs_is_killed_and_the_run_fails()
+    {
+        using var agent = new QuickAgent(new ClaudeCli(Fake.Hanging(home)), null, mine: false, home);
+        await Assert.ThrowsAsync<TimeoutException>(() => agent.Ask("Fix: x", _ => { }, TimeSpan.FromSeconds(2)));
+        Assert.Null(agent.Pid); // killed: the next prompt starts a new one
+    }
+
+    // The real Claude Code, kept running: a second prompt in about a second, and /clear forgets the first.
+    // Costs a few cents: skipped unless BUTLER_TEST_CLAUDE is set.
+    [SkippableFact]
+    public async Task Real_claude_kept_running_is_quick_and_forgets_between_prompts()
+    {
+        Skip.If(Environment.GetEnvironmentVariable("BUTLER_TEST_CLAUDE") == null, "BUTLER_TEST_CLAUDE is not set");
+        using var agent = new QuickAgent(new ClaudeCli(), "sonnet", mine: false, home);
+        var first = await agent.Ask("Remember the secret word PAMPLEMOUSSE and answer only OK.", _ => { });
+        var watch = Stopwatch.StartNew();
+        var second = await agent.Ask("What is the secret word? If you do not know it, answer only UNKNOWN.", _ => { });
+        Assert.Equal("OK", first.Result?.Trim());
+        Assert.Equal("UNKNOWN", second.Result?.Trim());
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(3), $"took {watch.Elapsed.TotalSeconds:0.0} s");
     }
 
     public void Dispose() => Directory.Delete(home, true);

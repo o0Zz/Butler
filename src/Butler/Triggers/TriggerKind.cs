@@ -36,5 +36,5 @@ public abstract class TriggerKind
     public abstract List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir, Platform platform);
 }
 
-// A field of a trigger kind in the editor. Type: "text", "list" (one value per line), "folder", "schedule".
+// A field of a trigger kind in the editor. Type: "text", "list" (one value per line), "folder", "schedule", "check" (true or false).
 public sealed record FormField(string Name, string Label, string Type, string Hint = "", bool Optional = false);

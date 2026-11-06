@@ -30,6 +30,10 @@ public sealed record Trigger(string Name, string On, string? Prompt, string? Sch
         Fields?.FirstOrDefault(f => f.Key.Equals(name, StringComparison.OrdinalIgnoreCase)).Value is { ValueKind: JsonValueKind.String } v
             ? v.GetString() : null;
 
+    // A check field of its kind (true or false in the file); false when absent.
+    public bool Flag(string name) =>
+        Fields?.FirstOrDefault(f => f.Key.Equals(name, StringComparison.OrdinalIgnoreCase)).Value is { ValueKind: JsonValueKind.True };
+
     // Fills ${name} (any case) from the values. A prompt of an event kind using no variable gets the event appended instead.
     // Run by hand there are no values: the variables stay as is, with a note saying so.
     public string PromptWith(IReadOnlyDictionary<string, string> values)
@@ -72,8 +76,9 @@ public sealed record Trigger(string Name, string On, string? Prompt, string? Sch
         var kind = TriggerKind.Find(on) ?? throw new FormatException($"Unknown kind '{on}'");
         string? Text(string field) => values.TryGetValue(field, out var v) && v.Trim() is { Length: > 0 } t ? t : null;
         string[]? List(string field) => Text(field)?.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
-        var fields = kind.Form.Where(f => !Typed.Contains(f.Name) && Text(f.Name) != null).ToDictionary(f => f.Name,
-            f => f.Type == "list" ? JsonSerializer.SerializeToElement(List(f.Name)) : JsonSerializer.SerializeToElement(Text(f.Name)));
+        var fields = kind.Form.Where(f => !Typed.Contains(f.Name) && Text(f.Name) != null && (f.Type != "check" || Text(f.Name) == "true")).ToDictionary(f => f.Name,
+            f => f.Type == "list" ? JsonSerializer.SerializeToElement(List(f.Name))
+                : f.Type == "check" ? JsonSerializer.SerializeToElement(true) : JsonSerializer.SerializeToElement(Text(f.Name)));
         return new Trigger(name.Trim(), on, command ? null : text.Trim(), on == "schedule" ? Text("schedule") : null, on == "mail" ? List("from") : null)
         {
             Command = command ? text.Trim() : null,
@@ -93,6 +98,7 @@ public sealed record Trigger(string Name, string On, string? Prompt, string? Sch
     {
         string Value(object v) => v is string[] list ? "[" + string.Join(", ", list.Select(i => JsonSerializer.Serialize(i, WriteJson))) + "]"
             : v is JsonElement { ValueKind: JsonValueKind.Array } a ? Value(a.EnumerateArray().Select(i => i.GetString()!).ToArray())
+            : v is JsonElement { ValueKind: JsonValueKind.True or JsonValueKind.False } b ? (b.ValueKind == JsonValueKind.True ? "true" : "false")
             : JsonSerializer.Serialize(v is JsonElement e ? e.GetString() : v, WriteJson);
         var lines = new List<string> { $"\"name\": {Value(Name)}", $"\"on\": {Value(On)}" };
         foreach (var f in Kind.Form)
@@ -117,6 +123,9 @@ public sealed record Trigger(string Name, string On, string? Prompt, string? Sch
         var kind = TriggerKind.Find(On)
             ?? throw new FormatException($"Trigger '{Name}': on must be {string.Join(", ", TriggerKind.All.Select(k => $"'{k.Name}'"))}, not '{On}'");
         kind.Validate(this);
+        foreach (var f in kind.Form.Where(f => f.Type == "check"))
+            if (Fields?.FirstOrDefault(x => x.Key.Equals(f.Name, StringComparison.OrdinalIgnoreCase)).Value is { ValueKind: not (JsonValueKind.True or JsonValueKind.False or JsonValueKind.Undefined) })
+                throw new FormatException($"Trigger '{Name}': {f.Name} is true or false");
         foreach (var field in Fields?.Keys ?? Enumerable.Empty<string>())
             if (!kind.Fields.Contains(field, StringComparer.OrdinalIgnoreCase))
                 throw new FormatException($"Trigger '{Name}': unknown field '{field}' for an '{On}' trigger");

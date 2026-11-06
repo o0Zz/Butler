@@ -14,6 +14,7 @@ public sealed class HotkeyTrigger : TriggerKind
     [
         new("keys", T("Keys"), "text", T("Like ctrl+shift+space: ctrl, alt, shift or win, and a letter, a digit, F1 to F24 or space. Avoid ctrl+alt+letter on keyboards with AltGr.")),
         new("output", T("Answer"), "text", T("paste: replaces the selection (the clipboard when you switched windows); clipboard: only copied"), Optional: true),
+        new("myConfig", T("Use my Claude config"), "check", T("Your CLAUDE.md, settings and hooks apply too: a slower first use, a few more tokens each time."), Optional: true),
     ];
     public override string[] Variables => ["text"];
     public override string? Context => "The selected text:\n${text}";
@@ -29,6 +30,8 @@ public sealed class HotkeyTrigger : TriggerKind
     public override string Describe(Trigger t) => T("When you press {0} on a selected text", Hotkey.Parse(t.Field("keys")));
 
     public static bool Pastes(Trigger t) => t.Field("output") != "clipboard";
+
+    public static bool MyConfig(Trigger t) => t.Flag("myConfig");
 
     // The tray listens for the keys itself: nothing to start here, only the keys the system refused to report.
     public override List<(Trigger Trigger, Dictionary<string, string> Values)> Poll(List<Trigger> triggers, Settings settings, string stateDir, Platform platform)

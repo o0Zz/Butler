@@ -53,17 +53,36 @@ public sealed class Runner(string home, Cli cli)
     }
 
     // A hotkey trigger's run: no tools nor MCP servers (seconds, not tens of them), the answer is the result as is.
-    // Done unless the CLI failed; never waiting.
-    public Task<RunRecord> Quick(string trigger, string prompt, string? model)
+    // Done unless the CLI failed; never waiting. Started for this prompt only (Run now, or a CLI that cannot stay running).
+    public Task<RunRecord> Quick(string trigger, string prompt, string? model, bool mine) =>
+        Agent(trigger, prompt, Guid.NewGuid().ToString(), model, Cli.QuickArguments(prompt, QuickProtocol, model, mine), quick: true,
+            QuickAgent.Folder(mine, home));
+
+    // The same through the CLI kept running (QuickAgent): about a second instead of four. Recorded like any run.
+    public async Task<RunRecord> Quick(string trigger, string prompt, QuickAgent agent)
     {
-        var session = Guid.NewGuid().ToString();
-        return Agent(trigger, prompt, session, model, Cli.QuickArguments(prompt, QuickProtocol, session, model), quick: true);
+        var run = Start(trigger, prompt, Guid.NewGuid().ToString(), Cli.Name, agent.Model);
+        CliResult? answer = null;
+        string? error = null;
+        using (var log = new StreamWriter(Path.Combine(RunsDir, run.Id + ".log")))
+            try { answer = await agent.Ask(prompt, log.WriteLine); }
+            catch (Exception e) when (e is TimeoutException or IOException or System.ComponentModel.Win32Exception) { error = e.Message; }
+        run.CostUsd = answer?.CostUsd;
+        return Finish(run, () => QuickOutcome(run, answer?.Result ?? error, answer is not { IsError: false }));
     }
 
-    async Task<RunRecord> Agent(string trigger, string prompt, string sessionId, string? model, IEnumerable<string> arguments, bool quick)
+    // The answer as is; failed when the CLI did or said nothing.
+    static void QuickOutcome(RunRecord run, string? result, bool failed)
+    {
+        run.Result = result;
+        if (failed || string.IsNullOrWhiteSpace(result)) Interpret(run, isError: true);
+        else (run.Status, run.Summary, run.Result) = (RunStatus.Done, Short(result, 120), result.Trim());
+    }
+
+    async Task<RunRecord> Agent(string trigger, string prompt, string sessionId, string? model, IEnumerable<string> arguments, bool quick, string? folder = null)
     {
         var run = Start(trigger, prompt, sessionId, Cli.Name, model);
-        var psi = new ProcessStartInfo(Cli.Exe);
+        var psi = new ProcessStartInfo(Cli.Exe) { WorkingDirectory = folder ?? "" };
         foreach (var a in arguments) psi.ArgumentList.Add(a);
 
         string? result = null, lastText = null;
@@ -80,10 +99,12 @@ public sealed class Runner(string home, Cli cli)
         if (result == null && err.Length > 0) result = err.Trim();
         return Finish(run, () =>
         {
-            run.Result = result;
-            if (!quick) Interpret(run, isError || !ok);
-            else if (isError || !ok || string.IsNullOrWhiteSpace(result)) Interpret(run, isError: true);
-            else (run.Status, run.Summary, run.Result) = (RunStatus.Done, Short(result, 120), result.Trim());
+            if (quick) QuickOutcome(run, result, isError || !ok);
+            else
+            {
+                run.Result = result;
+                Interpret(run, isError || !ok);
+            }
         });
     }
 
@@ -135,7 +156,7 @@ public sealed class Runner(string home, Cli cli)
         psi.StandardOutputEncoding = System.Text.Encoding.UTF8; // default is the ANSI code page: "é" came out as "Ã©"
         psi.StandardErrorEncoding = System.Text.Encoding.UTF8;
         // Not the Butler repo: its CLAUDE.md is about developing Butler, not about the triggered task.
-        psi.WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (psi.WorkingDirectory == "") psi.WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         try
         {
             using var log = new StreamWriter(Path.Combine(RunsDir, run.Id + ".log"));
@@ -276,7 +297,7 @@ public sealed class Runner(string home, Cli cli)
         return lines;
     }
 
-    static List<CliEvent> Events(Cli cli, string line)
+    internal static List<CliEvent> Events(Cli cli, string line)
     {
         try
         {

@@ -174,7 +174,8 @@ sealed class DashboardWindow : Window
             triggers = tray.Triggers.Select(t => new
             {
                 t.Name, t.On, t.Prompt, t.Command, t.Schedule, t.From, t.Model,
-                values = t.Kind.Form.ToDictionary(f => f.Name, f => f.Name == "schedule" ? t.Schedule : f.Name == "from" ? string.Join("\n", t.From ?? []) : t.Field(f.Name)),
+                values = t.Kind.Form.ToDictionary(f => f.Name, f => f.Name == "schedule" ? t.Schedule : f.Name == "from" ? string.Join("\n", t.From ?? [])
+                    : f.Type == "check" ? (t.Flag(f.Name) ? "true" : null) : t.Field(f.Name)),
                 when = t.Kind.Describe(t),
                 recent = history.Where(r => r.Trigger.Equals(t.Name, StringComparison.OrdinalIgnoreCase)).Take(10).Select(r => r.Status),
                 costMonth = history.Where(r => r.Started >= DateTime.Today.AddDays(-30) && r.Trigger.Equals(t.Name, StringComparison.OrdinalIgnoreCase)).Sum(r => r.CostUsd ?? 0),

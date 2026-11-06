@@ -40,8 +40,12 @@ public abstract class Cli(string name, string exe)
     protected static string[] ModelArguments(string? model) => model == null ? [] : ["--model", model];
 
     // A quick headless run (a hotkey trigger): the prompt alone, without tools nor MCP servers, `model` when given.
-    // `protocol` says the answer is used as is.
-    public abstract IEnumerable<string> QuickArguments(string prompt, string protocol, string sessionId, string? model);
+    // `protocol` says the answer is used as is. prompt null: it stays running and reads the prompts on its input
+    // (CanStayRunning, QuickAgent). mine: with the user's own config (CLAUDE.md, settings, hooks), else only the prompt.
+    public abstract IEnumerable<string> QuickArguments(string? prompt, string protocol, string? model, bool mine);
+
+    // Whether QuickArguments(null, ...) works: one process answering prompt after prompt.
+    public virtual bool CanStayRunning => false;
 
     // An interactive session in a terminal, resuming that session when given.
     public abstract IEnumerable<string> TerminalArguments(string? sessionId);
@@ -57,9 +61,15 @@ public sealed class ClaudeCli(string exe = "claude") : Cli("claude", exe)
         ["-p", prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "auto", "--chrome",
          "--append-system-prompt", protocol, resume ? "--resume" : "--session-id", sessionId, .. ModelArguments(model)];
 
-    public override IEnumerable<string> QuickArguments(string prompt, string protocol, string sessionId, string? model) =>
-        ["-p", prompt, "--output-format", "stream-json", "--verbose", "--strict-mcp-config", "--tools", "",
-         "--append-system-prompt", protocol, "--session-id", sessionId, .. ModelArguments(model)];
+    public override bool CanStayRunning => true;
+
+    // Without the user's config: its own system prompt and no user settings (no hooks: about a second less), started out
+    // of the user folder (QuickAgent.Folder), where the "project" settings would be the user's. Slash commands stay: /clear.
+    public override IEnumerable<string> QuickArguments(string? prompt, string protocol, string? model, bool mine) =>
+        ["-p", .. prompt == null ? new[] { "--input-format", "stream-json" } : [prompt], "--output-format", "stream-json", "--verbose",
+         "--strict-mcp-config", "--tools", "", "--no-session-persistence", "--no-chrome",
+         .. mine ? new[] { "--append-system-prompt", protocol } : ["--system-prompt", protocol, "--setting-sources", "project"],
+         .. ModelArguments(model)];
 
     public override IEnumerable<string> TerminalArguments(string? sessionId) => sessionId == null ? [] : ["--resume", sessionId];
 
@@ -94,8 +104,8 @@ public sealed class CopilotCli(string exe = "copilot") : Cli("copilot", exe)
         ["-p", prompt + "\n\n" + protocol, "--output-format", "json", "--allow-all-tools", "--no-ask-user", "--session-id", sessionId, .. ModelArguments(model)];
 
     // Without --allow-all-tools, a tool it would want is refused.
-    public override IEnumerable<string> QuickArguments(string prompt, string protocol, string sessionId, string? model) =>
-        ["-p", prompt + "\n\n" + protocol, "--output-format", "json", "--no-ask-user", "--session-id", sessionId, .. ModelArguments(model)];
+    public override IEnumerable<string> QuickArguments(string? prompt, string protocol, string? model, bool mine) =>
+        ["-p", prompt + "\n\n" + protocol, "--output-format", "json", "--no-ask-user", .. ModelArguments(model)];
 
     public override IEnumerable<string> TerminalArguments(string? sessionId) => sessionId == null ? [] : ["--resume=" + sessionId];
 

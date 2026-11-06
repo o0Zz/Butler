@@ -96,6 +96,7 @@ sealed class TrayApp
         }
         catch (Exception ex) { Fail(Path.GetFileName(settings.TriggersFile), ex); return; }
         Platform.Hotkeys.Listen([.. triggers.Where(t => t.Kind is HotkeyTrigger).Select(t => Hotkey.Parse(t.Field("keys"))!)], key => _ = OnHotkey(key));
+        CloseUnusedAgents();
         dashboard?.RefreshAll();
     }
 
@@ -174,17 +175,57 @@ sealed class TrayApp
             }
             WorkingLabel? label = null;
             Dispatcher.UIThread.Post(() => (label = new WorkingLabel(T("{0}: working", t.Name), selection.X, selection.Y)).Show());
-            using var process = Program.Start("run", t.Name, "text=" + selection.Text);
-            try { await process.WaitForExitAsync(); }
+            var runner = Runner;
+            RunRecord? run;
+            try
+            {
+                if (runner.Cli.CanStayRunning) // the CLI kept running: about a second
+                {
+                    var prompt = t.PromptWith(new Dictionary<string, string> { ["text"] = selection.Text });
+                    run = await runner.Quick(t.Name, prompt, AgentFor(runner.Cli, settings.ModelFor(t.Model), HotkeyTrigger.MyConfig(t)));
+                    if (run.Status != RunStatus.Done) Platform.Notifications.Show(run);
+                }
+                else // a Butler run process, which notifies when it fails
+                {
+                    using var process = Program.Start("run", t.Name, "text=" + selection.Text);
+                    await process.WaitForExitAsync();
+                    run = runner.Recent(20).FirstOrDefault(r => r.Pid == process.Id);
+                }
+            }
             finally { Dispatcher.UIThread.Post(() => label?.Close()); } // posted after the Show: closes it
-            // Not done: the run's own notification says why.
-            if (Runner.Recent(20).FirstOrDefault(r => r.Pid == process.Id) is not { Status: RunStatus.Done, Result: { } answer } run) return;
+            if (run is not { Status: RunStatus.Done, Result: { } answer }) return;
             if (HotkeyTrigger.Pastes(t) && Platform.Hotkeys.Paste(selection, answer)) return;
             Platform.Hotkeys.ToClipboard(answer);
             run.Summary = T("In the clipboard: {0}", run.Summary);
             Platform.Notifications.Show(run);
         }
         catch (Exception ex) { Platform.Notifications.Error(t.Name, ex.Message); }
+    }
+
+    // The CLIs kept running for hotkey runs, by CLI, model and config: started at the first use.
+    readonly Dictionary<(string Cli, string? Model, bool Mine), QuickAgent> agents = [];
+
+    QuickAgent AgentFor(Cli cli, string? model, bool mine)
+    {
+        lock (agents)
+        {
+            if (!agents.TryGetValue((cli.Name, model, mine), out var agent))
+                agents[(cli.Name, model, mine)] = agent = new QuickAgent(cli, model, mine, Program.Home);
+            return agent;
+        }
+    }
+
+    // After a reload, those no hotkey trigger uses any more (another CLI, model or config); all of them when Butler exits.
+    void CloseUnusedAgents(bool all = false)
+    {
+        var cli = Runner.Cli.Name;
+        var used = all ? [] : triggers.Where(t => t.Kind is HotkeyTrigger).Select(t => (cli, settings.ModelFor(t.Model), HotkeyTrigger.MyConfig(t))).ToHashSet();
+        lock (agents)
+            foreach (var key in agents.Keys.Where(k => !used.Contains(k)).ToList())
+            {
+                agents[key].Dispose();
+                agents.Remove(key);
+            }
     }
 
     void UpdateStatus()
@@ -223,6 +264,7 @@ sealed class TrayApp
     void Exit()
     {
         icon.IsVisible = false;
+        CloseUnusedAgents(all: true);
         ((IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!).Shutdown();
     }
 }

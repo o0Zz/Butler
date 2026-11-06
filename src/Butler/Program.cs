@@ -96,7 +96,7 @@ static class Program
         if (trigger.Kind is HotkeyTrigger)
         {
             // When it works, the tray puts the answer in place of the selection: no notification.
-            var quick = await runner.Quick(trigger.Name, trigger.PromptWith(values), settings.ModelFor(trigger.Model));
+            var quick = await runner.Quick(trigger.Name, trigger.PromptWith(values), settings.ModelFor(trigger.Model), HotkeyTrigger.MyConfig(trigger));
             return quick.Status == RunStatus.Done ? 0 : Report(platform.Notifications, quick);
         }
         if (trigger.Command is not { } command)

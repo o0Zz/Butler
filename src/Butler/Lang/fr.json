@@ -282,5 +282,7 @@
   "A level, set to a model of each CLI in Settings.": "Un niveau, associé à un modèle de chaque CLI dans les Paramètres.",
   "The CLI’s default": "Celui du CLI par défaut",
   "the CLI’s default": "celui du CLI par défaut",
-  "A trigger picks a level; here each level is a model of each CLI (sonnet, opus, a full model id…). Empty: the CLI’s default.": "Un déclencheur choisit un niveau ; ici chaque niveau est un modèle de chaque CLI (sonnet, opus, un identifiant complet…). Vide : celui du CLI par défaut."
+  "A trigger picks a level; here each level is a model of each CLI (sonnet, opus, a full model id…). Empty: the CLI’s default.": "Un déclencheur choisit un niveau ; ici chaque niveau est un modèle de chaque CLI (sonnet, opus, un identifiant complet…). Vide : celui du CLI par défaut.",
+  "Use my Claude config": "Utiliser ma configuration Claude",
+  "Your CLAUDE.md, settings and hooks apply too: a slower first use, a few more tokens each time.": "Votre CLAUDE.md, vos réglages et vos hooks s'appliquent aussi : première utilisation plus lente, quelques tokens de plus à chaque fois."
 }
