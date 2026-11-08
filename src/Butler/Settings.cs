@@ -18,6 +18,7 @@ public sealed record Settings
     public string[] TodoHidden { get; init; } = []; // ids of the lists (projects) hidden on the To do page
     public string StartPage { get; init; } = "runs"; // the dashboard's page when it opens: one of Pages
     public string Language { get; init; } = "auto"; // of what Butler shows: "auto" (the OS's) or one of Lang.All
+    public string BackupFolder { get; init; } = ""; // where Backup writes its daily zip; empty: no backup
     public static readonly string[] Pages = ["runs", "todo", "triggers", "skills", "settings"];
 
     // A trigger's model is a level (Levels), turned into a model name of the CLI here (CLI -> level -> name; empty: the CLI's default),
@@ -69,6 +70,12 @@ public sealed record Settings
         if (Todo == "txt" && !Directory.Exists(Path.GetDirectoryName(Environment.ExpandEnvironmentVariables(TodoFile))))
             problems["todoFile"] = T("Folder not found (the file itself is created with the first task)");
         if (Language != "auto" && !Lang.All.Contains(Language)) problems["language"] = T("Unknown language '{0}'", Language);
+        if (BackupFolder != "")
+        {
+            var backup = Path.GetFullPath(Environment.ExpandEnvironmentVariables(BackupFolder));
+            if (!Directory.Exists(backup) && !Directory.Exists(Path.GetDirectoryName(backup))) problems["backupFolder"] = T("Folder not found");
+            else if (SkillsFolder != "" && Backup.Inside(backup, SkillsFolder)) problems["backupFolder"] = T("Not in the skills folder: each backup would contain the previous ones");
+        }
         return problems;
     }
 }

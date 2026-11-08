@@ -283,5 +283,15 @@
   "the CLI’s default": "celui du CLI par défaut",
   "A trigger picks a level; here each level is a model of each CLI (sonnet, opus, a full model id…). Empty: the CLI’s default.": "Un déclencheur choisit un niveau ; ici chaque niveau est un modèle de chaque CLI (sonnet, opus, un identifiant complet…). Vide : celui du CLI par défaut.",
   "Use my Claude config": "Utiliser ma configuration Claude",
-  "Your CLAUDE.md, settings and hooks apply too: a slower first use, a few more tokens each time.": "Votre CLAUDE.md, vos réglages et vos hooks s'appliquent aussi : première utilisation plus lente, quelques tokens de plus à chaque fois."
+  "Your CLAUDE.md, settings and hooks apply too: a slower first use, a few more tokens each time.": "Votre CLAUDE.md, vos réglages et vos hooks s'appliquent aussi : première utilisation plus lente, quelques tokens de plus à chaque fois.",
+  "Backup": "Sauvegarde",
+  "Backup folder": "Dossier de sauvegarde",
+  "Once a day, when something changed: a zip of the skills folder (with the triggers file) and of these settings, not the secrets. The last 30 are kept. A folder synced to the cloud (Google Drive, OneDrive) keeps it off this PC. Empty: no backup.": "Une fois par jour, si quelque chose a changé : un zip du dossier des skills (avec le fichier des déclencheurs) et de ces réglages, sans les secrets. Les 30 derniers sont gardés. Un dossier synchronisé dans le cloud (Google Drive, OneDrive) le garde hors de ce PC. Vide : pas de sauvegarde.",
+  "Open the backup folder": "Ouvrir le dossier de sauvegarde",
+  "Back up now": "Sauvegarder maintenant",
+  "Last backup: {0}": "Dernière sauvegarde : {0}",
+  "No backup yet.": "Aucune sauvegarde pour l'instant.",
+  "Backing up…": "Sauvegarde en cours…",
+  "Butler: backup failed": "Butler : la sauvegarde a échoué",
+  "Not in the skills folder: each backup would contain the previous ones": "Pas dans le dossier des skills : chaque sauvegarde contiendrait les précédentes"
 }

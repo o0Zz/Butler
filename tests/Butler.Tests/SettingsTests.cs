@@ -103,6 +103,18 @@ public class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void A_backup_folder_may_not_exist_yet_but_its_parent_must_and_not_in_the_skills()
+    {
+        var skills = Directory.CreateDirectory(Path.Combine(dir, "skills")).FullName;
+        string? Of(string folder) => new Settings { SkillsFolder = skills, BackupFolder = folder }.Problems(Platform.Current.Shell).GetValueOrDefault("backupFolder");
+        Assert.Null(Of(""));
+        Assert.Null(Of(Path.Combine(dir, "backups")));
+        Assert.Equal("Folder not found", Of(Path.Combine(dir, "nope", "backups")));
+        Assert.StartsWith("Not in the skills folder", Of(Path.Combine(skills, "backups")));
+        Assert.StartsWith("Not in the skills folder", Of(skills));
+    }
+
+    [Fact]
     public void A_cli_is_installed_when_its_exe_is_on_the_path()
     {
         var shell = Platform.Current.Shell;

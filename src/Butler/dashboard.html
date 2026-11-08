@@ -1042,6 +1042,15 @@ function renderSettings() {
       </div>
     </div>
     <div class="card">
+      <h3>${tr('Backup')}</h3>
+      ${pathField('backupFolder', tr('Backup folder'), tr('Once a day, when something changed: a zip of the skills folder (with the triggers file) and of these settings, not the secrets. The last 30 are kept. A folder synced to the cloud (Google Drive, OneDrive) keeps it off this PC. Empty: no backup.'),
+        s.backupFolder, 'folder', undefined, `<button onclick="send('revealBackup')" title="${tr('Open the backup folder')}">${icon('open')}${tr('Open folder')}</button>`)}
+      <div class="field">
+        <div class="bar"><button id="b-now" onclick="backupNow()" ${s.backupFolder ? '' : 'disabled'}>${tr('Back up now')}</button></div>
+        <div id="b-result">${backupStatus(s.lastBackup, s.backupError)}</div>
+      </div>
+    </div>
+    <div class="card">
       <h3>${tr('Display')}</h3>
       <div class="field">
         <label for="s-language">${tr('Language')}</label>
@@ -1093,6 +1102,23 @@ function updateChecked(release, error) {
       ${release.download ? `<button class="primary" id="u-install" onclick="installUpdate()">${tr('Install and restart')}</button>` : ''}</div>`;
 }
 
+const backupStatus = (last, error) => error ? `<div class="err">${esc(error)}</div>`
+  : last ? `<span class="muted">${esc(tr('Last backup: {0}', full(last.at)))} · <span class="mono">${esc(last.file)}</span></span>`
+  : `<span class="muted">${tr('No backup yet.')}</span>`;
+
+function backupNow() {
+  $('b-now').disabled = true;
+  $('b-result').innerHTML = `<span class="muted">${tr('Backing up…')}</span>`;
+  send('backupNow');
+}
+
+// Called by C# with the last zip and the error, once "Back up now" is done.
+function backupDone(last, error) {
+  if (!$('b-now')) return;
+  $('b-now').disabled = false;
+  $('b-result').innerHTML = backupStatus(last, error);
+}
+
 function installUpdate() {
   $('u-install').disabled = $('u-check').disabled = true;
   $('u-result').insertAdjacentHTML('beforeend', `<span class="muted">${tr('Downloading…')}</span>`);
@@ -1108,7 +1134,7 @@ const pathField = (id, label, hint, value, pick = 'file', filter = `JSON (*.json
   <div class="err" id="e-${id}"></div></div>`;
 const settingsDraft = () => ({ cli: $('s-cli').value, triggersFile: $('s-triggersFile').value.trim(), skillsFolder: $('s-skillsFolder').value.trim(),
   adoOrganization: $('s-adoOrganization').value.trim(), todo: $('s-todo').value, todoFile: $('s-todoFile').value.trim(), todoistToken: $('s-todoistToken').value.trim(),
-  startPage: $('s-startPage').value, language: $('s-language').value, startup: $('s-startup').checked,
+  startPage: $('s-startPage').value, language: $('s-language').value, startup: $('s-startup').checked, backupFolder: $('s-backupFolder').value.trim(),
   models: Object.fromEntries(Object.keys(cliNames).map(c => [c, Object.fromEntries(state.settings.levels.map(l => [l, $(`m-${c}-${l}`).value.trim()]))])) });
 // The models table as one comparable value (a level missing from settings.json is empty).
 const modelsKey = m => JSON.stringify(Object.keys(cliNames).map(c => state.settings.levels.map(l => (m?.[c]?.[l] || '').trim())));
@@ -1142,6 +1168,7 @@ function settingsSaved(problems) {
   if (!$('s-cli')) return;
   for (const k of Object.keys(settingsDraft())) $('e-' + k).textContent = problems[k] || '';
   $('s-msg').textContent = Object.keys(problems).length ? tr('Not saved.') : tr('Saved.');
+  if (!Object.keys(problems).length) $('b-now').disabled = !settingsDraft().backupFolder; // backs up with the saved settings
   if (!Object.keys(problems).length && $('s-todoistToken').value) {
     $('s-todoistToken').value = '';
     $('s-todoistToken').placeholder = tr('Saved. Paste a new one to replace it');

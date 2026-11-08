@@ -159,6 +159,7 @@ sealed class DashboardWindow : Window
             settings = new
             {
                 settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, settings.Todo, settings.TodoFile, settings.StartPage, settings.Language,
+                settings.BackupFolder, lastBackup = tray.LastBackup, backupError = tray.BackupError,
                 settings.Models, levels = Settings.Levels,
                 file = Program.SettingsFile, installed, todoist = platform.Secrets.Read(ISecrets.Todoist) != null, startup = platform.StartAtLogin.IsOn(Program.Exe),
                 secretStore = platform.Secrets.Name, startupLabel = platform.StartAtLogin.Label,
@@ -221,7 +222,7 @@ sealed class DashboardWindow : Window
                 {
                     Cli = Arg("cli"), TriggersFile = Arg("triggersFile").Trim(), SkillsFolder = Arg("skillsFolder").Trim(),
                     AdoOrganization = Arg("adoOrganization").Trim(), Todo = Arg("todo"), TodoFile = Arg("todoFile").Trim(), StartPage = Arg("startPage"),
-                    Language = Arg("language"),
+                    Language = Arg("language"), BackupFolder = Arg("backupFolder").Trim(),
                     Models = cmd.GetProperty("models").Deserialize<Dictionary<string, Dictionary<string, string>>>()!,
                 };
                 var language = Lang.Code;
@@ -289,6 +290,11 @@ sealed class DashboardWindow : Window
                 }));
                 break;
             case "checkUpdate": _ = CheckUpdate(); break;
+            case "backupNow": _ = BackUpNow(); break;
+            case "revealBackup":
+                if (tray.LastBackup is { } last && File.Exists(last.File)) platform.Shell.Reveal(last.File);
+                else if (Directory.Exists(Backup.Folder(tray.Settings))) platform.Shell.OpenFolder(Backup.Folder(tray.Settings));
+                break;
             case "update": _ = Update(); break;
             case "deleteTrigger":
                 Call("triggerSaved", EditTriggers(list => list.RemoveAll(x => x.Name.Equals(Arg("name"), StringComparison.OrdinalIgnoreCase))));
@@ -304,6 +310,13 @@ sealed class DashboardWindow : Window
         try { Call("updateChecked", await tray.CheckNow(), null); }
         catch (Exception e) when (TrayApp.Unreachable(e)) { Call("updateChecked", null, e.Message); }
         Push();
+    }
+
+    // The Settings page's "Back up now", off the UI thread (a cloud folder can be slow): backupDone(the last zip, the error).
+    async Task BackUpNow()
+    {
+        await Task.Run(() => tray.BackUp(force: true));
+        Call("backupDone", tray.LastBackup, tray.BackupError);
     }
 
     // "Install and restart": on success this process exits.

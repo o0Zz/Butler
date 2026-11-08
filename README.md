@@ -140,6 +140,7 @@ Requirements:
   (`claude -p` or `copilot -p`), records its stream and its outcome, and shows a notification.
 - Triggers are polled by the tray from checkpoints stored in `%LOCALAPPDATA%\Butler`,
   together with the settings and the run history. Secrets (the Todoist token) go to the OS's secret store (Credential Manager, Keychain, libsecret).
+- Optionally, a daily zip of your skills, triggers and settings goes to a folder of your choice (a Google Drive or OneDrive folder takes it off the PC).
 - A small protocol lets a run end with a question (`BUTLER-ASK`) or a one-line outcome (`BUTLER-SUMMARY`); an
   answer resumes the same agent session.
 

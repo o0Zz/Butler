@@ -73,6 +73,9 @@ sealed class TrayApp
     public Runner Runner => Program.NewRunner(settings);
     public string? LastError { get; private set; }
     public Release? NewVersion { get; private set; } // a newer release on GitHub
+    public BackupFile? LastBackup { get; private set; } // in the backup folder of the settings
+    public string? BackupError { get; private set; }
+    readonly object backupLock = new();
 
     // Re-reads the settings and the triggers file.
     public void Reload()
@@ -82,6 +85,8 @@ sealed class TrayApp
             settings = Settings.Load(Program.SettingsFile);
             Lang.Use(settings.Language);
             WriteSkill();
+            try { LastBackup = Backup.Last(settings); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { LastBackup = null; }
             icon.Menu = Menu();
             if (triggersWatcher == null || Path.Combine(triggersWatcher.Path, triggersWatcher.Filter) != settings.TriggersFile)
             {
@@ -141,7 +146,33 @@ sealed class TrayApp
                 due[kind.Name] = DateTime.Now + kind.Interval;
                 Poll(kind);
             }
+            if (due.GetValueOrDefault("backup") <= DateTime.Now)
+            {
+                due["backup"] = DateTime.Now.AddHours(1);
+                BackUp(force: false);
+            }
             Thread.Sleep(5_000);
+        }
+    }
+
+    // A zip of the configuration (Backup): when due, from the poll thread, or now (force) from the Settings page.
+    // Its error is shown on the Settings page, notified once.
+    public void BackUp(bool force)
+    {
+        lock (backupLock)
+        {
+            var s = settings;
+            try
+            {
+                if (!force && !Backup.Due(s, Program.SettingsFile, DateTime.Now)) return;
+                LastBackup = Backup.Write(s, Program.SettingsFile, DateTime.Now) ?? LastBackup;
+                BackupError = null;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                if (BackupError == null) Platform.Notifications.Error(T("Butler: backup failed"), e.Message);
+                BackupError = e.Message;
+            }
         }
     }
 
