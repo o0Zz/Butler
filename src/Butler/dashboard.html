@@ -132,6 +132,12 @@
   .settings .card { gap: 14px; }
   .models { border-collapse: collapse; } .models th { text-align: left; font-weight: 600; padding: 0 8px 4px 0; } .models td { padding: 3px 8px 3px 0; }
   .settings h3 { margin: 0; font-size: 15px; }
+  .settings .card[hidden] { display: none; }
+  .stabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .stabs button { border: none; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 6px 14px; color: var(--muted); margin-bottom: -1px; }
+  .stabs button:hover { color: var(--text); background: none; }
+  .stabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  .stabs button.bad::after { content: " •"; color: var(--err); }
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field label { font-weight: 600; }
   .field .hint { color: var(--muted); font-size: 12.5px; }
@@ -979,7 +985,8 @@ function renderSettings() {
   if ($('s-cli')) return checkSettings();
   const s = state.settings;
   $('content').innerHTML = `<div class="settings">
-    <div class="card">
+    <div class="stabs">${settingsTabs().map(([t, l]) => `<button data-tab="${t}" onclick="settingsTab('${t}')">${l}</button>`).join('')}</div>
+    <div class="card" data-tab="general">
       <h3>${tr('Updates')}</h3>
       <div class="field">
         <div class="hint">${esc(tr('Installed: {0}. Butler also looks for a new version on GitHub once a day.', state.version))}</div>
@@ -987,7 +994,7 @@ function renderSettings() {
         <div id="u-result"></div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" data-tab="agent">
       <h3>${tr('Agent')}</h3>
       <div class="field">
         <label for="s-cli">${tr('CLI that runs the triggers')}</label>
@@ -998,7 +1005,7 @@ function renderSettings() {
         <div class="err" id="e-cli"></div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" data-tab="agent">
       <h3>${tr('Models')}</h3>
       <div class="hint">${tr('A trigger picks a level; here each level is a model of each CLI (sonnet, opus, a full model id…). Empty: the CLI’s default.')}</div>
       <table class="models"><tr><th></th>${Object.keys(cliNames).map(c => `<th>${esc(cliNames[c])}</th>`).join('')}</tr>
@@ -1007,13 +1014,13 @@ function renderSettings() {
       </table>
       <div class="err" id="e-models"></div>
     </div>
-    <div class="card">
+    <div class="card" data-tab="triggers">
       <h3>${tr('Triggers and skills')}</h3>
       ${pathField('triggersFile', tr('Triggers file'), tr('The list of triggers (JSON). Keep it next to the skills it calls, in their git repo.'), s.triggersFile, undefined, undefined,
         `<button onclick="send('revealTriggers')" title="${tr('Open the folder of the triggers file')}">${icon('open')}${tr('Open folder')}</button>`)}
       ${pathField('skillsFolder', tr('Skills folder'), tr('Listed on the Skills page; “Ask AI” opens there.'), s.skillsFolder)}
     </div>
-    <div class="card">
+    <div class="card" data-tab="triggers">
       <h3>Azure DevOps</h3>
       <div class="field">
         <label for="s-adoOrganization">${tr('Organization')}</label>
@@ -1022,7 +1029,7 @@ function renderSettings() {
         <div class="err" id="e-adoOrganization"></div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" data-tab="todo">
       <h3>${tr('To do')}</h3>
       <div class="field">
         <label for="s-todo">${tr('List shown on the To do page')}</label>
@@ -1041,7 +1048,7 @@ function renderSettings() {
         <div class="err" id="e-todoistToken"></div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" data-tab="backup">
       <h3>${tr('Backup')}</h3>
       ${pathField('backupFolder', tr('Backup folder'), tr('Once a day, when something changed: a zip of the skills folder (with the triggers file) and of these settings, not the secrets. The last 30 are kept. A folder synced to the cloud (Google Drive, OneDrive) keeps it off this PC. Empty: no backup.'),
         s.backupFolder, 'folder', undefined, `<button onclick="send('revealBackup')" title="${tr('Open the backup folder')}">${icon('open')}${tr('Open folder')}</button>`)}
@@ -1050,7 +1057,7 @@ function renderSettings() {
         <div id="b-result">${backupStatus(s.lastBackup, s.backupError)}</div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" data-tab="general">
       <h3>${tr('Display')}</h3>
       <div class="field">
         <label for="s-language">${tr('Language')}</label>
@@ -1060,7 +1067,7 @@ function renderSettings() {
         <div class="err" id="e-language"></div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" data-tab="general">
       <h3>${tr('Startup')}</h3>
       <div class="field">
         <label for="s-startPage">${tr('Start page')}</label>
@@ -1082,8 +1089,17 @@ function renderSettings() {
       <span class="muted mono file" title="${tr("Butler's settings, local to this PC")}">${esc(s.file)}</span>
     </div>
   </div>`;
+  settingsTab(openTab);
   checkSettings();
   if (state.newVersion) updateChecked(state.newVersion, null);
+}
+
+// The Settings page shows one group of cards at a time; Save and Revert apply to all of them.
+const settingsTabs = () => [['general', tr('General')], ['agent', tr('Agent')], ['triggers', tr('Triggers')], ['todo', tr('To do')], ['backup', tr('Backup')]];
+let openTab = 'general';
+function settingsTab(tab) {
+  openTab = tab;
+  document.querySelectorAll('.settings [data-tab]').forEach(el => el.tagName === 'BUTTON' ? el.classList.toggle('on', el.dataset.tab === tab) : el.hidden = el.dataset.tab !== tab);
 }
 
 function checkUpdate() {
@@ -1169,6 +1185,10 @@ function settingsSaved(problems) {
   for (const k of Object.keys(settingsDraft())) $('e-' + k).textContent = problems[k] || '';
   $('s-msg').textContent = Object.keys(problems).length ? tr('Not saved.') : tr('Saved.');
   if (!Object.keys(problems).length) $('b-now').disabled = !settingsDraft().backupFolder; // backs up with the saved settings
+  // A tab with a refused field is marked, and shown when the open one has none.
+  const bad = new Set(Object.keys(problems).map(k => $('e-' + k)?.closest('.card')?.dataset.tab).filter(Boolean));
+  document.querySelectorAll('.stabs button').forEach(b => b.classList.toggle('bad', bad.has(b.dataset.tab)));
+  if (bad.size && !bad.has(openTab)) settingsTab(settingsTabs().find(([t]) => bad.has(t))[0]);
   if (!Object.keys(problems).length && $('s-todoistToken').value) {
     $('s-todoistToken').value = '';
     $('s-todoistToken').placeholder = tr('Saved. Paste a new one to replace it');
