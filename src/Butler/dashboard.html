@@ -61,7 +61,11 @@
   header { padding: 18px 24px 12px; display: flex; align-items: center; gap: 10px; }
   header h2 { margin: 0; font-size: 20px; flex: 1; }
   #hdr { display: flex; gap: 8px; align-items: center; }
-  #search { width: 220px; }
+  header { position: relative; }
+  .search { position: absolute; left: 50%; transform: translateX(-50%); width: min(460px, 38%); display: flex; align-items: center; }
+  .search svg { position: absolute; left: 12px; width: 17px; height: 17px; color: var(--muted); pointer-events: none; }
+  .search input { width: 100%; padding: 9px 14px 9px 38px; font-size: 14.5px; border-radius: 10px; }
+  @media (max-width: 1150px) { .search { position: relative; left: auto; transform: none; width: 240px; } } /* narrow: next to the buttons */
   .banner { margin: 0 24px 12px; padding: 10px 14px; border-radius: 8px; background: var(--err-bg); color: var(--err); display: flex; gap: 8px; align-items: center; }
   .content { flex: 1; min-height: 0; padding: 0 24px 24px; overflow: auto; }
   .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 10px; white-space: nowrap; }
@@ -348,8 +352,8 @@ function draw() {
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === view));
   $('title').textContent = { runs: tr('Runs'), todo: tr('To do'), triggers: tr('Triggers'), skills: tr('Skills'), settings: tr('Settings') }[view];
   const caret = document.activeElement?.id === 'search' ? $('search').selectionStart : null; // a push while typing keeps the box
-  const searchBox = `<input id="search" type="search" placeholder="${tr('Search…')}" value="${esc(search[view] ?? '')}"
-    oninput="search[view]=this.value;render()" onkeydown="if(event.key==='Escape'&&this.value){event.stopPropagation();search[view]='';render()}">`;
+  const searchBox = `<label class="search">${icon('search')}<input id="search" type="search" placeholder="${tr('Search…')}" value="${esc(search[view] ?? '')}"
+    oninput="search[view]=this.value;render()" onkeydown="if(event.key==='Escape'&&this.value){event.stopPropagation();search[view]='';render()}"></label>`;
   $('hdr').innerHTML = view === 'runs' ? stats() + (state.runs.length ? `<button class="danger" onclick="if(confirm(${js(tr('Delete every run? Runs still running or waiting for an answer are kept. Their history and costs are lost.'))}))send('clearRuns')">${icon('trash')}${tr('Clear')}</button>` : '')
     : view === 'todo' ? (state.todo ? `<span class="muted" style="font-size:12.5px">${esc(state.todo.label || '')}${state.todo.read ? ' · ' + esc(tr('updated {0}', ago(state.todo.read))) : ''}</span>
         <button onclick="send('todoRefresh')" title="${tr('Read the list again (F5)')}">${icon('sync')}${tr('Refresh')}</button>
