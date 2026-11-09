@@ -61,6 +61,7 @@
   header { padding: 18px 24px 12px; display: flex; align-items: center; gap: 10px; }
   header h2 { margin: 0; font-size: 20px; flex: 1; }
   #hdr { display: flex; gap: 8px; align-items: center; }
+  #search { width: 220px; }
   .banner { margin: 0 24px 12px; padding: 10px 14px; border-radius: 8px; background: var(--err-bg); color: var(--err); display: flex; gap: 8px; align-items: center; }
   .content { flex: 1; min-height: 0; padding: 0 24px 24px; overflow: auto; }
   .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 10px; white-space: nowrap; }
@@ -258,6 +259,7 @@ const md = new marked.Marked({ gfm: true, breaks: true, renderer: {
 const markdown = s => md.parse(s.replace(/^`?BUTLER-(ASK|SUMMARY):.*$/gm, '').trim());
 let state = { triggers: [], runs: [], skills: [], kinds: [], sources: [] }, view = 'runs', selected = null, draft = '';
 let watched = null, drawnRun = null, resultScroll = 0, actsOpen = false;
+let search = { triggers: '', skills: '' }; // what is typed in the search box of each page
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const send = (cmd, args = {}) => invokeCSharpAction(JSON.stringify({ cmd, ...args })); // the web view's bridge to C#
@@ -286,6 +288,7 @@ const IC = {
   sparkles: '<path d="M11 3l1.9 5.1L18 10l-5.1 1.9L11 17l-1.9-5.1L4 10l5.1-1.9z"/><path d="M18 14l.9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9z"/>',
   log: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   alert: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/>',
@@ -344,15 +347,24 @@ function draw() {
   drawSources();
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === view));
   $('title').textContent = { runs: tr('Runs'), todo: tr('To do'), triggers: tr('Triggers'), skills: tr('Skills'), settings: tr('Settings') }[view];
+  const caret = document.activeElement?.id === 'search' ? $('search').selectionStart : null; // a push while typing keeps the box
+  const searchBox = `<input id="search" type="search" placeholder="${tr('Search…')}" value="${esc(search[view] ?? '')}"
+    oninput="search[view]=this.value;render()" onkeydown="if(event.key==='Escape'&&this.value){event.stopPropagation();search[view]='';render()}">`;
   $('hdr').innerHTML = view === 'runs' ? stats() + (state.runs.length ? `<button class="danger" onclick="if(confirm(${js(tr('Delete every run? Runs still running or waiting for an answer are kept. Their history and costs are lost.'))}))send('clearRuns')">${icon('trash')}${tr('Clear')}</button>` : '')
     : view === 'todo' ? (state.todo ? `<span class="muted" style="font-size:12.5px">${esc(state.todo.label || '')}${state.todo.read ? ' · ' + esc(tr('updated {0}', ago(state.todo.read))) : ''}</span>
         <button onclick="send('todoRefresh')" title="${tr('Read the list again (F5)')}">${icon('sync')}${tr('Refresh')}</button>
         <button onclick="send('todoOpen')" title="${state.todo.backend === 'todoist' ? tr('Open Todoist in the browser') : tr('Show the todo.txt file in its folder')}">${icon('open')}${state.todo.backend === 'todoist' ? 'Todoist' : tr('Folder')}</button>` : '')
-    : view === 'skills' ? `<button onclick="send('openSkills')">${icon('folder')}${tr('Open folder')}</button>`
-    : view === 'triggers' ? `<button onclick="send('chat')" title="${esc(tr('Opens {0} in a terminal, in your skills folder: describe what you want, it edits the triggers and skills', cap(state.cli)))}">${icon('sparkles')}${tr('Ask AI')}</button>
+    : view === 'skills' ? `${searchBox}<button onclick="send('openSkills')">${icon('folder')}${tr('Open folder')}</button>`
+    : view === 'triggers' ? `${searchBox}<button onclick="send('chat')" title="${esc(tr('Opens {0} in a terminal, in your skills folder: describe what you want, it edits the triggers and skills', cap(state.cli)))}">${icon('sparkles')}${tr('Ask AI')}</button>
         <button class="primary" onclick="openEditor()">${icon('plus')}${tr('New trigger')}</button>` : '';
+  if (caret != null && $('search')) { $('search').focus(); $('search').setSelectionRange(caret, caret); }
   ({ runs: renderRuns, todo: renderTodo, triggers: renderTriggers, skills: renderSkills, settings: renderSettings })[view]();
 }
+
+// Whether one of the texts contains what is typed in the page's search box (case and accents ignored).
+const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const found = (...texts) => texts.some(t => fold(t).includes(fold(search[view]).trim()));
+const noMatch = () => `<div class="empty">${icon('search')}${tr('Nothing matches “{0}”.', search[view].trim())}</div>`;
 
 function stats() {
   const st = state.stats || {};
@@ -441,7 +453,9 @@ function renderTriggers() {
   const kind = on => state.kinds.find(k => k.name === on) || { label: on, form: [] };
   const fieldRows = t => kind(t.on).form.filter(f => f.type !== 'schedule' && t.values[f.name]).map(f => `<span>${esc(f.label)}</span><span>${f.type === 'list'
     ? t.values[f.name].split('\n').map(v => `<span class="chip">${esc(v)}</span>`).join('') : `<span class="mono">${esc(t.values[f.name])}</span>`}</span>`).join('');
-  $('content').innerHTML = `<div class="grid">${state.triggers.map(t => `
+  const shown = state.triggers.filter(t => found(t.name, kind(t.on).label, t.skill, t.prompt, t.command, ...Object.values(t.values)));
+  if (!shown.length) { $('content').innerHTML = noMatch(); return; }
+  $('content').innerHTML = `<div class="grid">${shown.map(t => `
     <div class="card">
       <div class="title">${kindBadge(t.on)}<b>${esc(t.name)}</b><span class="pill none">${esc(kind(t.on).label)}</span>
         <button class="icon" title="${tr('Edit')}" onclick="openEditor('${esc(t.name)}')">${icon('edit')}</button></div>
@@ -462,7 +476,9 @@ function renderTriggers() {
 
 function renderSkills() {
   if (!state.skills.length) { $('content').innerHTML = `<div class="empty">${icon('skills')}${tr('No skills found.')}</div>`; return; }
-  $('content').innerHTML = `<div class="grid">${state.skills.map(s => `
+  const shown = state.skills.filter(s => found(s.name, s.description, ...s.triggers));
+  if (!shown.length) { $('content').innerHTML = noMatch(); return; }
+  $('content').innerHTML = `<div class="grid">${shown.map(s => `
     <div class="card">
       <div class="title"><span class="badge-kind" style="color:var(--accent)">${icon('skills')}</span><b>/${esc(s.name)}</b></div>
       <div class="desc" title="${esc(s.description)}">${esc(s.description)}</div>
@@ -978,6 +994,13 @@ function triggerSaved(error) {
 addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (editing) closeEditor(); if (todoForm) closeTask(); }
   if (e.key === 'F5' && view === 'todo' && state.todo) { e.preventDefault(); send('todoRefresh'); } // as the Refresh button, not a page reload
+  // Typing on the Triggers or Skills page goes to its search box (Ctrl+F too).
+  const box = $('search');
+  if (box && !editing && document.activeElement !== box && !e.target.closest?.('input, textarea, select, button')
+    && (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey || e.ctrlKey && e.key === 'f')) {
+    if (e.key === 'f' && e.ctrlKey) e.preventDefault();
+    box.focus();
+  }
 });
 
 // Drawn once per visit: the state is pushed every few seconds while a run is live, and must not reset what is being typed.

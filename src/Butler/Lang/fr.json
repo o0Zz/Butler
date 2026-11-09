@@ -79,6 +79,8 @@
   "Run now": "Lancer",
 
   "No skills found.": "Aucun skill trouvé.",
+  "Search…": "Rechercher…",
+  "Nothing matches “{0}”.": "Rien ne correspond à « {0} ».",
   "Triggered by": "Déclenché par",
   "No trigger": "Aucun déclencheur",
   "Open": "Ouvrir",
