@@ -699,7 +699,7 @@ function insertBlur() {
     todoLast = { kind: 'add' };
     toast(tr('Adding…'));
     send('todoInsert', { text, projectId: at.projectId, sectionId: at.sectionId || '', index: at.index });
-  }
+  } else addEventListener('mouseup', () => setTimeout(render), { once: true }); // nothing added, no push: redraw once the click landed
   input.closest('.task').outerHTML = `<div class="task gone" style="${text ? '' : 'visibility:hidden'}"><span class="check"></span>
     <div class="what"><div class="text">${esc(text || '-')}</div></div></div>`;
 }
