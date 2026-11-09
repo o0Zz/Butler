@@ -462,7 +462,8 @@ function renderTriggers() {
   $('content').innerHTML = `<div class="grid">${shown.map(t => `
     <div class="card">
       <div class="title">${kindBadge(t.on)}<b>${esc(t.name)}</b><span class="pill none">${esc(kind(t.on).label)}</span>
-        <button class="icon" title="${tr('Edit')}" onclick="openEditor('${esc(t.name)}')">${icon('edit')}</button></div>
+        <button class="icon" title="${tr('Edit')}" onclick="openEditor('${esc(t.name)}')">${icon('edit')}</button>
+        <button class="icon" title="${tr('Delete')}" onclick="deleteCard('${esc(t.name)}')">${icon('trash')}</button></div>
       <div class="kv">
         <span>${tr('When')}</span><span>${esc(t.when)}</span>
         ${fieldRows(t)}
@@ -484,7 +485,8 @@ function renderSkills() {
   if (!shown.length) { $('content').innerHTML = noMatch(); return; }
   $('content').innerHTML = `<div class="grid">${shown.map(s => `
     <div class="card">
-      <div class="title"><span class="badge-kind" style="color:var(--accent)">${icon('skills')}</span><b>/${esc(s.name)}</b></div>
+      <div class="title"><span class="badge-kind" style="color:var(--accent)">${icon('skills')}</span><b>/${esc(s.name)}</b>
+        <button class="icon" title="${tr('Move to the trash')}" onclick="deleteSkill('${esc(s.folder)}')">${icon('trash')}</button></div>
       <div class="desc" title="${esc(s.description)}">${esc(s.description)}</div>
       <div class="foot">
         <span class="info">${s.triggers.length ? tr('Triggered by') + ' ' + s.triggers.map(n => `<span class="chip">${esc(n)}</span>`).join('') : tr('No trigger')}</span>
@@ -984,13 +986,30 @@ function saveTrigger() {
   send('saveTrigger', { original: editing.original || '', name: editing.name, on: editing.on, prompt: editing.prompt, command: editing.command, model: editing.model, values });
 }
 
+// From a card: the same as the editor's Delete.
+function deleteCard(name) {
+  if (confirm(tr('Delete the trigger “{0}”?', name))) send('deleteTrigger', { name });
+}
+
+// The skill's folder goes to the OS's trash; the triggers calling it stay, shown with an unknown skill.
+function deleteSkill(folder) {
+  const s = state.skills.find(x => x.folder === folder);
+  const users = s.triggers.length ? '\n\n' + tr('These triggers call it and will fail until you change them: {0}', s.triggers.join(', ')) : '';
+  if (confirm(tr('Move the skill “{0}” (its whole folder) to the trash?', s.name) + users)) send('deleteSkill', { folder });
+}
+
+// Called by C# after deleteSkill: the error, or null.
+function skillDeleted(error) {
+  if (error) toast(error, null, 'err');
+}
+
 function deleteTrigger() {
   if (confirm(tr('Delete the trigger “{0}”?', editing.original))) send('deleteTrigger', { name: editing.original });
 }
 
 // Called by C# after a save or a delete: the error, or null when the triggers file was written.
 function triggerSaved(error) {
-  if (!editing) return;
+  if (!editing) { if (error) toast(error, null, 'err'); return; } // a delete from a card
   if (error) $('t-error').innerHTML = `<div class="error-box">${esc(error)}</div>`;
   else closeEditor();
 }

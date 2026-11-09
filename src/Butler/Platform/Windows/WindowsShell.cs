@@ -12,6 +12,9 @@ public sealed class WindowsShell : IShell
 
     public void Reveal(string file) => Process.Start("explorer.exe", $"/select,\"{file}\"");
 
+    public void Trash(string folder) => Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(folder,
+        Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+
     public void Terminal(string folder, string exe, IEnumerable<string> args)
     {
         var psi = new ProcessStartInfo("wt.exe") { ArgumentList = { "-d", folder, exe } };

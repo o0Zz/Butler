@@ -299,6 +299,9 @@ sealed class DashboardWindow : Window
             case "deleteTrigger":
                 Call("triggerSaved", EditTriggers(list => list.RemoveAll(x => x.Name.Equals(Arg("name"), StringComparison.OrdinalIgnoreCase))));
                 break;
+            case "deleteSkill":
+                Call("skillDeleted", DeleteSkill(Arg("folder")));
+                break;
         }
         Push();
     }
@@ -343,6 +346,16 @@ sealed class DashboardWindow : Window
             return null;
         }
         catch (Exception e) when (e is FormatException or IOException or JsonException) { return e.Message; }
+    }
+
+    // Moves a skill's folder to the OS's trash (the user can restore it; the skills repo has it too). Returns the error, or null.
+    // The triggers calling it are left as they are: their cards show the skill as unknown.
+    string? DeleteSkill(string folder)
+    {
+        if (Skills.FolderOf(tray.Settings.SkillsFolder, folder) is not { } path) return T("This skill is no longer in your skills folder");
+        try { platform.Shell.Trash(path); return null; }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or OperationCanceledException or InvalidOperationException
+            or System.ComponentModel.Win32Exception) { return T("Could not move {0} to the trash: {1}", path, e.Message); }
     }
 
     // Picks a file or folder for a path field and gives it to the page (nothing when cancelled).

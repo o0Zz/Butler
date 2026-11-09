@@ -21,6 +21,10 @@ public static class Skills
         return [.. skills.OrderBy(s => s.Name)];
     }
 
+    // The folder of the skill named by its folder name: only one of `dir`'s skills (no "..", no path), else null.
+    public static string? FolderOf(string dir, string folder) =>
+        Load(dir).Any(s => s.Folder == folder) ? Path.Combine(dir, folder) : null;
+
     // "/triage-mail do X" -> "triage-mail"; null when the prompt does not start with a slash command.
     public static string? Invoked(string prompt) =>
         Regex.Match(prompt, @"^/([\w:-]+)") is { Success: true } m ? m.Groups[1].Value : null;

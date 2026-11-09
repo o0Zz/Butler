@@ -64,6 +64,7 @@ sealed class LinuxShell : IShell
     public string ReleaseSuffix => "-linux-x64";
     public void OpenFolder(string folder) => Command.Start("xdg-open", [folder]);
     public void Reveal(string file) => OpenFolder(Path.GetDirectoryName(file)!); // no standard way to select it
+    public void Trash(string folder) => Command.Check("gio", ["trash", folder]);
 
     public void Terminal(string folder, string exe, IEnumerable<string> args) =>
         Command.Start("x-terminal-emulator", ["-e", "sh", "-c", Command.ShellLine(folder, exe, args)]);

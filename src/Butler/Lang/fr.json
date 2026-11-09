@@ -80,6 +80,11 @@
 
   "No skills found.": "Aucun skill trouvé.",
   "Search…": "Rechercher…",
+  "Move to the trash": "Mettre à la corbeille",
+  "These triggers call it and will fail until you change them: {0}": "Ces déclencheurs l’appellent et échoueront tant que vous ne les aurez pas modifiés : {0}",
+  "Move the skill “{0}” (its whole folder) to the trash?": "Mettre le skill « {0} » (tout son dossier) à la corbeille ?",
+  "This skill is no longer in your skills folder": "Ce skill n’est plus dans votre dossier de skills",
+  "Could not move {0} to the trash: {1}": "Impossible de mettre {0} à la corbeille : {1}",
   "Nothing matches “{0}”.": "Rien ne correspond à « {0} ».",
   "Triggered by": "Déclenché par",
   "No trigger": "Aucun déclencheur",

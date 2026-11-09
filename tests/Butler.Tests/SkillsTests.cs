@@ -26,4 +26,22 @@ public class SkillsTests
     [InlineData("/anthropic-skills:docx make it", "anthropic-skills:docx")]
     [InlineData("Check my mails", null)]
     public void Finds_the_invoked_skill(string prompt, string? skill) => Assert.Equal(skill, Skills.Invoked(prompt));
+
+    // The page names the skill to delete by its folder: only one of the skills folder's skills may come out of it.
+    [Fact]
+    public void Only_a_skill_folder_of_the_skills_folder_can_be_named()
+    {
+        var dir = Directory.CreateTempSubdirectory("skills-").FullName;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(dir, "brief"));
+            File.WriteAllText(Path.Combine(dir, "brief", "SKILL.md"), "---\nname: brief\n---\n");
+            Directory.CreateDirectory(Path.Combine(dir, "notes")); // no SKILL.md: not a skill
+
+            Assert.Equal(Path.Combine(dir, "brief"), Skills.FolderOf(dir, "brief"));
+            foreach (var bad in new[] { "notes", "", ".", "..", "../brief", "brief/..", dir, Path.Combine(dir, "brief"), "missing" })
+                Assert.Null(Skills.FolderOf(dir, bad));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 }

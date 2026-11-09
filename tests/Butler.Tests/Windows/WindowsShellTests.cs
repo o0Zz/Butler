@@ -35,4 +35,18 @@ public class WindowsShellTests
         }
         finally { Directory.Delete(home, true); }
     }
+
+    // A deleted skill goes to the real Recycle Bin, with its subfolders.
+    [Fact]
+    public void Trash_moves_a_folder_to_the_recycle_bin()
+    {
+        var folder = Directory.CreateTempSubdirectory("butler-trash-").FullName;
+        Directory.CreateDirectory(Path.Combine(folder, "scripts"));
+        File.WriteAllText(Path.Combine(folder, "SKILL.md"), "x");
+        File.WriteAllText(Path.Combine(folder, "scripts", "a.py"), "x");
+
+        new WindowsShell().Trash(folder);
+
+        Assert.False(Directory.Exists(folder));
+    }
 }

@@ -55,6 +55,8 @@ sealed class MacShell : IShell
     public string ReleaseSuffix => "-osx-arm64";
     public void OpenFolder(string folder) => Command.Start("open", [folder]);
     public void Reveal(string file) => Command.Start("open", ["-R", file]);
+    public void Trash(string folder) =>
+        Command.Check("osascript", ["-e", "on run argv\ntell application \"Finder\" to delete (POSIX file (item 1 of argv))\nend run", folder]);
 
     public void Terminal(string folder, string exe, IEnumerable<string> args) =>
         Command.Start("osascript", ["-e", "on run argv\ntell application \"Terminal\" to do script (item 1 of argv)\nend run", Command.ShellLine(folder, exe, args)]);

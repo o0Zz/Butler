@@ -50,6 +50,7 @@ public interface IShell
     string ReleaseSuffix { get; }       // the end of this OS's file in a GitHub release: .exe, -linux-x64, -osx-arm64
     void OpenFolder(string folder);
     void Reveal(string file);           // its folder, with the file selected where the OS can
+    void Trash(string folder);          // to the Recycle Bin / Trash, where the user can restore it; throws when it cannot
     void Terminal(string folder, string exe, IEnumerable<string> args); // an interactive program in a terminal window
     ProcessStartInfo Az();              // the az CLI, to add its arguments to
     ProcessStartInfo CommandLine(string line); // a command line run by the OS's shell: cmd on Windows, sh elsewhere

@@ -22,4 +22,25 @@ public class ShellTests
         }
         finally { Directory.Delete(home, true); }
     }
+
+    // A deleted skill goes to the real Trash (gio on Linux, Finder on macOS), with its subfolders.
+    [SkippableFact]
+    public void Trash_moves_a_folder_to_the_trash()
+    {
+        Skip.If(OperatingSystem.IsMacOS() && Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true", "Finder needs a signed-in user");
+        Skip.If(OperatingSystem.IsLinux() && Command.Run("sh", ["-c", "command -v gio"]).Exit != 0, "gio is not installed");
+        var folder = Directory.CreateTempSubdirectory("butler-trash-").FullName;
+        Directory.CreateDirectory(Path.Combine(folder, "scripts"));
+        File.WriteAllText(Path.Combine(folder, "scripts", "a.py"), "x");
+        try
+        {
+            Platform.Current.Shell.Trash(folder);
+            Assert.False(Directory.Exists(folder));
+        }
+        catch (InvalidOperationException e) when (OperatingSystem.IsLinux())
+        {
+            Directory.Delete(folder, true);
+            Skip.If(true, $"No trash here: {e.Message}"); // a CI runner's /tmp may have no trash
+        }
+    }
 }
