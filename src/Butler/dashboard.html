@@ -490,6 +490,7 @@ function renderSkills() {
       <div class="desc" title="${esc(s.description)}">${esc(s.description)}</div>
       <div class="foot">
         <span class="info">${s.triggers.length ? tr('Triggered by') + ' ' + s.triggers.map(n => `<span class="chip">${esc(n)}</span>`).join('') : tr('No trigger')}</span>
+        <button class="primary" onclick="send('runSkill',{folder:'${esc(s.folder)}'})" title="${tr('Runs the skill in a terminal, which stays open')}">${icon('play')}${tr('Run')}</button>
         <button onclick="send('openSkill',{folder:'${esc(s.folder)}'})" title="${tr('Opens the skill’s folder, its SKILL.md selected')}">${icon('folder')}${tr('Open folder')}</button>
       </div>
     </div>`).join('')}</div>`;

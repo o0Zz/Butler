@@ -213,6 +213,10 @@ sealed class DashboardWindow : Window
             case "openLog": Open(Path.Combine(runner.RunsDir, Arg("id") + ".log")); break;
             // Edits the triggers and skills; the file watcher then syncs and refreshes this page.
             case "chat": platform.Shell.Terminal(tray.Settings.SkillsFolder, runner.Cli.Exe, runner.Cli.TerminalArguments(null)); break;
+            case "runSkill": // an interactive session starting with the skill, from the user folder as runs
+                if (Skills.Load(tray.Settings.SkillsFolder).FirstOrDefault(s => s.Folder == Arg("folder")) is { } skill)
+                    platform.Shell.Terminal(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), runner.Cli.Exe, runner.Cli.TerminalArguments(null, "/" + skill.Name));
+                break;
             case "terminal":
                 var cli = Cli.FromName(Arg("cli"));
                 platform.Shell.Terminal(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), cli.Exe, cli.TerminalArguments(Arg("session")));

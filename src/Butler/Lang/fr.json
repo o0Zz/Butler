@@ -77,6 +77,8 @@
   "Never run": "Jamais exécuté",
   "{0} / 30 d": "{0} / 30 j",
   "Run now": "Lancer",
+  "Run": "Lancer",
+  "Runs the skill in a terminal, which stays open": "Lance le skill dans un terminal, qui reste ouvert",
 
   "No skills found.": "Aucun skill trouvé.",
   "Search…": "Rechercher…",

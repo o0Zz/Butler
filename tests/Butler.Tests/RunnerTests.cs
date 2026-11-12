@@ -239,6 +239,9 @@ public class RunnerTests : IDisposable
         Assert.Equal(cli.RunArguments("yes", "PROTOCOL", "s1", resume: false, null), cli.RunArguments("yes", "PROTOCOL", "s1", resume: true, null));
         Assert.Equal(["--model", "gpt-5"], cli.RunArguments("/x", "PROTOCOL", "s1", resume: false, model: "gpt-5").TakeLast(2));
         Assert.Equal(["--resume=s1"], cli.TerminalArguments("s1"));
+        Assert.Equal(["-i", "/brief"], cli.TerminalArguments(null, "/brief")); // interactive, the skill run first
+        Assert.Equal(["--resume", "s1"], new ClaudeCli().TerminalArguments("s1"));
+        Assert.Equal(["/brief"], new ClaudeCli().TerminalArguments(null, "/brief"));
     }
 
     [Fact]

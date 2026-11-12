@@ -47,8 +47,8 @@ public abstract class Cli(string name, string exe)
     // Whether QuickArguments(null, ...) works: one process answering prompt after prompt.
     public virtual bool CanStayRunning => false;
 
-    // An interactive session in a terminal, resuming that session when given.
-    public abstract IEnumerable<string> TerminalArguments(string? sessionId);
+    // An interactive session in a terminal, resuming that session when given, or starting with that prompt.
+    public abstract IEnumerable<string> TerminalArguments(string? sessionId, string? prompt = null);
 
     // The events of one output line; nothing for lines that do not matter. Throws on shapes it does not know.
     public abstract IEnumerable<CliEvent> Read(JsonElement line);
@@ -71,7 +71,8 @@ public sealed class ClaudeCli(string exe = "claude") : Cli("claude", exe)
          .. mine ? new[] { "--append-system-prompt", protocol } : ["--system-prompt", protocol, "--setting-sources", "project"],
          .. ModelArguments(model)];
 
-    public override IEnumerable<string> TerminalArguments(string? sessionId) => sessionId == null ? [] : ["--resume", sessionId];
+    public override IEnumerable<string> TerminalArguments(string? sessionId, string? prompt = null) =>
+        [.. sessionId == null ? [] : new[] { "--resume", sessionId }, .. prompt == null ? [] : new[] { prompt }];
 
     public override IEnumerable<CliEvent> Read(JsonElement line)
     {
@@ -107,7 +108,8 @@ public sealed class CopilotCli(string exe = "copilot") : Cli("copilot", exe)
     public override IEnumerable<string> QuickArguments(string? prompt, string protocol, string? model, bool mine) =>
         ["-p", prompt + "\n\n" + protocol, "--output-format", "json", "--no-ask-user", .. ModelArguments(model)];
 
-    public override IEnumerable<string> TerminalArguments(string? sessionId) => sessionId == null ? [] : ["--resume=" + sessionId];
+    public override IEnumerable<string> TerminalArguments(string? sessionId, string? prompt = null) =>
+        [.. sessionId == null ? [] : new[] { "--resume=" + sessionId }, .. prompt == null ? [] : new[] { "-i", prompt }];
 
     public override IEnumerable<CliEvent> Read(JsonElement line)
     {

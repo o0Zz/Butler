@@ -68,7 +68,8 @@ first use, so an answer takes about a second. Windows only.
 ### Triggers you can read at a glance
 
 One card per trigger: when it fires, what it calls, its next run, its last ten results and what it cost over 30
-days. **Run now** tries it immediately; type anywhere on the page to search the triggers (or the skills). The
+days. **Run now** tries it immediately; type anywhere on the page to search the triggers (or the skills). On the Skills
+page, **Run** opens your agent in a terminal with the skill started, and leaves it open for you to follow up. The
 **Watching** panel tells you when a source is down (Outlook closed, a folder gone) instead of failing in silence.
 
 <div align="center">
