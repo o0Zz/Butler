@@ -277,7 +277,18 @@ sealed class TrayApp
         icon.Icon = problem != null ? AppIcon.TrayError : waiting > 0 ? AppIcon.TrayWaiting(waiting) : AppIcon.Tray;
         var text = problem ?? (waiting > 0 ? T("Butler: {0} waiting for you", waiting) : "Butler");
         icon.ToolTipText = text.Length > 63 ? text[..63] : text; // Windows' tray tooltip limit
+        Badge(problem != null ? "" : waiting > 0 ? AppIcon.Count(waiting) : null);
         dashboard?.RefreshRuns();
+    }
+
+    // The tray's dot or count on the dashboard's taskbar button, set again for a new window (its button is new).
+    (DashboardWindow?, string?) badge;
+
+    void Badge(string? label)
+    {
+        if (dashboard?.TryGetPlatformHandle()?.Handle is not { } window || badge == (dashboard, label)) return;
+        badge = (dashboard, label);
+        Platform.Shell.Badge(window, label);
     }
 
     void ShowDashboard()

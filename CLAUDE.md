@@ -51,7 +51,7 @@ Single user, single machine: triggers live in the user's skills folder and call 
 - Notifications (`INotifications`): Windows toasts with buttons (`ToastNotifications.OnToast` starts `Butler answer` or opens the dashboard); macOS (osascript), Linux (notify-send) without buttons.
 
 ## Platform
-- `Platform/`: one implementation per OS of notifications, secrets, start at login, shell (open, reveal, trash, terminal, exe name, release suffix, `az`), mailbox, hotkeys. `Platform/Windows` builds for the Windows target, `Platform/Unix` for `net9.0`. `Program` builds it once (`Platform.Current`) and injects it.
+- `Platform/`: one implementation per OS of notifications, secrets, start at login, shell (open, reveal, trash, taskbar badge: the tray's dot or count on the dashboard's taskbar button or the Dock icon, none on Linux; terminal, exe name, release suffix, `az`), mailbox, hotkeys. `Platform/Windows` builds for the Windows target, `Platform/Unix` for `net9.0`. `Program` builds it once (`Platform.Current`) and injects it.
 - A second start reaches the running tray through a named pipe (`ShowSignal`).
 
 ## Languages

@@ -15,7 +15,7 @@ public class AppIconTests
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 
-    static T OnUi<T>(Func<T> f) => session.Dispatch(f, CancellationToken.None).GetAwaiter().GetResult();
+    internal static T OnUi<T>(Func<T> f) => session.Dispatch(f, CancellationToken.None).GetAwaiter().GetResult();
 
     [Fact]
     public void Waiting_icon_has_a_red_badge_with_the_count_in_white() => OnUi(() =>
@@ -35,6 +35,21 @@ public class AppIconTests
         Assert.Same(AppIcon.TrayWaiting(2), AppIcon.TrayWaiting(2));
         Assert.Same(AppIcon.TrayWaiting(10), AppIcon.TrayWaiting(42));
         Assert.NotSame(AppIcon.TrayWaiting(2), AppIcon.TrayWaiting(3));
+        return 0;
+    });
+
+    // The taskbar's badge: the red dot alone, filling the image (transparent corners), the count in white.
+    [Fact]
+    public void Taskbar_badge_is_the_red_dot_alone() => OnUi(() =>
+    {
+        using var png = new Bitmap(new MemoryStream(AppIcon.BadgePng("3")));
+        var bmp = new RenderTargetBitmap(new PixelSize(32, 32));
+        using (var g = bmp.CreateDrawingContext()) g.DrawImage(png, new Rect(0, 0, 32, 32));
+        var px = Pixels(bmp);
+        Assert.Equal(0, px[0].A);
+        Assert.Contains(px, p => p.R > 200 && p.G < 90 && p.B < 90 && p.A == 255);
+        Assert.Contains(px.Skip(10 * 32).Take(12 * 32), p => p.R > 230 && p.G > 230 && p.B > 230);
+        Assert.NotEqual(AppIcon.BadgePng("3"), AppIcon.BadgePng(""));
         return 0;
     });
 

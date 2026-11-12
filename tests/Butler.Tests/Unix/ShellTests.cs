@@ -43,4 +43,18 @@ public class ShellTests
             Skip.If(true, $"No trash here: {e.Message}"); // a CI runner's /tmp may have no trash
         }
     }
+
+    // The Dock icon's badge, read back from the Dock: a count, "!" for the dot, none.
+    [SkippableFact]
+    public void Badge_is_set_on_the_dock_icon_and_cleared()
+    {
+        Skip.IfNot(OperatingSystem.IsMacOS(), "Linux has no standard taskbar badge");
+        var shell = new MacShell();
+        shell.Badge(0, "3");
+        Assert.Equal("3", MacShell.BadgeLabel());
+        shell.Badge(0, "");
+        Assert.Equal("!", MacShell.BadgeLabel());
+        shell.Badge(0, null);
+        Assert.Null(MacShell.BadgeLabel());
+    }
 }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
 using Avalonia.Controls;
@@ -57,6 +58,28 @@ sealed class MacShell : IShell
     public void Reveal(string file) => Command.Start("open", ["-R", file]);
     public void Trash(string folder) =>
         Command.Check("osascript", ["-e", "on run argv\ntell application \"Finder\" to delete (POSIX file (item 1 of argv))\nend run", folder]);
+
+    // The Dock icon's badge (one per app, whatever the window), on the main thread: [NSApp.dockTile setBadgeLabel:].
+    public void Badge(nint window, string? label)
+    {
+        var tile = Send(Send(Class("NSApplication"), "sharedApplication"), "dockTile");
+        var text = label == null ? 0 : Send(Class("NSString"), "stringWithUTF8String:", label == "" ? "!" : label);
+        Send(tile, "setBadgeLabel:", text);
+    }
+
+    // The label shown (null for none), read back the same way.
+    public static string? BadgeLabel() =>
+        Marshal.PtrToStringUTF8(Send(Send(Send(Send(Class("NSApplication"), "sharedApplication"), "dockTile"), "badgeLabel"), "UTF8String"));
+
+    const string ObjC = "/usr/lib/libobjc.A.dylib";
+    [DllImport(ObjC, EntryPoint = "objc_getClass")] static extern nint Class(string name);
+    [DllImport(ObjC)] static extern nint sel_registerName(string name);
+    [DllImport(ObjC, EntryPoint = "objc_msgSend")] static extern nint Send(nint target, nint selector);
+    [DllImport(ObjC, EntryPoint = "objc_msgSend")] static extern nint Send(nint target, nint selector, nint arg);
+    [DllImport(ObjC, EntryPoint = "objc_msgSend")] static extern nint Send(nint target, nint selector, [MarshalAs(UnmanagedType.LPUTF8Str)] string arg);
+    static nint Send(nint target, string selector) => target == 0 ? 0 : Send(target, sel_registerName(selector));
+    static nint Send(nint target, string selector, nint arg) => Send(target, sel_registerName(selector), arg);
+    static nint Send(nint target, string selector, string arg) => Send(target, sel_registerName(selector), arg);
 
     public void Terminal(string folder, string exe, IEnumerable<string> args) =>
         Command.Start("osascript", ["-e", "on run argv\ntell application \"Terminal\" to do script (item 1 of argv)\nend run", Command.ShellLine(folder, exe, args)]);

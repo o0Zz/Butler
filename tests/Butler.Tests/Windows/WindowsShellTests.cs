@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace Butler.Tests;
 
 public class WindowsShellTests
@@ -49,4 +51,36 @@ public class WindowsShellTests
 
         Assert.False(Directory.Exists(folder));
     }
+
+    // The badge on a real window's taskbar button: a count, the dot, none. A wrong call to the taskbar throws.
+    // On an STA thread, as Butler's UI thread; the badges drawn first on Avalonia's (the icon tests' session).
+    [SkippableFact]
+    public void Badge_is_set_on_a_taskbar_button_and_cleared()
+    {
+        Skip.If(Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true", "The taskbar needs the desktop of a signed-in user");
+        string?[] labels = ["3", "9+", "", null];
+        AppIconTests.OnUi(() => labels.OfType<string>().Select(AppIcon.BadgePng).ToList());
+        Exception? failed = null;
+        var sta = new Thread(() =>
+        {
+            var window = CreateWindowEx(0, "STATIC", "Butler badge test", 0x10CF0000, 0, 0, 200, 100, 0, 0, 0, 0); // overlapped, visible
+            try
+            {
+                Assert.NotEqual(0, window);
+                var shell = new WindowsShell();
+                foreach (var label in labels) shell.Badge(window, label);
+            }
+            catch (Exception e) { failed = e; }
+            finally { DestroyWindow(window); }
+        });
+        sta.SetApartmentState(ApartmentState.STA);
+        sta.Start();
+        sta.Join();
+        if (failed != null) throw failed;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    static extern nint CreateWindowEx(uint exStyle, string className, string name, uint style, int x, int y, int w, int h, nint parent, nint menu, nint instance, nint param);
+
+    [DllImport("user32.dll")] static extern bool DestroyWindow(nint window);
 }
