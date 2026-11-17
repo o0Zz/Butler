@@ -275,6 +275,9 @@ sealed class DashboardWindow : Window
                 var (index, sectionId) = (cmd.GetProperty("index").GetInt32(), cmd.GetProperty("sectionId").GetString() is { Length: > 0 } s ? s : null);
                 EditTodo(async (b, list) => { await b.Insert(list, Arg("text"), Arg("projectId"), sectionId, index); return null; });
                 break;
+            case "todoAddSection": EditTodo(async (b, _) => { await b.AddSection(Arg("projectId"), Arg("name").Trim()); return null; }); break;
+            case "todoRenameSection": EditTodo(async (b, _) => { await b.RenameSection(Arg("id"), Arg("name").Trim()); return null; }); break;
+            case "todoDeleteSection": EditTodo(async (b, _) => { await b.DeleteSection(Arg("id")); return null; }); break;
             case "todoHide":
                 var hidden = tray.Settings.TodoHidden.Where(id => id != Arg("id"));
                 (tray.Settings with { TodoHidden = [.. cmd.GetProperty("hide").GetBoolean() ? hidden.Append(Arg("id")) : hidden] }).Save(Program.SettingsFile);

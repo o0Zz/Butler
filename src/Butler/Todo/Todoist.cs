@@ -72,6 +72,10 @@ public sealed class Todoist(string token, string api = "https://api.todoist.com/
     public override Task Reopen(string id) => Send(HttpMethod.Post, $"tasks/{id}/reopen");
     public override Task Delete(TodoTask task) => Send(HttpMethod.Delete, $"tasks/{task.Id}");
 
+    public override Task AddSection(string projectId, string name) => Send(HttpMethod.Post, "sections", new { name, project_id = projectId });
+    public override Task RenameSection(string id, string name) => Send(HttpMethod.Post, $"sections/{id}", new { name });
+    public override Task DeleteSection(string id) => Send(HttpMethod.Delete, $"sections/{id}"); // Todoist deletes its tasks too
+
     public override async Task<TodoTask> MoveTo(TodoTask task, string projectId, string? sectionId)
     {
         await Send(HttpMethod.Post, $"tasks/{task.Id}/move", sectionId != null ? new { section_id = sectionId } : new { project_id = projectId });

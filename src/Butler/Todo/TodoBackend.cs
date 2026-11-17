@@ -40,6 +40,11 @@ public abstract class TodoBackend
     public abstract Task Reopen(string id);
     public abstract Task Delete(TodoTask task);
 
+    // Sections (only when Sections): added at the end of the project, renamed, deleted with their tasks.
+    public abstract Task AddSection(string projectId, string name);
+    public abstract Task RenameSection(string id, string name);
+    public abstract Task DeleteSection(string id);
+
     // Puts these tasks (siblings) in this order.
     public abstract Task Reorder(IReadOnlyList<TodoTask> siblings);
 

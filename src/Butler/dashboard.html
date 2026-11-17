@@ -208,8 +208,12 @@
 .slot:hover::before { content: ''; position: absolute; left: 22px; right: 16px; top: 4px; border-top: 2px solid var(--accent); }
 .slot:hover::after { content: '+'; position: absolute; left: 6px; top: -3px; width: 16px; height: 16px; border-radius: 50%;
   background: var(--accent); color: var(--accent-text); font-size: 14px; line-height: 15px; text-align: center; }
-.proj h3 .hide { margin-left: auto; padding: 1px 4px; border: 0; background: transparent; color: var(--muted); }
-.proj h3 .hide:hover { color: var(--text); background: var(--line); }
+.proj h3 .hide, .proj h4 .hide { padding: 1px 4px; border: 0; background: transparent; color: var(--muted); }
+.proj h3 .hide:hover, .proj h4 .hide:hover { color: var(--text); background: var(--line); }
+.proj h3 .hide:first-of-type { margin-left: auto; }
+.proj h4 { display: flex; gap: 8px; align-items: baseline; }
+.proj h4 .hide { opacity: 0; }
+.proj h4:hover .hide { opacity: 1; }
 .chips button.hidden { opacity: .6; border-style: dashed; }
   .task .what { flex: 1; min-width: 0; }
   .task .tm { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-top: 1px; align-items: center; min-width: 0; }
@@ -555,10 +559,13 @@ function renderTodo() {
       const loose = mine.filter(x => !sections.some(s => s.id === x.sectionId));
       const isHidden = hidden.has(p.id);
       return `<div class="proj"><h3 ${drop(p.id, null)}>${esc(p.name)} <span class="n">${mine.length}</span>
+          ${t.sections ? `<button class="hide" title="${tr('Add a section')}" onclick="addSection(${js(p.id)})">${icon('plus')}</button>` : ''}
           <button class="hide" title="${isHidden ? tr('Show this list in All again') : tr('Hide this list from All (still under Hidden)')}"
             onclick="todoHide(${esc(JSON.stringify(p.id))},${!isHidden})">${icon(isHidden ? 'eye' : 'eyeOff')}</button></h3>
         ${loose.length || !mine.length ? block(loose, { projectId: p.id, sectionId: null }) : ''}
-        ${sections.map(s => { const inside = mine.filter(x => x.sectionId === s.id); return `<h4 ${drop(p.id, s.id)}>${esc(s.name)} <span class="n">${inside.length}</span></h4>${block(inside, { projectId: p.id, sectionId: s.id })}`; }).join('')}</div>`;
+        ${sections.map(s => { const inside = mine.filter(x => x.sectionId === s.id); return `<h4 ${drop(p.id, s.id)}>${esc(s.name)} <span class="n">${inside.length}</span>
+          <button class="hide" title="${tr('Rename the section')}" onclick="renameSection(${js(s.id)})">${icon('edit')}</button>
+          <button class="hide" title="${tr('Delete the section')}" onclick="deleteSection(${js(s.id)})">${icon('trash')}</button></h4>${block(inside, { projectId: p.id, sectionId: s.id })}`; }).join('')}</div>`;
     }).join('') || `<div class="empty">${icon('todo')}${tr('Nothing to do.')}</div>`}
   </div>`;
   todoRedrawing = false;
@@ -747,6 +754,24 @@ function todoHide(id, hide) {
   todoKey = '';
   render();
   send('todoHide', { id, hide });
+}
+
+// Todoist sections: named in a prompt, deleted with their tasks after a confirmation that counts them.
+function addSection(projectId) {
+  const name = prompt(tr('Name of the new section:'))?.trim();
+  if (name) send('todoAddSection', { projectId, name });
+}
+
+function renameSection(id) {
+  const s = state.todo.list.sections.find(x => x.id === id);
+  const name = prompt(tr('New name of the section:'), s.name)?.trim();
+  if (name && name !== s.name) send('todoRenameSection', { id, name });
+}
+
+function deleteSection(id) {
+  const s = state.todo.list.sections.find(x => x.id === id), n = state.todo.list.tasks.filter(x => x.sectionId === id).length;
+  if (confirm(n ? tr('Delete the section “{0}” and its {1} tasks? It cannot be undone.', s.name, n) : tr('Delete the section “{0}”?', s.name)))
+    send('todoDeleteSection', { id });
 }
 
 function dueLabel(x) {

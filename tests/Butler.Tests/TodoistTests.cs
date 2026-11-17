@@ -98,6 +98,18 @@ public class TodoistTests : IDisposable
         ], requests);
     }
 
+    [Fact]
+    public async Task Sections_are_added_renamed_and_deleted_through_the_api()
+    {
+        var todo = Client();
+        await todo.AddSection("w", "Later");
+        await todo.RenameSection("x", "Next week");
+        await todo.DeleteSection("x");
+        Assert.Equal([
+            """POST sections {"name":"Later","project_id":"w"}""", """POST sections/x {"name":"Next week"}""", "DELETE sections/x",
+        ], requests);
+    }
+
     // The Sync API answers each command by its uuid: "ok" or an error object.
     static (int, string) SyncAnswer(string line, string status) =>
         (200, $$"""{ "sync_status": { "{{Regex.Match(line, "\"uuid\":\"([^\"]+)\"").Groups[1].Value}}": {{status}} } }""");

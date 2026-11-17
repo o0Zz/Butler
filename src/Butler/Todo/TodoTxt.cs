@@ -74,6 +74,10 @@ public sealed class TodoTxt(string path, Func<DateTime>? today = null) : TodoBac
 
     public override Task Delete(TodoTask task) => Change(lines => lines.RemoveAt(Find(lines, task.Id)));
 
+    public override Task AddSection(string projectId, string name) => throw new TodoException("A todo.txt file has no sections");
+    public override Task RenameSection(string id, string name) => throw new TodoException("A todo.txt file has no sections");
+    public override Task DeleteSection(string id) => throw new TodoException("A todo.txt file has no sections");
+
     // Its first +tag is its list: replaced, added, or removed for the Inbox. The rest of the line is kept.
     public override async Task<TodoTask> MoveTo(TodoTask task, string projectId, string? sectionId)
     {

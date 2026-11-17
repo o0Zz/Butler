@@ -42,6 +42,17 @@ public class TodoTxtTests : IDisposable
         Assert.Equal("(B) 2026-10-01 Call Lena back +Home due:2026-10-31\r\n", File.ReadAllText(File_));
     }
 
+    // The page shows no section buttons for todo.txt (Sections false); a call anyway says why, writing nothing.
+    [Fact]
+    public async Task Sections_are_refused()
+    {
+        Assert.False(List().Sections);
+        await Assert.ThrowsAsync<TodoException>(() => List().AddSection("Work", "Later"));
+        await Assert.ThrowsAsync<TodoException>(() => List().RenameSection("Work", "Later"));
+        await Assert.ThrowsAsync<TodoException>(() => List().DeleteSection("Work"));
+        Assert.False(File.Exists(File_));
+    }
+
     [Fact]
     public async Task A_new_file_is_created_with_the_first_task()
     {

@@ -78,6 +78,13 @@
   "{0} / 30 d": "{0} / 30 j",
   "Run now": "Lancer",
   "Run": "Lancer",
+  "Add a section": "Ajouter une section",
+  "Rename the section": "Renommer la section",
+  "Delete the section": "Supprimer la section",
+  "Name of the new section:": "Nom de la nouvelle section :",
+  "New name of the section:": "Nouveau nom de la section :",
+  "Delete the section “{0}” and its {1} tasks? It cannot be undone.": "Supprimer la section « {0} » et ses {1} tâches ? C'est définitif.",
+  "Delete the section “{0}”?": "Supprimer la section « {0} » ?",
   "Runs the skill in a terminal, which stays open": "Lance le skill dans un terminal, qui reste ouvert",
 
   "No skills found.": "Aucun skill trouvé.",
