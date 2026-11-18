@@ -52,6 +52,9 @@ public abstract class Cli(string name, string exe)
 
     // The events of one output line; nothing for lines that do not matter. Throws on shapes it does not know.
     public abstract IEnumerable<CliEvent> Read(JsonElement line);
+
+    // The plugins a session started from `home` gets, (name, folder): their skills are /<name>:<skill> (Skills.Load).
+    public virtual IEnumerable<(string Name, string Folder)> Plugins(string home) => [];
 }
 
 // Claude Code: stream-json, the protocol appended to the system prompt, a final "result" event with the cost.
@@ -93,6 +96,24 @@ public sealed class ClaudeCli(string exe = "claude") : Cli("claude", exe)
                     line.TryGetProperty("total_cost_usd", out var cost) ? cost.GetDecimal() : null);
                 break;
         }
+    }
+
+    // Enabled in ~/.claude/settings.json and installed for the user (a project's are not loaded from the user folder).
+    // A file missing or broken: none, Claude Code tells the user.
+    public override IEnumerable<(string Name, string Folder)> Plugins(string home)
+    {
+        var claude = Path.Combine(home, ".claude");
+        try
+        {
+            using var settings = JsonDocument.Parse(File.ReadAllText(Path.Combine(claude, "settings.json")));
+            using var installed = JsonDocument.Parse(File.ReadAllText(Path.Combine(claude, "plugins", "installed_plugins.json")));
+            if (!settings.RootElement.TryGetProperty("enabledPlugins", out var enabled) || !installed.RootElement.TryGetProperty("plugins", out var plugins)) return [];
+            return [.. enabled.EnumerateObject().Where(p => p.Value.ValueKind == JsonValueKind.True && plugins.TryGetProperty(p.Name, out _))
+                .SelectMany(p => plugins.GetProperty(p.Name).EnumerateArray()
+                    .Where(c => c.GetProperty("scope").GetString() == "user")
+                    .Select(c => (p.Name.Split('@')[0], c.GetProperty("installPath").GetString()!)))];
+        }
+        catch (Exception e) when (e is IOException or JsonException or KeyNotFoundException or InvalidOperationException) { return []; }
     }
 }
 

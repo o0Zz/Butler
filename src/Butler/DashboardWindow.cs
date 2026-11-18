@@ -72,6 +72,9 @@ sealed class DashboardWindow : Window
         Push();
     }
 
+    // The skills folder's skills and those of the CLI's plugins, as a run (from the user folder) gets them.
+    List<Skill> AllSkills() => Skills.Load(tray.Settings.SkillsFolder, runner.Cli.Plugins(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)));
+
     Dictionary<string, string?> Installed() => Cli.Names.ToDictionary(n => n, n => Cli.FromName(n).Find(platform.Shell));
     public void RefreshRuns() => Push();
 
@@ -131,7 +134,7 @@ sealed class DashboardWindow : Window
         if (settings.Todo != "none" && DateTime.Now - todoRead > TimeSpan.FromMinutes(1)) LoadTodo();
         TodoBackend? backend = null;
         try { backend = TodoBackend.From(settings, platform.Secrets); } catch (TodoException) { } // no token: the load says so
-        var skills = Skills.Load(settings.SkillsFolder);
+        var skills = AllSkills();
         var history = History();
         var monthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
         var state = new
@@ -189,7 +192,7 @@ sealed class DashboardWindow : Window
             activity = selectedRun == null ? null : new { id = selectedRun, lines = runner.Activity(selectedRun) },
             skills = skills.Select(s => new
             {
-                s.Name, s.Description, s.Folder,
+                s.Name, s.Description, s.Folder, s.Plugin,
                 triggers = tray.Triggers.Where(t => Skills.Invoked(t.Prompt ?? "") is { } k && (k == s.Name || k == s.Folder)).Select(t => t.Name),
             }),
         };
@@ -209,12 +212,15 @@ sealed class DashboardWindow : Window
             case "clearRuns": runner.Clear(); historyRead = DateTime.MinValue; Push(); break;
             case "revealTriggers": platform.Shell.Reveal(tray.Settings.TriggersFile); break;
             case "openSkills": platform.Shell.OpenFolder(tray.Settings.SkillsFolder); break;
-            case "openSkill": platform.Shell.Reveal(Path.Combine(tray.Settings.SkillsFolder, Arg("folder"), "SKILL.md")); break;
+            case "openSkill": // a plugin's Folder is a full path: Combine keeps it
+                if (AllSkills().FirstOrDefault(s => s.Folder == Arg("folder")) is { } shown)
+                    platform.Shell.Reveal(Path.Combine(tray.Settings.SkillsFolder, shown.Folder, "SKILL.md"));
+                break;
             case "openLog": Open(Path.Combine(runner.RunsDir, Arg("id") + ".log")); break;
             // Edits the triggers and skills; the file watcher then syncs and refreshes this page.
             case "chat": platform.Shell.Terminal(tray.Settings.SkillsFolder, runner.Cli.Exe, runner.Cli.TerminalArguments(null)); break;
             case "runSkill": // an interactive session starting with the skill, from the user folder as runs
-                if (Skills.Load(tray.Settings.SkillsFolder).FirstOrDefault(s => s.Folder == Arg("folder")) is { } skill)
+                if (AllSkills().FirstOrDefault(s => s.Folder == Arg("folder")) is { } skill)
                     platform.Shell.Terminal(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), runner.Cli.Exe, runner.Cli.TerminalArguments(null, "/" + skill.Name));
                 break;
             case "terminal":

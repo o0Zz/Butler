@@ -78,6 +78,8 @@
   "{0} / 30 d": "{0} / 30 j",
   "Run now": "Lancer",
   "Run": "Lancer",
+  "plugin": "plugin",
+  "From a plugin of {0}: change it where the plugin comes from": "D’un plugin de {0} : modifiez-le là d’où vient le plugin",
   "Add a section": "Ajouter une section",
   "Rename the section": "Renommer la section",
   "Delete the section": "Supprimer la section",
