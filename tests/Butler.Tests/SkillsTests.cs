@@ -22,7 +22,8 @@ public class SkillsTests
         finally { Directory.Delete(dir, true); }
     }
 
-    // Claude Code's plugins: enabled in the user's settings and installed for the user, their skills called /<plugin>:<skill>.
+    // Claude Code's plugins: enabled in the user's settings and installed for the user, their skills called /<plugin>:<skill>;
+    // and the skills synced from claude.ai, /anthropic-skills:<skill>.
     [Fact]
     public void Lists_the_skills_of_the_user_s_enabled_claude_plugins()
     {
@@ -32,7 +33,7 @@ public class SkillsTests
             var skills = Path.Combine(home, ".claude", "skills");
             Directory.CreateDirectory(Path.Combine(skills, "brief"));
             File.WriteAllText(Path.Combine(skills, "brief", "SKILL.md"), "---\nname: brief\n---\n");
-            Assert.Empty(new ClaudeCli().Plugins(home)); // no plugin files
+            Assert.Empty(new ClaudeCli().Plugins(home)); // no plugin files, nothing synced
 
             string Plugin(string name)
             {
@@ -57,14 +58,22 @@ public class SkillsTests
                 },
             }));
 
-            Assert.Equal([("tools", tools)], new ClaudeCli().Plugins(home));
+            // The skills synced from claude.ai: anthropic-skills.
+            var account = Path.Combine(skills, "synced", "org_user");
+            Directory.CreateDirectory(Path.Combine(account, "docx"));
+            File.WriteAllText(Path.Combine(account, "docx", "SKILL.md"), "---\nname: docx\ndescription: Word files.\n---\n");
+            File.WriteAllText(Path.Combine(skills, "synced", ".bucket-org_user"), "");
+
+            Assert.Equal([("anthropic-skills", account), ("tools", Path.Combine(tools, "skills"))], new ClaudeCli().Plugins(home));
             Assert.Empty(new CopilotCli().Plugins(home));
             var folder = Path.Combine(tools, "skills", "tools-ohris");
-            Assert.Equal([new Skill("brief", "", "brief"), new Skill("tools:tools-ohris", "Fills OHRIS.", folder, "tools")], Skills.Load(skills, new ClaudeCli().Plugins(home)));
+            Assert.Equal([new Skill("anthropic-skills:docx", "Word files.", Path.Combine(account, "docx"), "anthropic-skills"), new Skill("brief", "", "brief"),
+                new Skill("tools:tools-ohris", "Fills OHRIS.", folder, "tools")], Skills.Load(skills, new ClaudeCli().Plugins(home)));
             Assert.Null(Skills.FolderOf(skills, folder)); // not the user's to trash
+            Assert.Null(Skills.FolderOf(skills, "synced"));
 
             File.WriteAllText(Path.Combine(home, ".claude", "settings.json"), "{ broken");
-            Assert.Empty(new ClaudeCli().Plugins(home));
+            Assert.Equal([("anthropic-skills", account)], new ClaudeCli().Plugins(home));
         }
         finally { Directory.Delete(home, true); }
     }

@@ -6,11 +6,11 @@ namespace Butler;
 public sealed record Skill(string Name, string Description, string Folder, string? Plugin = null);
 
 // The user's skills: <dir>/<skill>/SKILL.md, name and description from the front matter.
-// Then the plugins' (Cli.Plugins): <plugin folder>/skills/<skill>/SKILL.md, called /<plugin>:<name>.
+// Then the plugins' (Cli.Plugins): <folder>/<skill>/SKILL.md, called /<plugin>:<name>.
 public static class Skills
 {
     public static List<Skill> Load(string dir, IEnumerable<(string Name, string Folder)>? plugins = null) =>
-        [.. In(dir, null).Concat((plugins ?? []).SelectMany(p => In(Path.Combine(p.Folder, "skills"), p.Name))).OrderBy(s => s.Name)];
+        [.. In(dir, null).Concat((plugins ?? []).SelectMany(p => In(p.Folder, p.Name))).OrderBy(s => s.Name)];
 
     static IEnumerable<Skill> In(string dir, string? plugin)
     {

@@ -53,7 +53,7 @@ public abstract class Cli(string name, string exe)
     // The events of one output line; nothing for lines that do not matter. Throws on shapes it does not know.
     public abstract IEnumerable<CliEvent> Read(JsonElement line);
 
-    // The plugins a session started from `home` gets, (name, folder): their skills are /<name>:<skill> (Skills.Load).
+    // The plugins a session started from `home` gets, (name, folder of their skill folders): /<name>:<skill> (Skills.Load).
     public virtual IEnumerable<(string Name, string Folder)> Plugins(string home) => [];
 }
 
@@ -98,11 +98,18 @@ public sealed class ClaudeCli(string exe = "claude") : Cli("claude", exe)
         }
     }
 
-    // Enabled in ~/.claude/settings.json and installed for the user (a project's are not loaded from the user folder).
-    // A file missing or broken: none, Claude Code tells the user.
+    // The skills synced from claude.ai (~/.claude/skills/synced/<account>/<skill>), as anthropic-skills; then the plugins
+    // enabled in ~/.claude/settings.json and installed for the user (a project's are not loaded from the user folder).
+    // A plugin file missing or broken: no plugin, Claude Code tells the user.
     public override IEnumerable<(string Name, string Folder)> Plugins(string home)
     {
         var claude = Path.Combine(home, ".claude");
+        var synced = Path.Combine(claude, "skills", "synced");
+        return [.. (Directory.Exists(synced) ? Directory.GetDirectories(synced) : []).Select(d => ("anthropic-skills", d)), .. Installed(claude)];
+    }
+
+    static IEnumerable<(string Name, string Folder)> Installed(string claude)
+    {
         try
         {
             using var settings = JsonDocument.Parse(File.ReadAllText(Path.Combine(claude, "settings.json")));
@@ -111,7 +118,7 @@ public sealed class ClaudeCli(string exe = "claude") : Cli("claude", exe)
             return [.. enabled.EnumerateObject().Where(p => p.Value.ValueKind == JsonValueKind.True && plugins.TryGetProperty(p.Name, out _))
                 .SelectMany(p => plugins.GetProperty(p.Name).EnumerateArray()
                     .Where(c => c.GetProperty("scope").GetString() == "user")
-                    .Select(c => (p.Name.Split('@')[0], c.GetProperty("installPath").GetString()!)))];
+                    .Select(c => (p.Name.Split('@')[0], Path.Combine(c.GetProperty("installPath").GetString()!, "skills"))))];
         }
         catch (Exception e) when (e is IOException or JsonException or KeyNotFoundException or InvalidOperationException) { return []; }
     }
