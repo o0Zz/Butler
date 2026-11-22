@@ -359,8 +359,8 @@ function draw() {
   const searchBox = `<label class="search">${icon('search')}<input id="search" type="search" placeholder="${tr('Search…')}" value="${esc(search[view] ?? '')}"
     oninput="search[view]=this.value;render()" onkeydown="if(event.key==='Escape'&&this.value){event.stopPropagation();search[view]='';render()}"></label>`;
   $('hdr').innerHTML = view === 'runs' ? stats() + (state.runs.length ? `<button class="danger" onclick="if(confirm(${js(tr('Delete every run? Runs still running or waiting for an answer are kept. Their history and costs are lost.'))}))send('clearRuns')">${icon('trash')}${tr('Clear')}</button>` : '')
-    : view === 'todo' ? (state.todo ? `<span class="muted" style="font-size:12.5px">${esc(state.todo.label || '')}${state.todo.read ? ' · ' + esc(tr('updated {0}', ago(state.todo.read))) : ''}</span>
-        <button onclick="send('todoRefresh')" title="${tr('Read the list again (F5)')}">${icon('sync')}${tr('Refresh')}</button>
+    : view === 'todo' ? (state.todo ? `<span class="muted" style="font-size:12.5px">${esc(state.todo.label || '')}${state.todo.ok ? ' · ' + esc(tr('updated {0}', ago(state.todo.ok))) : ''}</span>
+        <button onclick="send('todoRefresh')" title="${tr('Read the list again (F5)')}" ${state.todo.refreshing ? 'disabled' : ''}>${icon('sync')}${state.todo.refreshing ? tr('Refreshing…') : tr('Refresh')}</button>
         <button onclick="send('todoOpen')" title="${state.todo.backend === 'todoist' ? tr('Open Todoist in the browser') : tr('Show the todo.txt file in its folder')}">${icon('open')}${state.todo.backend === 'todoist' ? 'Todoist' : tr('Folder')}</button>` : '')
     : view === 'skills' ? `${searchBox}<button onclick="send('openSkills')">${icon('folder')}${tr('Open folder')}</button>`
     : view === 'triggers' ? `${searchBox}<button onclick="send('chat')" title="${esc(tr('Opens {0} in a terminal, in your skills folder: describe what you want, it edits the triggers and skills', cap(state.cli)))}">${icon('sparkles')}${tr('Ask AI')}</button>
@@ -515,14 +515,14 @@ function renderTodo() {
     return;
   }
   if (todoClearAfter !== undefined && t.read !== todoClearAfter) { todoPending.clear(); todoClearAfter = undefined; } // the reload after an edit
-  const key = JSON.stringify([t, todoProject, [...todoPending], day(0), todoShowHidden, todoInsertAt, todoEditing]);
+  const key = JSON.stringify([{ ...t, refreshing: 0 }, todoProject, [...todoPending], day(0), todoShowHidden, todoInsertAt, todoEditing]);
   if (key === todoKey && $('todo-add')) return; // pushed every 2 s: redraw only on change, not under the typing
   todoKey = key;
   const input = $('todo-add'), typed = input?.value || '', focused = document.activeElement === input;
   const inline = $('todo-insert'), inlineTyped = inline?.value || '';
   const editing = $('todo-edit'), editTyped = editing?.value, editFocused = document.activeElement === editing;
   const L = t.list;
-  const error = t.error ? `<div class="error-box">${esc(t.error)}</div>` : '';
+  const error = t.error ? `<div class="error-box">${esc(t.error)} · ${esc(tr('last try {0}', ago(t.read)))}</div>` : ''; // the header's time is the last load that worked
   if (!L) {
     $('content').innerHTML = `<div class="todo">${error || `<div class="empty">${icon('todo')}${esc(tr('Loading {0}…', t.label || ''))}</div>`}</div>`;
     return;

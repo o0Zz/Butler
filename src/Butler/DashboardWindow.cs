@@ -91,7 +91,7 @@ sealed class DashboardWindow : Window
     // The to-do list, loaded off the UI thread: when the dashboard opens, every minute while it is open, and after each edit.
     TodoList? todo;
     string? todoError;
-    DateTime todoRead;
+    DateTime todoRead, todoOk; // todoRead: the last load, failed or not; todoOk: the last one that worked
     bool todoLoading, todoAgain; // todoAgain: an edit ended during a load, which may have missed it
 
     void LoadTodo()
@@ -101,8 +101,9 @@ sealed class DashboardWindow : Window
         var settings = tray.Settings;
         Task.Run(async () => (TodoBackend.From(settings, platform.Secrets) is { } b ? await b.Load() : null)).ContinueWith(t => Dispatcher.UIThread.Post(() =>
         {
-            (todo, todoError) = t.IsCompletedSuccessfully ? (t.Result, null) : (todo, Error(t.Exception!));
+            (todo, todoError) = t.IsCompletedSuccessfully ? (t.Result, null) : (todo, Error(t.Exception));
             (todoRead, todoLoading) = (DateTime.Now, false);
+            if (todoError == null) todoOk = todoRead;
             if (todoAgain) { todoAgain = false; LoadTodo(); }
             Push();
         }));
@@ -115,12 +116,12 @@ sealed class DashboardWindow : Window
         var list = todo ?? new TodoList([], [], []);
         Task.Run(async () => TodoBackend.From(settings, platform.Secrets) is { } b ? await edit(b, list) : null).ContinueWith(t => Dispatcher.UIThread.Post(() =>
         {
-            Call("todoDone", t.IsCompletedSuccessfully ? null : Error(t.Exception!), t.IsCompletedSuccessfully ? t.Result : null);
+            Call("todoDone", t.IsCompletedSuccessfully ? null : Error(t.Exception), t.IsCompletedSuccessfully ? t.Result : null);
             LoadTodo();
         }));
     }
 
-    static string Error(AggregateException e) => e.InnerException is TodoException or IOException or UnauthorizedAccessException
+    static string Error(AggregateException? e) => e == null ? "Cancelled" : e.InnerException is TodoException or IOException or UnauthorizedAccessException
         ? e.InnerException.Message : e.InnerException?.ToString() ?? e.Message;
 
     static TodoTask Find(TodoList list, string id) =>
@@ -173,6 +174,7 @@ sealed class DashboardWindow : Window
                 backend = settings.Todo, label = backend?.Label, notes = backend?.Notes, sections = backend?.Sections,
                 addHint = backend?.AddHint, dateHint = backend?.DateHint,
                 hidden = settings.TodoHidden, loading = todoLoading && todo == null, error = todoError, read = todoRead == DateTime.MinValue ? (DateTime?)null : todoRead,
+                ok = todoOk == DateTime.MinValue ? (DateTime?)null : todoOk, refreshing = todoLoading,
                 list = todo,
             },
             triggers = tray.Triggers.Select(t => new
@@ -250,7 +252,7 @@ sealed class DashboardWindow : Window
                     platform.StartAtLogin.Set(cmd.GetProperty("startup").GetBoolean(), Program.Exe);
                     settings.Save(Program.SettingsFile);
                     tray.Reload(); // also done by the settings watcher, a second later
-                    (todo, todoError, todoRead) = (null, null, DateTime.MinValue);
+                    (todo, todoError, todoRead, todoOk) = (null, null, DateTime.MinValue, DateTime.MinValue);
                 }
                 Call("settingsSaved", problems);
                 if (Lang.Code != language) Load("settings"); // its texts are in the page

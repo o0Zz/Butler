@@ -312,5 +312,7 @@
   "Backing up…": "Sauvegarde en cours…",
   "Butler: backup failed": "Butler : la sauvegarde a échoué",
   "Not in the skills folder: each backup would contain the previous ones": "Pas dans le dossier des skills : chaque sauvegarde contiendrait les précédentes",
-  "General": "Général"
+  "General": "Général",
+  "Refreshing…": "Actualisation…",
+  "last try {0}": "dernier essai {0}"
 }
