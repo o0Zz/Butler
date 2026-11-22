@@ -50,7 +50,8 @@ sealed class DashboardWindow : Window
     {
         ready = false;
         var lang = $"const LANG = {JsonSerializer.Serialize(Lang.Texts)}, LOCALE = '{Lang.Code}', OPEN = '{page}';";
-        web.NavigateToString(Resource("dashboard.html").Replace("<!--lang-->", $"<script>{lang}</script>")
+        web.NavigateToString(Resource("dashboard.html").Replace("<!--theme-->", $"<script>const THEME = {JsonSerializer.Serialize(tray.Settings.Theme)};</script>")
+            .Replace("<!--lang-->", $"<script>{lang}</script>")
             .Replace("<!--marked-->", $"<script>{Resource("marked.min.js")}</script>")
             .Replace("<!--logo-->", Resource("butler.svg")).Replace("<!--version-->", Program.Version), new Uri("about:blank"));
     }
@@ -163,7 +164,7 @@ sealed class DashboardWindow : Window
             settings = new
             {
                 settings.Cli, settings.TriggersFile, settings.SkillsFolder, settings.AdoOrganization, settings.Todo, settings.TodoFile, settings.StartPage, settings.Language,
-                settings.BackupFolder, lastBackup = tray.LastBackup, backupError = tray.BackupError,
+                settings.Theme, settings.BackupFolder, lastBackup = tray.LastBackup, backupError = tray.BackupError,
                 settings.Models, levels = Settings.Levels,
                 file = Program.SettingsFile, installed, todoist = platform.Secrets.Read(ISecrets.Todoist) != null, startup = platform.StartAtLogin.IsOn(Program.Exe),
                 secretStore = platform.Secrets.Name, startupLabel = platform.StartAtLogin.Label,
@@ -234,10 +235,10 @@ sealed class DashboardWindow : Window
                 {
                     Cli = Arg("cli"), TriggersFile = Arg("triggersFile").Trim(), SkillsFolder = Arg("skillsFolder").Trim(),
                     AdoOrganization = Arg("adoOrganization").Trim(), Todo = Arg("todo"), TodoFile = Arg("todoFile").Trim(), StartPage = Arg("startPage"),
-                    Language = Arg("language"), BackupFolder = Arg("backupFolder").Trim(),
+                    Language = Arg("language"), Theme = Arg("theme"), BackupFolder = Arg("backupFolder").Trim(),
                     Models = cmd.GetProperty("models").Deserialize<Dictionary<string, Dictionary<string, string>>>()!,
                 };
-                var language = Lang.Code;
+                var (language, theme) = (Lang.Code, tray.Settings.Theme);
                 var problems = settings.Problems(platform.Shell);
                 var token = Arg("todoistToken").Trim(); // empty: keep the saved one
                 if (settings.Todo == "todoist")
@@ -255,7 +256,7 @@ sealed class DashboardWindow : Window
                     (todo, todoError, todoRead, todoOk) = (null, null, DateTime.MinValue, DateTime.MinValue);
                 }
                 Call("settingsSaved", problems);
-                if (Lang.Code != language) Load("settings"); // its texts are in the page
+                if (Lang.Code != language || tray.Settings.Theme != theme) Load("settings"); // its texts and theme are in the page
                 break;
             case "forgetTodoist":
                 platform.Secrets.Delete(ISecrets.Todoist);

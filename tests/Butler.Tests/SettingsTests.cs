@@ -65,6 +65,16 @@ public class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void The_theme_follows_the_system_by_default_and_an_unknown_one_is_refused()
+    {
+        Assert.Equal("auto", Settings.Load(File_).Theme);
+        File.WriteAllText(File_, """{ "theme": "black" }""");
+        Assert.Equal("black", Settings.Load(File_).Theme);
+        Assert.DoesNotContain("theme", Settings.Load(File_).Problems(Platform.Current.Shell).Keys);
+        Assert.Equal("Unknown theme 'pink'", new Settings { Theme = "pink" }.Problems(Platform.Current.Shell)["theme"]);
+    }
+
+    [Fact]
     public void Unknown_cli_in_the_file_is_refused()
     {
         File.WriteAllText(File_, """{ "cli": "gpt" }""");

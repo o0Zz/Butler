@@ -2,6 +2,14 @@
 <html>
 <head>
 <meta charset="utf-8">
+<!--theme-->
+<script>
+  // The theme of the settings (THEME, from C#): light, dark, black, or auto, which follows the system while the page is open.
+  const darkOs = matchMedia('(prefers-color-scheme: dark)');
+  const applyTheme = () => document.documentElement.dataset.theme = THEME !== 'auto' ? THEME : darkOs.matches ? 'dark' : 'light';
+  applyTheme();
+  darkOs.addEventListener('change', applyTheme);
+</script>
 <style>
   :root {
     --bg: #f6f7f9; --panel: #ffffff; --side: #eef0f3; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb;
@@ -9,17 +17,20 @@
     --ok: #1f9d55; --ok-bg: #e5f6ec; --warn: #b7791f; --warn-bg: #fdf3dc; --err: #d64545; --err-bg: #fde8e8;
     --run: #2f6fe4; --run-bg: #e8effd; --idle: #6b7280; --idle-bg: #eef0f3;
     --k-schedule: #2f6fe4; --k-mail: #7c4ddb; --k-ado: #0f8a7e; --k-file: #c46a12; --k-hotkey: #c2306b;
-    --shadow: 0 1px 2px rgb(0 0 0 / .05), 0 4px 14px rgb(0 0 0 / .04);
+    --shadow: 0 1px 2px rgb(0 0 0 / .05), 0 4px 14px rgb(0 0 0 / .04); color-scheme: light;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #16181d; --panel: #1e2128; --side: #1a1c22; --text: #e6e8ec; --muted: #9097a3; --line: #2c3039;
-      --hover: #252932; --sel: #23324f; --accent: #5b8def;
-      --ok: #4cc38a; --ok-bg: #1d3328; --warn: #e3b341; --warn-bg: #3a3020; --err: #f07171; --err-bg: #3b2224;
-      --run: #7aa5f5; --run-bg: #23324f; --idle: #9097a3; --idle-bg: #2a2e37;
-      --k-schedule: #7aa5f5; --k-mail: #a98bf0; --k-ado: #4cc3b5; --k-file: #e8a25a; --k-hotkey: #f0789f;
-      --shadow: none;
-    }
+  :root[data-theme="dark"], :root[data-theme="black"] {
+    --bg: #16181d; --panel: #1e2128; --side: #1a1c22; --text: #e6e8ec; --muted: #9097a3; --line: #2c3039;
+    --hover: #252932; --sel: #23324f; --accent: #5b8def;
+    --ok: #4cc38a; --ok-bg: #1d3328; --warn: #e3b341; --warn-bg: #3a3020; --err: #f07171; --err-bg: #3b2224;
+    --run: #7aa5f5; --run-bg: #23324f; --idle: #9097a3; --idle-bg: #2a2e37;
+    --k-schedule: #7aa5f5; --k-mail: #a98bf0; --k-ado: #4cc3b5; --k-file: #e8a25a; --k-hotkey: #f0789f;
+    --shadow: none; color-scheme: dark;
+  }
+  :root[data-theme="black"] { /* dark on pure black, for OLED screens */
+    --bg: #000; --panel: #0b0b0c; --side: #000; --text: #ececec; --muted: #8b8f97; --line: #1f2024;
+    --hover: #16171a; --sel: #14223d; --idle-bg: #1b1c20; --run-bg: #14223d;
+    --ok-bg: #0f2419; --warn-bg: #272012; --err-bg: #2b1315;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -1139,6 +1150,13 @@ function renderSettings() {
           `<option value="${v}" ${v === s.language ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="err" id="e-language"></div>
       </div>
+      <div class="field">
+        <label for="s-theme">${tr('Theme')}</label>
+        <div class="hint">${tr('Automatic: the system’s light or dark mode. Black: dark on a pure black background, for OLED screens.')}</div>
+        <div class="bar"><select id="s-theme" onchange="checkSettings()">${[['auto', tr('Automatic')], ['light', tr('Light')], ['dark', tr('Dark')], ['black', tr('Black')]].map(([v, l]) =>
+          `<option value="${v}" ${v === s.theme ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="err" id="e-theme"></div>
+      </div>
     </div>
     <div class="card" data-tab="general">
       <h3>${tr('Startup')}</h3>
@@ -1223,7 +1241,7 @@ const pathField = (id, label, hint, value, pick = 'file', filter = `JSON (*.json
   <div class="err" id="e-${id}"></div></div>`;
 const settingsDraft = () => ({ cli: $('s-cli').value, triggersFile: $('s-triggersFile').value.trim(), skillsFolder: $('s-skillsFolder').value.trim(),
   adoOrganization: $('s-adoOrganization').value.trim(), todo: $('s-todo').value, todoFile: $('s-todoFile').value.trim(), todoistToken: $('s-todoistToken').value.trim(),
-  startPage: $('s-startPage').value, language: $('s-language').value, startup: $('s-startup').checked, backupFolder: $('s-backupFolder').value.trim(),
+  startPage: $('s-startPage').value, language: $('s-language').value, theme: $('s-theme').value, startup: $('s-startup').checked, backupFolder: $('s-backupFolder').value.trim(),
   models: Object.fromEntries(Object.keys(cliNames).map(c => [c, Object.fromEntries(state.settings.levels.map(l => [l, $(`m-${c}-${l}`).value.trim()]))])) });
 // The models table as one comparable value (a level missing from settings.json is empty).
 const modelsKey = m => JSON.stringify(Object.keys(cliNames).map(c => state.settings.levels.map(l => (m?.[c]?.[l] || '').trim())));

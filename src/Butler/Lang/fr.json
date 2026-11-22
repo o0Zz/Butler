@@ -314,5 +314,11 @@
   "Not in the skills folder: each backup would contain the previous ones": "Pas dans le dossier des skills : chaque sauvegarde contiendrait les précédentes",
   "General": "Général",
   "Refreshing…": "Actualisation…",
-  "last try {0}": "dernier essai {0}"
+  "last try {0}": "dernier essai {0}",
+  "Theme": "Thème",
+  "Automatic: the system’s light or dark mode. Black: dark on a pure black background, for OLED screens.": "Automatique : le mode clair ou sombre du système. Noir : sombre sur un fond noir pur, pour les écrans OLED.",
+  "Light": "Clair",
+  "Dark": "Sombre",
+  "Black": "Noir",
+  "Unknown theme '{0}'": "Thème inconnu '{0}'"
 }

@@ -13,7 +13,7 @@ Single user, single machine: triggers live in the user's skills folder and call 
 - Nothing may rely on files next to the exe (single-file release).
 
 ## Settings
-- `settings.json` (`Settings`), edited on the Settings page (tabs General, Agent, Triggers, To do, Backup) or by hand: `cli` (`claude`, `copilot`), `triggersFile`, `skillsFolder`, `adoOrganization`, `todo` (`none`, `todoist`, `txt`), `todoFile`, `todoHidden`, `startPage`, `language` (`auto`, `en`, `fr`), `backupFolder`, `models` (per CLI, the model of each level `fast`, `balanced`, `powerful`; empty: the CLI's default). Missing file: claude and `~/.claude/skills`. A new option gets a field on the Settings page.
+- `settings.json` (`Settings`), edited on the Settings page (tabs General, Agent, Triggers, To do, Backup) or by hand: `cli` (`claude`, `copilot`), `triggersFile`, `skillsFolder`, `adoOrganization`, `todo` (`none`, `todoist`, `txt`), `todoFile`, `todoHidden`, `startPage`, `language` (`auto`, `en`, `fr`), `theme` (`auto` following the system, `light`, `dark`, `black`: `THEME` set in the page's head before it draws, the page reloaded when it changes), `backupFolder`, `models` (per CLI, the model of each level `fast`, `balanced`, `powerful`; empty: the CLI's default). Missing file: claude and `~/.claude/skills`. A new option gets a field on the Settings page.
 - Saving refuses invalid values (`Settings.Problems`, by field, shown next to it; its tab is marked).
 - Each process reads the settings when it starts. The tray watches `settings.json` and the triggers file and reloads.
 - Start at login is the OS's own entry (`IStartAtLogin`: `Run` key, LaunchAgent, XDG autostart), on only when it starts this exe.
