@@ -79,6 +79,7 @@
   "Run now": "Lancer",
   "Run": "Lancer",
   "plugin": "plugin",
+  "Plugin skills ({0})": "Skills des plugins ({0})",
   "From a plugin of {0}: change it where the plugin comes from": "D’un plugin de {0} : modifiez-le là d’où vient le plugin",
   "Add a section": "Ajouter une section",
   "Rename the section": "Renommer la section",

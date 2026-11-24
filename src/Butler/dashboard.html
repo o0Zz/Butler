@@ -279,6 +279,7 @@ const markdown = s => md.parse(s.replace(/^`?BUTLER-(ASK|SUMMARY):.*$/gm, '').tr
 let state = { triggers: [], runs: [], skills: [], kinds: [], sources: [] }, view = 'runs', selected = null, draft = '';
 let watched = null, drawnRun = null, resultScroll = 0, actsOpen = false;
 let search = { triggers: '', skills: '' }; // what is typed in the search box of each page
+let pluginSkills = false; // the Skills page shows the plugins' skills too (off: the user's own only)
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const send = (cmd, args = {}) => invokeCSharpAction(JSON.stringify({ cmd, ...args })); // the web view's bridge to C#
@@ -358,7 +359,7 @@ function draw() {
   $('c-runs').textContent = st.waiting || state.runs.length;
   $('c-runs').className = 'count' + (st.waiting ? ' badge' : '');
   $('c-triggers').textContent = state.triggers.length;
-  $('c-skills').textContent = state.skills.length;
+  $('c-skills').textContent = state.skills.filter(s => pluginSkills || !s.plugin).length;
   const dueNow = (state.todo?.list?.tasks || []).filter(x => x.due && x.due.slice(0, 10) <= day(0) && !state.todo.hidden.includes(x.projectId)).length;
   $('c-todo').textContent = dueNow || '';
   $('c-todo').title = dueNow ? tr('{0} due today or late', dueNow) : '';
@@ -373,7 +374,8 @@ function draw() {
     : view === 'todo' ? (state.todo ? `<span class="muted" style="font-size:12.5px">${esc(state.todo.label || '')}${state.todo.ok ? ' · ' + esc(tr('updated {0}', ago(state.todo.ok))) : ''}</span>
         <button onclick="send('todoRefresh')" title="${tr('Read the list again (F5)')}" ${state.todo.refreshing ? 'disabled' : ''}>${icon('sync')}${state.todo.refreshing ? tr('Refreshing…') : tr('Refresh')}</button>
         <button onclick="send('todoOpen')" title="${state.todo.backend === 'todoist' ? tr('Open Todoist in the browser') : tr('Show the todo.txt file in its folder')}">${icon('open')}${state.todo.backend === 'todoist' ? 'Todoist' : tr('Folder')}</button>` : '')
-    : view === 'skills' ? `${searchBox}<button onclick="send('openSkills')">${icon('folder')}${tr('Open folder')}</button>`
+    : view === 'skills' ? `${state.skills.some(s => s.plugin) ? `<label class="muted" style="font-size:12.5px;display:flex;gap:6px;align-items:center"><input type="checkbox" ${pluginSkills ? 'checked' : ''}
+        onchange="pluginSkills=this.checked;render()">${tr('Plugin skills ({0})', state.skills.filter(s => s.plugin).length)}</label>` : ''}${searchBox}<button onclick="send('openSkills')">${icon('folder')}${tr('Open folder')}</button>`
     : view === 'triggers' ? `${searchBox}<button onclick="send('chat')" title="${esc(tr('Opens {0} in a terminal, in your skills folder: describe what you want, it edits the triggers and skills', cap(state.cli)))}">${icon('sparkles')}${tr('Ask AI')}</button>
         <button class="primary" onclick="openEditor()">${icon('plus')}${tr('New trigger')}</button>` : '';
   if (caret != null && $('search')) { $('search').focus(); $('search').setSelectionRange(caret, caret); }
@@ -496,7 +498,7 @@ function renderTriggers() {
 
 function renderSkills() {
   if (!state.skills.length) { $('content').innerHTML = `<div class="empty">${icon('skills')}${tr('No skills found.')}</div>`; return; }
-  const shown = state.skills.filter(s => found(s.name, s.description, ...s.triggers));
+  const shown = state.skills.filter(s => (pluginSkills || !s.plugin) && found(s.name, s.description, ...s.triggers));
   if (!shown.length) { $('content').innerHTML = noMatch(); return; }
   $('content').innerHTML = `<div class="grid">${shown.map(s => `
     <div class="card">
